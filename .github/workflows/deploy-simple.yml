@@ -1,8 +1,8 @@
-name: Deploy
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]  # Only deploy from main branch
 
 permissions:
   contents: read
@@ -20,56 +20,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug info
-        run: |
-          echo "Branch: ${{ github.ref }}"
-          echo "Repository: ${{ github.repository }}"
-          ls -la
-
       - name: Prepare build
         run: |
-          echo "Creating build directory..."
+          echo "🔧 Preparing production build from main branch..."
           mkdir -p build
           
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            echo "🔧 DEV BRANCH DETECTED - Creating dev environment"
-            
-            # Copy everything to root first
-            cp -r . build/
-            rm -rf build/.git build/.github
-            
-            # Create dev subdirectory
-            mkdir -p build/dev
-            cp -r . build/dev/
-            rm -rf build/dev/.git build/dev/.github build/dev/build
-            
-            # Add dev override
-            echo 'window.FORCE_DEV_MODE = true; console.log("🔧 DEV MODE");' > build/dev/js/env-override.js
-            
-            # Update dev index.html
-            sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/dev/index.html
-            sed -i 's|<title>|<title>[DEV] |' build/dev/index.html
-            
-            # Create root redirect
-            echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=./dev/"><title>Redirecting...</title></head><body><a href="./dev/">Dev Environment</a></body></html>' > build/index.html
-            
-            echo "Dev build structure:"
-            ls -la build/
-            ls -la build/dev/
-            
-          else
-            echo "🔧 MAIN BRANCH DETECTED - Creating production environment"
-            
-            # Production: copy everything to root
-            cp -r . build/
-            rm -rf build/.git build/.github
-            
-            # Clean up dev files
-            rm -f build/test-*.html build/test-*.js build/*GUIDE.md
-            
-            echo "Production build structure:"
-            ls -la build/
-          fi
+          # Copy all files to build directory
+          cp -r . build/
+          rm -rf build/.git build/.github
+          
+          # Clean up development files for production
+          rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md
+          
+          echo "✅ Production build ready"
+          ls -la build/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

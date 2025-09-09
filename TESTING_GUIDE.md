@@ -11,15 +11,15 @@ This guide provides comprehensive testing instructions for the Volunteer Attenda
 - **Database**: `VolunteerAttendanceDB_Dev`
 - **Visual Indicator**: Orange "DEV" badge
 
-### Online Development (GitHub Actions)
-- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/dev/`
-- **Setup**: Push changes to `dev` branch, GitHub Actions auto-deploys
-- **Features**: Separate dev environment with forced dev mode
+### Online Development (URL Parameter)
+- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/?env=dev`
+- **Setup**: Deploy from `main` branch, use URL parameter for dev mode
+- **Features**: Same codebase, different environment based on URL parameter
 - **Database**: `VolunteerAttendanceDB_Dev`
 - **Visual Indicator**: Orange "DEV" badge + "[DEV]" in title
-- **Deployment Time**: 2-3 minutes after push
+- **Deployment Time**: Available immediately after main branch deployment
 
-**Setup Required**: Follow `GITHUB_ACTIONS_SETUP.md` to enable this feature.
+**Note**: GitHub Pages environment protection prevents dev branch deployment.
 
 ### Production
 - **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/`
