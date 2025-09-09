@@ -1,4 +1,4 @@
-name: Simple Deploy
+name: Deploy
 
 on:
   push:
@@ -20,48 +20,55 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug info
+        run: |
+          echo "Branch: ${{ github.ref }}"
+          echo "Repository: ${{ github.repository }}"
+          ls -la
+
       - name: Prepare build
         run: |
+          echo "Creating build directory..."
           mkdir -p build
           
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            echo "🔧 Preparing DEV build..."
+            echo "🔧 DEV BRANCH DETECTED - Creating dev environment"
+            
+            # Copy everything to root first
+            cp -r . build/
+            rm -rf build/.git build/.github
             
             # Create dev subdirectory
             mkdir -p build/dev
-            cp -r * build/dev/ 2>/dev/null || true
+            cp -r . build/dev/
             rm -rf build/dev/.git build/dev/.github build/dev/build
             
-            # Force dev environment
-            cat > build/dev/js/env-override.js << 'EOF'
-          window.FORCE_DEV_MODE = true;
-          console.log('🔧 DEV environment active');
-          EOF
+            # Add dev override
+            echo 'window.FORCE_DEV_MODE = true; console.log("🔧 DEV MODE");' > build/dev/js/env-override.js
             
-            # Update index.html
+            # Update dev index.html
             sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/dev/index.html
             sed -i 's|<title>|<title>[DEV] |' build/dev/index.html
             
-            # Root redirect to dev
-            cat > build/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head><meta http-equiv="refresh" content="0; url=./dev/"></head>
-          <body><a href="./dev/">Development Environment</a></body>
-          </html>
-          EOF
+            # Create root redirect
+            echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=./dev/"><title>Redirecting...</title></head><body><a href="./dev/">Dev Environment</a></body></html>' > build/index.html
+            
+            echo "Dev build structure:"
+            ls -la build/
+            ls -la build/dev/
             
           else
-            echo "🔧 Preparing PRODUCTION build..."
+            echo "🔧 MAIN BRANCH DETECTED - Creating production environment"
             
-            # Production build
-            cp -r * build/ 2>/dev/null || true
-            rm -rf build/.git build/.github build/build
+            # Production: copy everything to root
+            cp -r . build/
+            rm -rf build/.git build/.github
             
             # Clean up dev files
-            find build -name "test-*" -delete 2>/dev/null || true
-            find build -name "*GUIDE.md" -delete 2>/dev/null || true
-            find build -name "env-override.js" -delete 2>/dev/null || true
+            rm -f build/test-*.html build/test-*.js build/*GUIDE.md
+            
+            echo "Production build structure:"
+            ls -la build/
           fi
 
       - name: Setup Pages
