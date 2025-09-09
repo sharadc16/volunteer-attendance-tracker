@@ -533,6 +533,34 @@ body {
     }
 }
 
+/* Google Sheets sync button */
+#googleSyncBtn {
+    position: relative;
+}
+
+#googleSyncBtn:hover {
+    background: #2980b9;
+}
+
+#googleSyncBtn.syncing {
+    background: #f39c12;
+    pointer-events: none;
+}
+
+#googleSyncBtn.syncing::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
 /* Touch-friendly improvements for Chromebook */
 @media (pointer: coarse) {
     .btn {

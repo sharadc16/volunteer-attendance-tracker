@@ -86,6 +86,12 @@ class VolunteerAttendanceApp {
             settingsBtn.addEventListener('click', () => this.showSettings());
         }
 
+        // Google Sheets sync button
+        const googleSyncBtn = Utils.DOM.getElementById('googleSyncBtn');
+        if (googleSyncBtn) {
+            googleSyncBtn.addEventListener('click', () => this.handleGoogleSync());
+        }
+
         // Modal close handlers
         const modalOverlay = Utils.DOM.getElementById('modalOverlay');
         const modalClose = Utils.DOM.getElementById('modalClose');
@@ -629,9 +635,123 @@ class VolunteerAttendanceApp {
         }
     }
 
+    /**
+     * Handle Google Sheets sync
+     */
+    async handleGoogleSync() {
+        if (!window.GoogleSheetsService) {
+            this.showError('Google Sheets service not available');
+            return;
+        }
+
+        try {
+            // Show loading
+            this.showLoading(true);
+            
+            const status = window.GoogleSheetsService.getStatus();
+            
+            if (!status.hasCredentials) {
+                // First time setup - will prompt for credentials
+                await window.GoogleSheetsService.init();
+            }
+            
+            if (!status.isAuthenticated) {
+                // Authenticate with Google
+                await window.GoogleSheetsService.authenticate();
+            }
+            
+            // Perform sync
+            const result = await window.GoogleSheetsService.syncAllData();
+            
+            // Show success message
+            this.showModal(
+                'Sync Complete', 
+                `
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
+                    <p>Successfully synced data to Google Sheets:</p>
+                    <ul style="text-align: left; display: inline-block;">
+                        <li>${result.volunteers} volunteers</li>
+                        <li>${result.attendance} attendance records</li>
+                        <li>${result.events} events</li>
+                    </ul>
+                    <p style="margin-top: 1rem;">
+                        <a href="https://docs.google.com/spreadsheets/d/${window.GoogleSheetsService.spreadsheetId}" 
+                           target="_blank" class="btn btn-primary">
+                            View Google Sheet
+                        </a>
+                    </p>
+                </div>
+                `, 
+                'Close', 
+                ''
+            );
+            
+        } catch (error) {
+            console.error('Google Sheets sync failed:', error);
+            
+            let errorMessage = 'Sync failed: ' + error.message;
+            
+            if (error.message.includes('Authentication')) {
+                errorMessage += '<br><br>Please check your Google Sheets credentials and try again.';
+            } else if (error.message.includes('not found')) {
+                errorMessage += '<br><br>Please verify your Google Sheet ID is correct.';
+            }
+            
+            this.showModal('Sync Failed', `<div style="color: #e74c3c;">${errorMessage}</div>`, 'Close', '');
+            
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
     // Placeholder methods for future implementation
     showSettings() {
-        this.showModal('Settings', '<p>Settings panel coming soon...</p>', 'Close', '');
+        const status = window.GoogleSheetsService ? window.GoogleSheetsService.getStatus() : null;
+        
+        let googleSheetsStatus = 'Not available';
+        if (status) {
+            if (status.isAuthenticated) {
+                googleSheetsStatus = `✅ Connected (Sheet: ${status.spreadsheetId?.substring(0, 10)}...)`;
+            } else if (status.hasCredentials) {
+                googleSheetsStatus = '🔑 Configured (not authenticated)';
+            } else {
+                googleSheetsStatus = '❌ Not configured';
+            }
+        }
+        
+        const settingsContent = `
+            <div>
+                <h4>Google Sheets Integration</h4>
+                <p><strong>Status:</strong> ${googleSheetsStatus}</p>
+                
+                <div style="margin: 1rem 0;">
+                    <button class="btn btn-primary" onclick="app.handleGoogleSync()">
+                        📊 Sync Now
+                    </button>
+                    ${status?.hasCredentials ? `
+                        <button class="btn btn-secondary" onclick="window.GoogleSheetsService.clearCredentials(); app.hideModal();">
+                            🗑️ Clear Credentials
+                        </button>
+                    ` : ''}
+                </div>
+                
+                <hr style="margin: 1.5rem 0;">
+                
+                <h4>System Information</h4>
+                <p><strong>Environment:</strong> ${window.Config?.environment || 'Unknown'}</p>
+                <p><strong>Database:</strong> ${window.StorageManager?.dbName || 'Unknown'}</p>
+                <p><strong>Version:</strong> 1.0.0</p>
+                
+                <div style="margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="resetAppDatabase()">
+                        🔄 Reset Database
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        this.showModal('Settings', settingsContent, 'Close', '');
     }
 
     showAddVolunteerModal() {

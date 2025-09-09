@@ -54,7 +54,7 @@ const Config = {
     
     // Feature flags
     features: {
-        googleSheetsSync: false, // Will enable later
+        googleSheetsSync: true, // Enable Google Sheets integration
         offlineMode: true,
         exportData: true,
         importData: isDevelopment, // Only in dev for now

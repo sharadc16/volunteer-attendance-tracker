@@ -296,6 +296,9 @@ class StorageManager {
         // Queue for sync
         await this.queueForSync('attendance', 'add', attendance);
 
+        // Auto-sync to Google Sheets if enabled and authenticated
+        this.autoSyncToGoogleSheets();
+
         return result;
     }
 
@@ -506,6 +509,27 @@ class StorageManager {
         });
 
         return csvRows.join('\n');
+    }
+
+    /**
+     * Auto-sync to Google Sheets (non-blocking)
+     */
+    autoSyncToGoogleSheets() {
+        // Don't block the main operation
+        setTimeout(async () => {
+            try {
+                if (window.GoogleSheetsService && 
+                    window.Config?.features?.googleSheetsSync &&
+                    window.GoogleSheetsService.getStatus().isAuthenticated) {
+                    
+                    console.log('Auto-syncing to Google Sheets...');
+                    await window.GoogleSheetsService.syncAllData();
+                }
+            } catch (error) {
+                console.warn('Auto-sync to Google Sheets failed:', error.message);
+                // Don't show error to user for auto-sync failures
+            }
+        }, 1000); // Delay to avoid blocking UI
     }
 
     /**
