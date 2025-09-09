@@ -5,10 +5,10 @@
 
 class StorageManager {
     constructor() {
-        this.dbName = 'VolunteerAttendanceDB';
-        this.dbVersion = 1;
+        this.dbName = window.Config ? window.Config.database.name : 'VolunteerAttendanceDB';
+        this.dbVersion = window.Config ? window.Config.database.version : 1;
         this.db = null;
-        this.syncInterval = 60000; // 60 seconds
+        this.syncInterval = window.Config ? window.Config.sync.interval : 60000;
         this.syncTimer = null;
         this.isOnline = navigator.onLine;
         this.pendingSync = [];
