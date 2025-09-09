@@ -1,13 +1,17 @@
-name: Deploy to GitHub Pages
+name: Deploy Multi-Environment
 
 on:
   push:
-    branches: [main]  # Only deploy from main branch
+    branches: [main, dev]  # Deploy from both branches
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -22,18 +26,67 @@ jobs:
 
       - name: Prepare build
         run: |
-          echo "🔧 Preparing production build from main branch..."
           mkdir -p build
           
-          # Copy all files to build directory
-          cp -r . build/
-          rm -rf build/.git build/.github
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "🔧 DEV BRANCH - Creating development environment"
+            
+            # Create dev subdirectory structure
+            mkdir -p build/dev
+            
+            # Copy all files to dev subdirectory
+            cp -r . build/dev/
+            rm -rf build/dev/.git build/dev/.github build/dev/build
+            
+            # Force development environment in dev path
+            cat > build/dev/js/env-override.js << 'EOF'
+          window.FORCE_DEV_MODE = true;
+          console.log('🔧 DEV environment active - deployed from dev branch');
+          EOF
+            
+            # Update dev index.html
+            sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/dev/index.html
+            sed -i 's|<title>|<title>[DEV] |' build/dev/index.html
+            
+            # Create root index that redirects to dev (for dev branch deployments)
+            cat > build/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Development Environment</title>
+            <meta http-equiv="refresh" content="0; url=./dev/">
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .dev-badge { background: #ff6b35; color: white; padding: 10px 20px; border-radius: 5px; display: inline-block; margin: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="dev-badge">DEVELOPMENT ENVIRONMENT</div>
+            <h1>Redirecting to Development Environment...</h1>
+            <p><a href="./dev/">Click here if not redirected automatically</a></p>
+            <p><small>This is the development deployment. Production is at the main branch.</small></p>
+          </body>
+          </html>
+          EOF
+            
+            echo "✅ Dev environment created at /dev/"
+            
+          else
+            echo "🔧 MAIN BRANCH - Creating production environment"
+            
+            # Production: copy everything to root
+            cp -r . build/
+            rm -rf build/.git build/.github
+            
+            # Clean up development files for production
+            rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md build/env-override.js
+            
+            echo "✅ Production environment created at root"
+          fi
           
-          # Clean up development files for production
-          rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md
-          
-          echo "✅ Production build ready"
-          ls -la build/
+          echo "Build structure:"
+          find build -type f -name "*.html" | head -10
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
