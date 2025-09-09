@@ -1,0 +1,51 @@
+{
+  "name": "volunteer-attendance-tracker",
+  "version": "1.0.0",
+  "description": "A web-based application for recording and managing volunteer attendance using physical badge scanners",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080",
+    "serve": "python3 -m http.server 8080",
+    "build": "echo 'No build step required for static HTML app'",
+    "test": "echo 'Tests will be added in future tasks'",
+    "lint": "echo 'Linting will be added in future tasks'",
+    "deploy": "echo 'Deployment to GitHub Pages will be configured in future tasks'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/volunteer-attendance-tracker.git"
+  },
+  "keywords": [
+    "volunteer",
+    "attendance",
+    "tracker",
+    "barcode",
+    "scanner",
+    "web-app",
+    "html",
+    "javascript",
+    "indexeddb",
+    "google-sheets"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/volunteer-attendance-tracker/issues"
+  },
+  "homepage": "https://github.com/yourusername/volunteer-attendance-tracker#readme",
+  "devDependencies": {},
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "Chrome >= 70",
+    "Firefox >= 65",
+    "Safari >= 12",
+    "Edge >= 79"
+  ]
+}
