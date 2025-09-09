@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation Test</title>
+</head>
+<body>
+    <h1>Volunteer ID Validation Test</h1>
+    <div id="results"></div>
+
+    <script src="js/utils.js"></script>
+    <script>
+        // Test the validation function
+        const testIds = [
+            'V001',
+            'v001',
+            'V1',
+            'VOLUNTEER001',
+            'ABC123',
+            '123',
+            'V@001',
+            '',
+            null,
+            undefined,
+            'V001 ',
+            ' V001',
+            'V001X'
+        ];
+
+        const results = document.getElementById('results');
+        let html = '<h2>Validation Results:</h2><ul>';
+
+        testIds.forEach(id => {
+            const isValid = Utils.Validation.isValidVolunteerId(id);
+            const displayId = id === null ? 'null' : id === undefined ? 'undefined' : `"${id}"`;
+            html += `<li>${displayId}: <strong>${isValid ? 'VALID' : 'INVALID'}</strong></li>`;
+        });
+
+        html += '</ul>';
+
+        // Test the regex pattern directly
+        html += '<h2>Direct Regex Test:</h2><ul>';
+        const pattern = /^[A-Za-z0-9]{3,20}$/;
+        testIds.forEach(id => {
+            if (id && typeof id === 'string') {
+                const cleanId = id.trim();
+                const matches = pattern.test(cleanId);
+                html += `<li>"${id}" → "${cleanId}": <strong>${matches ? 'MATCHES' : 'NO MATCH'}</strong></li>`;
+            }
+        });
+        html += '</ul>';
+
+        results.innerHTML = html;
+    </script>
+</body>
+</html>
