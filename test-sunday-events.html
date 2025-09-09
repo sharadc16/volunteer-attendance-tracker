@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regular Class Events Test - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .event-schedule {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .exception-dates {
+            background: #fff3cd;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Regular Class Events Creation Test</h1>
+        <p>This page tests the creation of Regular Class events from September 14, 2025 to May 17, 2026.</p>
+
+        <div class="event-schedule">
+            <h3>📅 Event Schedule</h3>
+            <ul>
+                <li><strong>Start Date:</strong> September 14, 2025 (Sunday)</li>
+                <li><strong>End Date:</strong> May 17, 2026 (Sunday)</li>
+                <li><strong>Frequency:</strong> Every Sunday</li>
+                <li><strong>Event Name:</strong> Regular Class</li>
+                <li><strong>Event Type:</strong> Recurring (Weekly)</li>
+            </ul>
+        </div>
+
+        <div class="exception-dates">
+            <h3>🚫 Exception Dates (No Events)</h3>
+            <ul>
+                <li>November 30, 2025 (2025-11-30)</li>
+                <li>December 21, 2025 (2025-12-21)</li>
+                <li>December 28, 2025 (2025-12-28)</li>
+                <li>February 15, 2026 (2026-02-15)</li>
+                <li>April 12, 2026 (2026-04-12)</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 1: Create All Regular Class Events</h2>
+            <p>This will create all Regular Class events for the specified date range, excluding exception dates.</p>
+            <button class="btn btn-primary" onclick="runCreateSundayEvents()">Create Regular Class Events</button>
+            <div id="createResult" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: Verify Created Events</h2>
+            <p>This will verify that all events were created correctly and no events exist on exception dates.</p>
+            <button class="btn btn-secondary" onclick="runVerifyEvents()">Verify Events</button>
+            <div id="verifyResult" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: List All Regular Class Events</h2>
+            <p>This will list all Regular Class events in the database.</p>
+            <button class="btn btn-secondary" onclick="runListEvents()">List Events</button>
+            <div id="listResult" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Clean Up Events</h2>
+            <p><strong>⚠️ Warning:</strong> This will delete all Regular Class events from the database.</p>
+            <button class="btn btn-warning" onclick="runCleanupEvents()">Clean Up Events</button>
+            <div id="cleanupResult" class="test-result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 5: Date Range Calculation</h2>
+            <p>This will calculate and display all the Sunday dates in the range.</p>
+            <button class="btn btn-secondary" onclick="runDateCalculation()">Calculate Dates</button>
+            <div id="dateResult" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="create-sunday-events.js"></script>
+
+    <script>
+        let storageManager;
+
+        // Initialize storage manager
+        async function initializeStorage() {
+            try {
+                storageManager = new StorageManager();
+                await new Promise(resolve => {
+                    const checkReady = () => {
+                        if (storageManager.db) {
+                            resolve();
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+                console.log('Storage manager initialized for testing');
+            } catch (error) {
+                console.error('Failed to initialize storage manager:', error);
+                throw error;
+            }
+        }
+
+        // Test 1: Create Sunday Events
+        async function runCreateSundayEvents() {
+            const resultDiv = document.getElementById('createResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result info';
+            resultDiv.textContent = '⏳ Creating Sunday events...';
+            
+            try {
+                await initializeStorage();
+                
+                if (typeof window.createSundayEvents === 'function') {
+                    const result = await window.createSundayEvents();
+                    
+                    resultDiv.className = 'test-result success';
+                    resultDiv.textContent = `✅ SUCCESS: Regular Class events created!
+
+📊 Summary:
+   Total Sundays in range: ${result.totalSundays}
+   Events created: ${result.createdEvents}
+   Skipped (exceptions): ${result.skippedEvents}
+   Errors: ${result.errorCount}
+
+${result.errors.length > 0 ? `⚠️ Errors encountered:\n${result.errors.join('\n')}` : ''}
+
+🎉 All Regular Class events have been created successfully!`;
+                } else {
+                    throw new Error('createSundayEvents function not available');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        // Test 2: Verify Events
+        async function runVerifyEvents() {
+            const resultDiv = document.getElementById('verifyResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result info';
+            resultDiv.textContent = '🔍 Verifying events...';
+            
+            try {
+                await initializeStorage();
+                
+                if (typeof window.verifySundayEvents === 'function') {
+                    const events = await window.verifySundayEvents();
+                    
+                    // Additional verification
+                    const exceptionDates = ['2025-11-30', '2025-12-21', '2025-12-28', '2026-02-15', '2026-04-12'];
+                    const eventsOnExceptions = events.filter(event => exceptionDates.includes(event.date));
+                    
+                    let verificationResult = `✅ VERIFICATION COMPLETE
+
+📊 Found ${events.length} Regular Class events
+
+📅 Date Range: ${events.length > 0 ? `${events[0].date} to ${events[events.length - 1].date}` : 'No events found'}
+
+🚫 Exception Dates Check:
+${eventsOnExceptions.length === 0 ? '   ✅ No events found on exception dates - CORRECT!' : `   ❌ Found ${eventsOnExceptions.length} events on exception dates - ERROR!`}
+
+📋 Sample Events:`;
+
+                    if (events.length > 0) {
+                        const sampleEvents = events.slice(0, 5).concat(events.slice(-5));
+                        const uniqueSamples = [...new Map(sampleEvents.map(e => [e.date, e])).values()];
+                        verificationResult += '\n' + uniqueSamples.map(e => `   ${e.date} - ${e.eventName}`).join('\n');
+                    }
+                    
+                    resultDiv.className = eventsOnExceptions.length === 0 ? 'test-result success' : 'test-result warning';
+                    resultDiv.textContent = verificationResult;
+                } else {
+                    throw new Error('verifySundayEvents function not available');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        // Test 3: List Events
+        async function runListEvents() {
+            const resultDiv = document.getElementById('listResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result info';
+            resultDiv.textContent = '📋 Loading events...';
+            
+            try {
+                await initializeStorage();
+                
+                const allEvents = await storageManager.getAllEvents();
+                const sundayEvents = allEvents.filter(event => 
+                    event.eventName === 'Regular Class' && event.dayOfWeek === 'Sunday'
+                );
+                
+                // Sort by date
+                sundayEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                let listResult = `📋 REGULAR CLASS EVENTS LIST
+
+Total Events: ${sundayEvents.length}
+Total All Events: ${allEvents.length}
+
+📅 Regular Class Events:`;
+
+                if (sundayEvents.length > 0) {
+                    listResult += '\n' + sundayEvents.map((event, index) => 
+                        `${String(index + 1).padStart(3, ' ')}. ${event.date} - ${event.eventName} (${event.status})`
+                    ).join('\n');
+                } else {
+                    listResult += '\n   No Regular Class events found.';
+                }
+                
+                resultDiv.className = 'test-result info';
+                resultDiv.textContent = listResult;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        // Test 4: Cleanup Events
+        async function runCleanupEvents() {
+            const resultDiv = document.getElementById('cleanupResult');
+            resultDiv.style.display = 'block';
+            
+            if (!confirm('⚠️ Are you sure you want to delete ALL Regular Class events? This cannot be undone!')) {
+                resultDiv.className = 'test-result warning';
+                resultDiv.textContent = '⏹️ Cleanup cancelled by user.';
+                return;
+            }
+            
+            resultDiv.className = 'test-result info';
+            resultDiv.textContent = '🧹 Cleaning up events...';
+            
+            try {
+                await initializeStorage();
+                
+                if (typeof window.cleanupSundayEvents === 'function') {
+                    const deletedCount = await window.cleanupSundayEvents();
+                    
+                    resultDiv.className = 'test-result success';
+                    resultDiv.textContent = `✅ CLEANUP COMPLETE
+
+🗑️ Deleted ${deletedCount} Regular Class events
+
+All Regular Class events have been removed from the database.`;
+                } else {
+                    throw new Error('cleanupSundayEvents function not available');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        // Test 5: Date Calculation
+        async function runDateCalculation() {
+            const resultDiv = document.getElementById('dateResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result info';
+            resultDiv.textContent = '📅 Calculating dates...';
+            
+            try {
+                const startDate = new Date('2025-09-14');
+                const endDate = new Date('2026-05-17');
+                const exceptionDates = ['2025-11-30', '2025-12-21', '2025-12-28', '2026-02-15', '2026-04-12'];
+                
+                const allSundays = [];
+                const validSundays = [];
+                let currentDate = new Date(startDate);
+                
+                while (currentDate <= endDate) {
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    allSundays.push(dateString);
+                    
+                    if (!exceptionDates.includes(dateString)) {
+                        validSundays.push(dateString);
+                    }
+                    
+                    currentDate.setDate(currentDate.getDate() + 7);
+                }
+                
+                let calculationResult = `📅 DATE CALCULATION RESULTS
+
+📊 Summary:
+   Start Date: ${startDate.toDateString()}
+   End Date: ${endDate.toDateString()}
+   Total Sundays: ${allSundays.length}
+   Valid Sundays (excluding exceptions): ${validSundays.length}
+   Exception Dates: ${exceptionDates.length}
+
+🚫 Exception Dates:
+${exceptionDates.map(date => `   ${date}`).join('\n')}
+
+📋 All Sunday Dates:
+${allSundays.map((date, index) => {
+    const isException = exceptionDates.includes(date);
+    return `${String(index + 1).padStart(3, ' ')}. ${date}${isException ? ' ❌ EXCEPTION' : ' ✅'}`;
+}).join('\n')}`;
+                
+                resultDiv.className = 'test-result info';
+                resultDiv.textContent = calculationResult;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.textContent = `❌ ERROR: ${error.message}`;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initializeStorage();
+                console.log('Sunday events test page ready');
+            } catch (error) {
+                console.error('Failed to initialize test page:', error);
+            }
+        });
+    </script>
+</body>
+</html>

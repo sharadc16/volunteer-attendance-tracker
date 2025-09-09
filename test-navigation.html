@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Test - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .nav-test {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .test-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Navigation System Test</h1>
+        <p>This page tests the navigation system to identify and fix the "undefinedView" error.</p>
+
+        <div class="test-section">
+            <h2>Test Navigation Buttons</h2>
+            <p>Click each button to test navigation. Check the console for debug messages.</p>
+            
+            <div class="nav-test">
+                <button class="nav-btn" data-view="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-view="volunteers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Volunteers</span>
+                </button>
+                <button class="nav-btn" data-view="events">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Events</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Reports</span>
+                </button>
+                <button class="nav-btn" data-view="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </button>
+            </div>
+            
+            <div id="testResult" class="test-result">
+                Click navigation buttons above to test. Results will appear here.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Manual Tests</h2>
+            <button class="btn btn-primary" onclick="testNavigation()">Test Navigation System</button>
+            <button class="btn btn-secondary" onclick="testEventTargets()">Test Event Targets</button>
+            <button class="btn btn-secondary" onclick="clearResults()">Clear Results</button>
+        </div>
+    </div>
+
+    <!-- Test Views (hidden) -->
+    <div id="dashboardView" style="display: none;">Dashboard View</div>
+    <div id="volunteersView" style="display: none;">Volunteers View</div>
+    <div id="eventsView" style="display: none;">Events View</div>
+    <div id="reportsView" style="display: none;">Reports View</div>
+    <div id="settingsView" style="display: none;">Settings View</div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+
+    <script>
+        let testResults = [];
+
+        // Simple navigation test class
+        class NavigationTest {
+            constructor() {
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Test the same navigation logic as the main app
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        console.log('=== Navigation Test ===');
+                        console.log('Event target:', e.target);
+                        console.log('Event currentTarget:', e.currentTarget);
+                        console.log('Target dataset:', e.target.dataset);
+                        console.log('CurrentTarget dataset:', e.currentTarget.dataset);
+                        
+                        // Test both approaches
+                        const viewFromTarget = e.target.dataset.view;
+                        const viewFromCurrentTarget = e.currentTarget.dataset.view;
+                        
+                        console.log('View from target:', viewFromTarget);
+                        console.log('View from currentTarget:', viewFromCurrentTarget);
+                        
+                        // Use currentTarget (the correct approach)
+                        const view = e.currentTarget.dataset.view;
+                        this.switchView(view);
+                        
+                        // Log results
+                        const result = {
+                            timestamp: new Date().toLocaleTimeString(),
+                            clickedElement: e.target.tagName + (e.target.className ? '.' + e.target.className : ''),
+                            buttonElement: e.currentTarget.tagName + (e.currentTarget.className ? '.' + e.currentTarget.className : ''),
+                            viewFromTarget: viewFromTarget || 'undefined',
+                            viewFromCurrentTarget: viewFromCurrentTarget || 'undefined',
+                            finalView: view || 'undefined',
+                            success: !!view
+                        };
+                        
+                        testResults.push(result);
+                        this.updateTestResults();
+                    });
+                });
+            }
+
+            switchView(viewName) {
+                console.log('Switching to view:', viewName);
+                
+                if (!viewName || typeof viewName !== 'string') {
+                    console.error('Invalid view name:', viewName);
+                    return false;
+                }
+
+                // Test finding the view element
+                const viewElement = document.getElementById(`${viewName}View`);
+                console.log('View element found:', !!viewElement);
+                
+                if (!viewElement) {
+                    console.error(`View element not found: ${viewName}View`);
+                    return false;
+                }
+                
+                // Update active states
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                const activeBtn = document.querySelector(`[data-view="${viewName}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('active');
+                }
+                
+                console.log('Navigation successful for:', viewName);
+                return true;
+            }
+
+            updateTestResults() {
+                const resultDiv = document.getElementById('testResult');
+                if (!resultDiv) return;
+                
+                const latest = testResults[testResults.length - 1];
+                const resultText = `
+Last Test Result (${latest.timestamp}):
+  Clicked Element: ${latest.clickedElement}
+  Button Element: ${latest.buttonElement}
+  View from e.target: ${latest.viewFromTarget}
+  View from e.currentTarget: ${latest.viewFromCurrentTarget}
+  Final View Used: ${latest.finalView}
+  Success: ${latest.success ? '✅' : '❌'}
+
+Total Tests: ${testResults.length}
+Success Rate: ${Math.round((testResults.filter(r => r.success).length / testResults.length) * 100)}%
+                `;
+                
+                resultDiv.textContent = resultText;
+            }
+        }
+
+        // Manual test functions
+        function testNavigation() {
+            console.log('=== Manual Navigation Test ===');
+            
+            const views = ['dashboard', 'volunteers', 'events', 'reports', 'settings'];
+            const results = [];
+            
+            views.forEach(view => {
+                const button = document.querySelector(`[data-view="${view}"]`);
+                const viewElement = document.getElementById(`${view}View`);
+                
+                results.push({
+                    view: view,
+                    buttonExists: !!button,
+                    viewElementExists: !!viewElement,
+                    buttonDataView: button ? button.dataset.view : 'N/A'
+                });
+            });
+            
+            console.table(results);
+            
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.textContent = `Manual Test Results:\n${results.map(r => 
+                `${r.view}: Button(${r.buttonExists}) ViewElement(${r.viewElementExists}) DataView(${r.buttonDataView})`
+            ).join('\n')}`;
+        }
+
+        function testEventTargets() {
+            console.log('=== Event Target Test ===');
+            
+            const button = document.querySelector('[data-view="events"]');
+            if (!button) {
+                console.error('Events button not found');
+                return;
+            }
+            
+            const icon = button.querySelector('.nav-icon');
+            const text = button.querySelector('.nav-text');
+            
+            console.log('Button element:', button);
+            console.log('Button dataset:', button.dataset);
+            console.log('Icon element:', icon);
+            console.log('Icon dataset:', icon ? icon.dataset : 'N/A');
+            console.log('Text element:', text);
+            console.log('Text dataset:', text ? text.dataset : 'N/A');
+            
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.textContent = `Event Target Test:
+Button has data-view: ${!!button.dataset.view} (${button.dataset.view})
+Icon has data-view: ${icon ? !!icon.dataset.view : 'N/A'} (${icon ? icon.dataset.view : 'N/A'})
+Text has data-view: ${text ? !!text.dataset.view : 'N/A'} (${text ? text.dataset.view : 'N/A'})
+
+This explains why e.target.dataset.view is undefined when clicking on icon/text!`;
+        }
+
+        function clearResults() {
+            testResults = [];
+            document.getElementById('testResult').textContent = 'Results cleared. Click navigation buttons to test.';
+        }
+
+        // Initialize test
+        document.addEventListener('DOMContentLoaded', () => {
+            new NavigationTest();
+            console.log('Navigation test initialized');
+        });
+    </script>
+</body>
+</html>

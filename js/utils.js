@@ -171,7 +171,7 @@ const DOMUtils = {
 // Validation utilities
 const ValidationUtils = {
     /**
-     * Validate volunteer ID format
+     * Validate volunteer ID format with enhanced checking
      * @param {string} id - Volunteer ID to validate
      * @returns {boolean} True if valid
      */
@@ -183,9 +183,14 @@ const ValidationUtils = {
         
         const trimmedId = id.trim();
         
-        // Allow alphanumeric IDs, 1-20 characters (more flexible)
-        // Common formats: V001, VOLUNTEER123, ABC123, 12345, etc.
-        const pattern = /^[A-Za-z0-9]{1,20}$/;
+        if (trimmedId.length === 0) {
+            console.log('Validation failed: ID is empty after trimming');
+            return false;
+        }
+        
+        // Allow alphanumeric IDs with hyphens and underscores, 1-20 characters
+        // Common formats: V001, VOLUNTEER123, ABC123, 12345, USER-001, etc.
+        const pattern = /^[A-Za-z0-9\-_]{1,20}$/;
         const isValid = pattern.test(trimmedId);
         
         console.log('ID validation:', {
@@ -197,6 +202,89 @@ const ValidationUtils = {
         });
         
         return isValid;
+    },
+
+    /**
+     * Detailed volunteer ID validation with error messages
+     * @param {string} id - Volunteer ID to validate
+     * @returns {Object} Validation result with isValid and error message
+     */
+    validateVolunteerIdDetailed(id) {
+        if (!id || typeof id !== 'string') {
+            return {
+                isValid: false,
+                error: 'ID is required and must be a string'
+            };
+        }
+
+        const trimmedId = id.trim();
+        
+        if (trimmedId.length === 0) {
+            return {
+                isValid: false,
+                error: 'ID cannot be empty'
+            };
+        }
+
+        if (trimmedId.length > 20) {
+            return {
+                isValid: false,
+                error: 'ID is too long (maximum 20 characters)'
+            };
+        }
+
+        // Check for invalid characters
+        const pattern = /^[A-Za-z0-9\-_]+$/;
+        if (!pattern.test(trimmedId)) {
+            return {
+                isValid: false,
+                error: 'ID contains invalid characters (only letters, numbers, hyphens, and underscores allowed)'
+            };
+        }
+
+        return {
+            isValid: true,
+            error: null
+        };
+    },
+
+    /**
+     * Sanitize volunteer ID input
+     * @param {string} id - ID to sanitize
+     * @returns {string} Sanitized ID
+     */
+    sanitizeVolunteerId(id) {
+        if (!id || typeof id !== 'string') return '';
+        
+        return id
+            .trim()
+            .toUpperCase()
+            .replace(/[\r\n\t]/g, '') // Remove line breaks and tabs
+            .replace(/[^\w\-]/g, '') // Keep only alphanumeric, underscore, and hyphen
+            .substring(0, 20); // Limit length
+    },
+
+    /**
+     * Check if input looks like scanner input based on characteristics
+     * @param {string} input - Input to analyze
+     * @param {number} inputDuration - Time taken to input (ms)
+     * @returns {boolean} True if likely scanner input
+     */
+    isScannerInput(input, inputDuration) {
+        if (!input || typeof input !== 'string') return false;
+        
+        const length = input.length;
+        
+        // Scanner characteristics:
+        // 1. Fast input (< 500ms for 5+ chars)
+        // 2. Very long input (10+ chars is almost certainly scanner)
+        // 3. Typical barcode length (5-20 chars) with fast input
+        
+        const isFastInput = inputDuration < 500 && length >= 5;
+        const isVeryLongInput = length >= 10;
+        const isTypicalScannerInput = length >= 5 && length <= 20 && inputDuration < 1000;
+        
+        return isFastInput || isVeryLongInput || isTypicalScannerInput;
     },
 
     /**
@@ -223,6 +311,24 @@ const ValidationUtils = {
             .trim()
             .replace(/[<>]/g, '') // Remove potential HTML tags
             .substring(0, 255); // Limit length
+    },
+
+    /**
+     * Validate that a string is not empty after trimming
+     * @param {string} str - String to validate
+     * @returns {boolean} True if not empty
+     */
+    isNotEmpty(str) {
+        return str && typeof str === 'string' && str.trim().length > 0;
+    },
+
+    /**
+     * Validate that a value is a positive number
+     * @param {*} value - Value to validate
+     * @returns {boolean} True if positive number
+     */
+    isPositiveNumber(value) {
+        return typeof value === 'number' && value > 0 && !isNaN(value);
     }
 };
 

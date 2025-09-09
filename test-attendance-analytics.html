@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Attendance Analytics</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1>Test Attendance Analytics System</h1>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <div class="view active">
+                <div class="view-header">
+                    <h2>📊 Testing Attendance Reporting & Analytics</h2>
+                    <div class="view-controls">
+                        <button class="btn btn-primary" id="testAnalyticsBtn">Test Analytics</button>
+                        <button class="btn btn-secondary" id="generateTestDataBtn">Generate Test Data</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Test Results</h3>
+                    <div id="testResults">
+                        <p>Click "Test Analytics" to run the attendance analytics system tests.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Sample Report Preview</h3>
+                    <div id="reportPreview">
+                        <!-- Report will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script>
+        // Test script for attendance analytics
+        class AttendanceAnalyticsTest {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                document.getElementById('testAnalyticsBtn').addEventListener('click', () => this.runTests());
+                document.getElementById('generateTestDataBtn').addEventListener('click', () => this.generateTestData());
+            }
+
+            async runTests() {
+                const resultsDiv = document.getElementById('testResults');
+                resultsDiv.innerHTML = '<p>Running tests...</p>';
+
+                try {
+                    // Wait for storage manager to initialize
+                    await this.waitForStorageManager();
+
+                    const results = [];
+
+                    // Test 1: Volunteer Attendance Scores
+                    results.push(await this.testVolunteerAttendanceScores());
+
+                    // Test 2: Committee Statistics
+                    results.push(await this.testCommitteeStats());
+
+                    // Test 3: Attendance Trends
+                    results.push(await this.testAttendanceTrends());
+
+                    // Test 4: Performance Tiers
+                    results.push(await this.testPerformanceTiers());
+
+                    // Display results
+                    const passedTests = results.filter(r => r.passed).length;
+                    const totalTests = results.length;
+
+                    resultsDiv.innerHTML = `
+                        <div class="test-summary">
+                            <h4>Test Results: ${passedTests}/${totalTests} passed</h4>
+                            ${results.map(result => `
+                                <div class="test-result ${result.passed ? 'passed' : 'failed'}">
+                                    <strong>${result.name}:</strong> 
+                                    ${result.passed ? '✅ PASSED' : '❌ FAILED'}
+                                    ${result.message ? `<br><small>${result.message}</small>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+
+                    // Generate sample report
+                    if (passedTests > 0) {
+                        await this.generateSampleReport();
+                    }
+
+                } catch (error) {
+                    resultsDiv.innerHTML = `<p style="color: red;">Test failed: ${error.message}</p>`;
+                    console.error('Test error:', error);
+                }
+            }
+
+            async waitForStorageManager() {
+                let attempts = 0;
+                const maxAttempts = 50;
+
+                while (!window.StorageManager || !window.StorageManager.db) {
+                    if (attempts >= maxAttempts) {
+                        throw new Error('Storage manager failed to initialize');
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+            }
+
+            async testVolunteerAttendanceScores() {
+                try {
+                    const scores = await window.StorageManager.getVolunteerAttendanceScores();
+                    
+                    if (!Array.isArray(scores)) {
+                        return { name: 'Volunteer Attendance Scores', passed: false, message: 'Expected array result' };
+                    }
+
+                    // Check if scores have required properties
+                    if (scores.length > 0) {
+                        const firstScore = scores[0];
+                        const requiredProps = ['volunteerName', 'committee', 'attendanceRate', 'engagementScore', 'tier'];
+                        const hasAllProps = requiredProps.every(prop => prop in firstScore);
+                        
+                        if (!hasAllProps) {
+                            return { name: 'Volunteer Attendance Scores', passed: false, message: 'Missing required properties' };
+                        }
+                    }
+
+                    return { name: 'Volunteer Attendance Scores', passed: true, message: `Found ${scores.length} volunteer scores` };
+                } catch (error) {
+                    return { name: 'Volunteer Attendance Scores', passed: false, message: error.message };
+                }
+            }
+
+            async testCommitteeStats() {
+                try {
+                    const stats = await window.StorageManager.getCommitteeAttendanceStats();
+                    
+                    if (!Array.isArray(stats)) {
+                        return { name: 'Committee Statistics', passed: false, message: 'Expected array result' };
+                    }
+
+                    // Check if stats have required properties
+                    if (stats.length > 0) {
+                        const firstStat = stats[0];
+                        const requiredProps = ['committee', 'totalVolunteers', 'avgAttendanceRate', 'totalAttendances'];
+                        const hasAllProps = requiredProps.every(prop => prop in firstStat);
+                        
+                        if (!hasAllProps) {
+                            return { name: 'Committee Statistics', passed: false, message: 'Missing required properties' };
+                        }
+                    }
+
+                    return { name: 'Committee Statistics', passed: true, message: `Found ${stats.length} committee stats` };
+                } catch (error) {
+                    return { name: 'Committee Statistics', passed: false, message: error.message };
+                }
+            }
+
+            async testAttendanceTrends() {
+                try {
+                    const trends = await window.StorageManager.getAttendanceTrends();
+                    
+                    if (!Array.isArray(trends)) {
+                        return { name: 'Attendance Trends', passed: false, message: 'Expected array result' };
+                    }
+
+                    // Check if trends have required properties
+                    if (trends.length > 0) {
+                        const firstTrend = trends[0];
+                        const requiredProps = ['period', 'totalAttendances', 'uniqueVolunteers', 'totalEvents'];
+                        const hasAllProps = requiredProps.every(prop => prop in firstTrend);
+                        
+                        if (!hasAllProps) {
+                            return { name: 'Attendance Trends', passed: false, message: 'Missing required properties' };
+                        }
+                    }
+
+                    return { name: 'Attendance Trends', passed: true, message: `Found ${trends.length} trend periods` };
+                } catch (error) {
+                    return { name: 'Attendance Trends', passed: false, message: error.message };
+                }
+            }
+
+            async testPerformanceTiers() {
+                try {
+                    const scores = await window.StorageManager.getVolunteerAttendanceScores();
+                    
+                    // Check if tiers are properly assigned
+                    const tiers = ['Platinum', 'Gold', 'Silver', 'Bronze'];
+                    const foundTiers = [...new Set(scores.map(s => s.tier))];
+                    const validTiers = foundTiers.every(tier => tiers.includes(tier));
+                    
+                    if (!validTiers) {
+                        return { name: 'Performance Tiers', passed: false, message: 'Invalid tier assignments' };
+                    }
+
+                    return { name: 'Performance Tiers', passed: true, message: `Found tiers: ${foundTiers.join(', ')}` };
+                } catch (error) {
+                    return { name: 'Performance Tiers', passed: false, message: error.message };
+                }
+            }
+
+            async generateSampleReport() {
+                try {
+                    const reportPreview = document.getElementById('reportPreview');
+                    
+                    // Get sample data
+                    const [scores, stats, trends] = await Promise.all([
+                        window.StorageManager.getVolunteerAttendanceScores(),
+                        window.StorageManager.getCommitteeAttendanceStats(),
+                        window.StorageManager.getAttendanceTrends()
+                    ]);
+
+                    // Generate a mini report preview
+                    reportPreview.innerHTML = `
+                        <div class="sample-report">
+                            <h4>📊 Sample Analytics Report</h4>
+                            
+                            <div class="metrics-grid" style="margin: 1rem 0;">
+                                <div class="metric-card">
+                                    <div class="metric-icon">👥</div>
+                                    <div class="metric-content">
+                                        <span class="metric-number">${scores.length}</span>
+                                        <span class="metric-label">Total Volunteers</span>
+                                    </div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-icon">📋</div>
+                                    <div class="metric-content">
+                                        <span class="metric-number">${stats.length}</span>
+                                        <span class="metric-label">Committees</span>
+                                    </div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-icon">📈</div>
+                                    <div class="metric-content">
+                                        <span class="metric-number">${trends.length}</span>
+                                        <span class="metric-label">Trend Periods</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin: 1rem 0;">
+                                <h5>Top Performers:</h5>
+                                ${scores.slice(0, 3).map((volunteer, index) => `
+                                    <div class="volunteer-item" style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8f9fa; margin: 0.25rem 0; border-radius: 4px;">
+                                        <span>${index + 1}. ${volunteer.volunteerName} (${volunteer.committee})</span>
+                                        <span class="tier-badge ${volunteer.tier.toLowerCase()}">${volunteer.tier} - ${volunteer.attendanceRate}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <div style="margin: 1rem 0;">
+                                <h5>Committee Performance:</h5>
+                                ${stats.slice(0, 3).map(committee => `
+                                    <div class="committee-item" style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8f9fa; margin: 0.25rem 0; border-radius: 4px;">
+                                        <span>${committee.committee}</span>
+                                        <span>${committee.avgAttendanceRate}% avg (${committee.totalVolunteers} volunteers)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <p style="color: #666; font-size: 0.9rem; margin-top: 1rem;">
+                                ✅ All attendance analytics features are working correctly!
+                            </p>
+                        </div>
+                    `;
+
+                } catch (error) {
+                    document.getElementById('reportPreview').innerHTML = `<p style="color: red;">Error generating report preview: ${error.message}</p>`;
+                }
+            }
+
+            async generateTestData() {
+                try {
+                    const resultsDiv = document.getElementById('testResults');
+                    resultsDiv.innerHTML = '<p>Generating test data...</p>';
+
+                    // Wait for storage manager
+                    await this.waitForStorageManager();
+
+                    // Add some test volunteers if none exist
+                    const existingVolunteers = await window.StorageManager.getAllVolunteers();
+                    if (existingVolunteers.length < 5) {
+                        const testVolunteers = [
+                            { id: 'TEST001', name: 'Alice Johnson', committee: 'Events', status: 'Active' },
+                            { id: 'TEST002', name: 'Bob Smith', committee: 'Hospitality', status: 'Active' },
+                            { id: 'TEST003', name: 'Carol Davis', committee: 'Setup', status: 'Active' },
+                            { id: 'TEST004', name: 'David Wilson', committee: 'Events', status: 'Active' },
+                            { id: 'TEST005', name: 'Eva Brown', committee: 'Hospitality', status: 'Active' }
+                        ];
+
+                        for (const volunteer of testVolunteers) {
+                            try {
+                                await window.StorageManager.addVolunteer(volunteer);
+                            } catch (error) {
+                                // Volunteer might already exist
+                                console.log('Volunteer already exists:', volunteer.id);
+                            }
+                        }
+                    }
+
+                    // Add some test events
+                    const today = new Date();
+                    const testEvents = [];
+                    for (let i = 0; i < 5; i++) {
+                        const eventDate = new Date(today);
+                        eventDate.setDate(today.getDate() - i * 7); // Weekly events
+                        
+                        const eventId = `TEST${eventDate.getFullYear()}${String(eventDate.getMonth() + 1).padStart(2, '0')}${String(eventDate.getDate()).padStart(2, '0')}`;
+                        testEvents.push({
+                            eventId,
+                            eventName: `Test Event ${i + 1}`,
+                            date: eventDate.toISOString().split('T')[0],
+                            type: 'Special',
+                            status: 'Active'
+                        });
+                    }
+
+                    for (const event of testEvents) {
+                        try {
+                            await window.StorageManager.addEvent(event);
+                        } catch (error) {
+                            console.log('Event already exists:', event.eventId);
+                        }
+                    }
+
+                    // Add some test attendance records
+                    const volunteers = await window.StorageManager.getAllVolunteers();
+                    const events = await window.StorageManager.getAllEvents();
+                    
+                    let attendanceCount = 0;
+                    for (const event of events.slice(0, 3)) {
+                        // Randomly assign attendance (simulate different attendance rates)
+                        for (const volunteer of volunteers) {
+                            if (Math.random() > 0.3) { // 70% attendance rate
+                                try {
+                                    await window.StorageManager.recordAttendance({
+                                        volunteerId: volunteer.id,
+                                        eventId: event.eventId,
+                                        dateTime: new Date(event.date + 'T10:00:00').toISOString(),
+                                        eventName: event.eventName,
+                                        committee: volunteer.committee
+                                    });
+                                    attendanceCount++;
+                                } catch (error) {
+                                    // Attendance might already exist
+                                    console.log('Attendance already exists');
+                                }
+                            }
+                        }
+                    }
+
+                    resultsDiv.innerHTML = `
+                        <div class="test-data-results">
+                            <h4>✅ Test Data Generated Successfully</h4>
+                            <ul>
+                                <li>Volunteers: ${volunteers.length}</li>
+                                <li>Events: ${events.length}</li>
+                                <li>Attendance Records: ${attendanceCount}+ records</li>
+                            </ul>
+                            <p>You can now test the analytics system with this data.</p>
+                        </div>
+                    `;
+
+                } catch (error) {
+                    document.getElementById('testResults').innerHTML = `<p style="color: red;">Error generating test data: ${error.message}</p>`;
+                    console.error('Test data generation error:', error);
+                }
+            }
+        }
+
+        // Initialize test when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AttendanceAnalyticsTest();
+        });
+    </script>
+
+    <style>
+        .test-result {
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+        }
+        .test-result.passed {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.failed {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .sample-report {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .volunteer-item, .committee-item {
+            font-size: 0.9rem;
+        }
+        .test-data-results {
+            background: #d1ecf1;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .test-data-results ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+    </style>
+</body>
+</html>

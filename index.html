@@ -8,6 +8,7 @@
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
@@ -15,87 +16,175 @@
                 <h1>Volunteer Attendance Tracker</h1>
                 <div class="header-controls">
                     <div class="sync-status" id="syncStatus">
-                        <span class="status-indicator offline"></span>
-                        <span class="status-text">Offline</span>
+                        <span class="sync-status-indicator offline"></span>
+                        <span class="sync-status-text">Offline</span>
+                        <div class="sync-info" style="display: none;">
+                            <div class="sync-detail">Queue: 0 items</div>
+                            <div class="sync-detail">Last sync: Never</div>
+                            <div class="sync-detail">Success rate: 100%</div>
+                        </div>
                     </div>
-                    <button class="btn btn-secondary" id="googleSyncBtn" title="Sync with Google Sheets">
-                        📊 Sync
-                    </button>
+                    <div class="sync-controls">
+                        <button class="btn btn-secondary" id="googleSyncBtn" title="Sync with Google Sheets">
+                            📊 Sync
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="forceSyncBtn" title="Force immediate sync">
+                            ⚡
+                        </button>
+                    </div>
                     <button class="btn btn-secondary" id="settingsBtn">Settings</button>
                 </div>
             </div>
         </header>
 
         <!-- Navigation -->
-        <nav class="app-nav">
-            <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-            <button class="nav-btn" data-view="volunteers">Volunteers</button>
-            <button class="nav-btn" data-view="events">Events</button>
-            <button class="nav-btn" data-view="reports">Reports</button>
+        <nav class="app-nav" role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <button class="nav-btn active" data-view="dashboard" aria-current="page">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-view="volunteers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Volunteers</span>
+                </button>
+                <button class="nav-btn" data-view="events">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Events</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Reports</span>
+                </button>
+                <button class="nav-btn" data-view="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </button>
+            </div>
         </nav>
 
         <!-- Main Content -->
-        <main class="app-main">
+        <main class="app-main" id="main-content">
             <!-- Dashboard View -->
             <div class="view active" id="dashboardView">
                 <div class="dashboard-grid">
                     <!-- Scanner Input Section -->
                     <div class="card scanner-card">
-                        <h2>Scan Volunteer Badge</h2>
+                        <div class="scanner-header">
+                            <h2>📱 Scan Volunteer Badge</h2>
+                            <div class="scanner-status" id="scannerStatus">
+                                <span class="scanner-indicator ready"></span>
+                                <span class="scanner-text">Ready to scan</span>
+                            </div>
+                        </div>
                         <div class="scanner-input-container">
-                            <input 
-                                type="text" 
-                                id="scannerInput" 
-                                placeholder="Scan badge or enter volunteer ID..."
-                                class="scanner-input"
-                                autocomplete="off"
-                            >
-                            <div class="scan-feedback" id="scanFeedback"></div>
+                            <div class="input-wrapper">
+                                <input 
+                                    type="text" 
+                                    id="scannerInput" 
+                                    placeholder="Scan badge or enter volunteer ID..."
+                                    class="scanner-input"
+                                    autocomplete="off"
+                                    inputmode="text"
+                                    enterkeyhint="done"
+                                >
+                                <button class="clear-input-btn" id="clearInputBtn" type="button" aria-label="Clear input">
+                                    ✕
+                                </button>
+                            </div>
+                            <div class="scan-feedback" id="scanFeedback" role="status" aria-live="polite"></div>
                         </div>
                         <div class="scanner-stats">
                             <div class="stat">
-                                <span class="stat-label">Today's Scans:</span>
-                                <span class="stat-value" id="todayScans">0</span>
+                                <span class="stat-icon">📊</span>
+                                <div class="stat-content">
+                                    <span class="stat-label">Today's Scans</span>
+                                    <span class="stat-value" id="todayScans">0</span>
+                                </div>
                             </div>
                             <div class="stat">
-                                <span class="stat-label">Current Event:</span>
-                                <span class="stat-value" id="currentEvent">Loading...</span>
+                                <span class="stat-icon">📅</span>
+                                <div class="stat-content">
+                                    <span class="stat-label">Current Event</span>
+                                    <span class="stat-value" id="currentEvent">Loading...</span>
+                                </div>
                             </div>
+                            <div class="stat">
+                                <span class="stat-icon">⏰</span>
+                                <div class="stat-content">
+                                    <span class="stat-label">Event Time</span>
+                                    <span class="stat-value" id="eventTime">--:--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scanner-actions">
+                            <button class="btn btn-secondary scanner-test-btn" id="scannerTestBtn">
+                                🔧 Test Scanner
+                            </button>
                         </div>
                     </div>
 
                     <!-- Recent Attendance -->
                     <div class="card attendance-card">
-                        <h2>Recent Check-ins</h2>
+                        <div class="card-header">
+                            <h2>👥 Recent Check-ins</h2>
+                            <div class="card-actions">
+                                <button class="btn btn-small btn-secondary" id="refreshAttendanceBtn">
+                                    🔄 Refresh
+                                </button>
+                                <button class="btn btn-small btn-secondary" id="viewAllAttendanceBtn">
+                                    📋 View All
+                                </button>
+                            </div>
+                        </div>
                         <div class="attendance-list" id="recentAttendance">
-                            <div class="attendance-item">
+                            <div class="attendance-item placeholder">
                                 <div class="volunteer-info">
-                                    <span class="volunteer-name">Loading...</span>
-                                    <span class="volunteer-committee">Please wait</span>
+                                    <span class="volunteer-name">No check-ins yet today</span>
+                                    <span class="volunteer-committee">Start scanning to see recent activity</span>
                                 </div>
                                 <span class="check-in-time">--:--</span>
                             </div>
+                        </div>
+                        <div class="attendance-footer">
+                            <span class="attendance-count">Showing last <span id="attendanceCount">0</span> check-ins</span>
                         </div>
                     </div>
 
                     <!-- Event Summary -->
                     <div class="card summary-card">
-                        <h2>Event Summary</h2>
+                        <div class="card-header">
+                            <h2>📈 Event Summary</h2>
+                            <div class="summary-time" id="summaryTime">
+                                Updated: <span id="lastUpdateTime">Never</span>
+                            </div>
+                        </div>
                         <div class="summary-stats">
                             <div class="summary-stat">
+                                <div class="summary-icon">✅</div>
                                 <span class="summary-number" id="totalCheckedIn">0</span>
                                 <span class="summary-label">Checked In</span>
                             </div>
                             <div class="summary-stat">
+                                <div class="summary-icon">👤</div>
                                 <span class="summary-number" id="totalVolunteers">0</span>
                                 <span class="summary-label">Total Volunteers</span>
                             </div>
                             <div class="summary-stat">
+                                <div class="summary-icon">📊</div>
                                 <span class="summary-number" id="attendanceRate">0%</span>
                                 <span class="summary-label">Attendance Rate</span>
                             </div>
                         </div>
+                        <div class="summary-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="attendanceProgress" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-text">Event Progress</span>
+                        </div>
                     </div>
+
+
                 </div>
             </div>
 
@@ -119,6 +208,7 @@
                 <div class="view-header">
                     <h2>Event Management</h2>
                     <div class="view-controls">
+                        <button class="btn btn-secondary" id="createSundayEventsBtn">Create Regular Class Events</button>
                         <button class="btn btn-primary" id="addEventBtn">Add Event</button>
                     </div>
                 </div>
@@ -130,19 +220,114 @@
             <!-- Reports View -->
             <div class="view" id="reportsView">
                 <div class="view-header">
-                    <h2>Attendance Reports</h2>
+                    <h2>📊 Attendance Reports</h2>
                     <div class="view-controls">
-                        <select id="reportPeriod" class="select-input">
+                        <select id="reportPeriod" class="select-input" aria-label="Report period">
                             <option value="week">This Week</option>
                             <option value="month">This Month</option>
                             <option value="quarter">This Quarter</option>
                             <option value="year">This Year</option>
+                            <option value="custom">Custom Range</option>
                         </select>
-                        <button class="btn btn-secondary" id="exportReportBtn">Export CSV</button>
+                        <button class="btn btn-secondary" id="exportReportBtn">📤 Export CSV</button>
+                        <button class="btn btn-secondary" id="printReportBtn">🖨️ Print</button>
                     </div>
                 </div>
                 <div class="reports-content" id="reportsContent">
-                    <p>Loading reports...</p>
+                    <div class="reports-placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Select a time period to view attendance reports</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div class="view" id="settingsView">
+                <div class="view-header">
+                    <h2>⚙️ Settings</h2>
+                </div>
+                <div class="settings-content">
+                    <div class="settings-section">
+                        <div class="card">
+                            <h3>Scanner Configuration</h3>
+                            <div class="setting-group">
+                                <label for="scannerType">Scanner Type</label>
+                                <select id="scannerType" class="select-input">
+                                    <option value="keyboard">Keyboard Wedge</option>
+                                    <option value="usb">USB Scanner</option>
+                                    <option value="bluetooth">Bluetooth Scanner</option>
+                                </select>
+                            </div>
+                            <div class="setting-group">
+                                <label for="scanPrefix">Scan Prefix (optional)</label>
+                                <input type="text" id="scanPrefix" class="setting-input" placeholder="e.g., V">
+                            </div>
+                            <div class="setting-group">
+                                <label for="scanSuffix">Scan Suffix (optional)</label>
+                                <input type="text" id="scanSuffix" class="setting-input" placeholder="e.g., #">
+                            </div>
+                            <button class="btn btn-secondary" id="testScannerBtn">🔧 Test Scanner</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="card">
+                            <h3>Data Sync</h3>
+                            <div class="setting-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autoSync" checked>
+                                    <span class="checkmark"></span>
+                                    Auto-sync to Google Sheets
+                                </label>
+                            </div>
+                            <div class="setting-group">
+                                <label for="syncInterval">Sync Interval (seconds)</label>
+                                <input type="number" id="syncInterval" class="setting-input" value="60" min="30" max="300">
+                            </div>
+                            <div class="setting-group">
+                                <button class="btn btn-primary" id="configureSheetsBtn">📊 Configure Google Sheets</button>
+                                <button class="btn btn-secondary" id="forceSyncBtn">🔄 Force Sync Now</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="card">
+                            <h3>Display Options</h3>
+                            <div class="setting-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="showCommittees" checked>
+                                    <span class="checkmark"></span>
+                                    Show committee information
+                                </label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="playSound" checked>
+                                    <span class="checkmark"></span>
+                                    Play sound on successful scan
+                                </label>
+                            </div>
+                            <div class="setting-group">
+                                <label for="recentCount">Recent check-ins to show</label>
+                                <input type="number" id="recentCount" class="setting-input" value="10" min="5" max="50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="card">
+                            <h3>Data Management</h3>
+                            <div class="setting-group">
+                                <button class="btn btn-secondary" id="exportAllDataBtn">📤 Export All Data</button>
+                                <button class="btn btn-secondary" id="importDataBtn">📥 Import Data</button>
+                            </div>
+                            <div class="setting-group">
+                                <button class="btn btn-warning" id="clearLocalDataBtn">🗑️ Clear Local Data</button>
+                                <small class="setting-help">This will remove all locally stored data. Make sure to sync first!</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -176,7 +361,9 @@
     <script src="js/utils.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
     <script src="js/scanner.js"></script>
     <script src="js/app.js"></script>
+    <script src="create-sunday-events.js"></script>
 </body>
 </html>

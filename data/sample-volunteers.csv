@@ -1,0 +1,11 @@
+ID,Name,Committee,Email,Status
+V001,John Doe,Events,john.doe@example.com,Active
+V002,Jane Smith,Hospitality,jane.smith@example.com,Active
+V003,Bob Johnson,Setup,bob.johnson@example.com,Active
+V004,Alice Brown,Cleanup,alice.brown@example.com,Active
+V005,Charlie Wilson,Registration,charlie.wilson@example.com,Inactive
+V006,Diana Davis,Security,diana.davis@example.com,Active
+V007,Edward Miller,Technical,edward.miller@example.com,Active
+V008,Fiona Garcia,Events,fiona.garcia@example.com,Active
+V009,George Martinez,Hospitality,george.martinez@example.com,Suspended
+V010,Helen Rodriguez,General,helen.rodriguez@example.com,Active
