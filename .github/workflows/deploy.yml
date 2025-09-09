@@ -1,0 +1,129 @@
+name: Deploy Multi-Environment
+
+on:
+  push:
+    branches:
+      - main      # Production deployment
+      - dev       # Development deployment
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # Deploy development environment
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run development tests
+        run: |
+          echo "🧪 Running development tests..."
+          # Test basic file structure
+          test -f index.html || exit 1
+          test -f js/app.js || exit 1
+          test -f js/config.js || exit 1
+          echo "✅ Basic file structure validated"
+
+      - name: Prepare development build
+        run: |
+          echo "🔧 Preparing development build..."
+          
+          # Create build directory
+          mkdir -p build
+          
+          # Copy all files
+          cp -r * build/ 2>/dev/null || true
+          rm -rf build/.git build/.github build/build
+          
+          # Force development environment
+          cat > build/js/env-override.js << 'EOF'
+          // Force development environment for GitHub Pages
+          (function() {
+            // Override URL detection to force dev mode
+            const originalLocation = window.location;
+            Object.defineProperty(window, 'location', {
+              value: {
+                ...originalLocation,
+                search: '?env=dev',
+                toString: () => originalLocation.toString() + '?env=dev'
+              },
+              writable: false
+            });
+          })();
+          EOF
+          
+          # Add environment override to index.html
+          sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/index.html
+          
+          # Add DEV indicator to title
+          sed -i 's|<title>|<title>[DEV] |' build/index.html
+          
+          echo "✅ Development build prepared"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          destination_dir: dev
+          keep_files: true
+
+  # Deploy production environment
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run production tests
+        run: |
+          echo "🧪 Running production tests..."
+          # Test basic file structure
+          test -f index.html || exit 1
+          test -f js/app.js || exit 1
+          test -f js/config.js || exit 1
+          
+          # Test for any obvious dev artifacts
+          if grep -r "console.log" js/ --exclude="config.js"; then
+            echo "⚠️  Warning: console.log statements found in production build"
+          fi
+          
+          echo "✅ Production tests passed"
+
+      - name: Prepare production build
+        run: |
+          echo "🔧 Preparing production build..."
+          
+          # Create clean build directory
+          mkdir -p build
+          
+          # Copy essential files only
+          cp index.html build/
+          cp -r js build/
+          cp -r css build/
+          cp -r assets build/ 2>/dev/null || true
+          
+          # Remove development files
+          rm -f build/test-*.html build/test-*.js
+          rm -f build/validate-*.js build/create-*.js
+          rm -f build/*GUIDE.md build/setup.md
+          
+          # Ensure production environment (no override)
+          # The config.js will detect production based on github.io domain
+          
+          echo "✅ Production build prepared"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          exclude_assets: '.github,dev'
