@@ -3,7 +3,8 @@
  */
 
 // Detect environment based on URL
-const isDevelopment = window.location.hostname === 'localhost' || 
+const isDevelopment = window.FORCE_DEV_MODE || 
+                     window.location.hostname === 'localhost' || 
                      window.location.hostname === '127.0.0.1' ||
                      window.location.pathname.includes('/dev/') ||
                      window.location.hostname.includes('dev') ||

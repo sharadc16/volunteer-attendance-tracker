@@ -1,0 +1,77 @@
+name: Simple Deploy
+
+on:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare build
+        run: |
+          mkdir -p build
+          
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "🔧 Preparing DEV build..."
+            
+            # Create dev subdirectory
+            mkdir -p build/dev
+            cp -r * build/dev/ 2>/dev/null || true
+            rm -rf build/dev/.git build/dev/.github build/dev/build
+            
+            # Force dev environment
+            cat > build/dev/js/env-override.js << 'EOF'
+          window.FORCE_DEV_MODE = true;
+          console.log('🔧 DEV environment active');
+          EOF
+            
+            # Update index.html
+            sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/dev/index.html
+            sed -i 's|<title>|<title>[DEV] |' build/dev/index.html
+            
+            # Root redirect to dev
+            cat > build/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><meta http-equiv="refresh" content="0; url=./dev/"></head>
+          <body><a href="./dev/">Development Environment</a></body>
+          </html>
+          EOF
+            
+          else
+            echo "🔧 Preparing PRODUCTION build..."
+            
+            # Production build
+            cp -r * build/ 2>/dev/null || true
+            rm -rf build/.git build/.github build/build
+            
+            # Clean up dev files
+            find build -name "test-*" -delete 2>/dev/null || true
+            find build -name "*GUIDE.md" -delete 2>/dev/null || true
+            find build -name "env-override.js" -delete 2>/dev/null || true
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './build'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
