@@ -34,9 +34,8 @@ jobs:
             # Create dev subdirectory structure
             mkdir -p build/dev
             
-            # Copy all files to dev subdirectory
-            cp -r . build/dev/
-            rm -rf build/dev/.git build/dev/.github build/dev/build
+            # Copy all files to dev subdirectory (excluding build directory)
+            find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/dev/ \;
             
             # Force development environment in dev path
             cat > build/dev/js/env-override.js << 'EOF'
@@ -75,9 +74,8 @@ jobs:
           else
             echo "🔧 MAIN BRANCH - Creating production environment"
             
-            # Production: copy everything to root
-            cp -r . build/
-            rm -rf build/.git build/.github
+            # Production: copy everything to root (excluding build directory)
+            find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/ \;
             
             # Clean up development files for production
             rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md build/env-override.js
