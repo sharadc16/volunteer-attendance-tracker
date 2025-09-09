@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improved Sizing Test - Gurukul</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Simulate DEV badge */
+        .dev-badge {
+            position: fixed;
+            top: 70px;
+            right: 10px;
+            background: #ff6b35;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 99;
+            font-family: monospace;
+        }
+        
+        /* Debug info */
+        .debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 10000;
+        }
+        
+        .measurement {
+            display: inline-block;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Simulated DEV badge -->
+        <div class="dev-badge">DEV</div>
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content" id="headerContent">
+                <!-- Hamburger menu button -->
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                
+                <!-- App title with logo -->
+                <div class="header-title">
+                    <div class="logo-container">
+                        <img src="https://gurukulweb.azurewebsites.net/Images/GurukulLogoShadow.png" alt="Gurukul Logo" class="app-logo">
+                        <h1 class="app-title">Gurukul</h1>
+                    </div>
+                </div>
+                
+                <!-- Right controls -->
+                <div class="header-controls" id="headerControls">
+                    <button class="btn-icon" id="googleSyncBtn" title="Sync with Google Sheets">🔄</button>
+                    <button class="btn-icon" id="settingsBtn" title="Settings">⚙️</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="app-nav" role="navigation" aria-label="Main navigation">
+            <div class="nav-container" id="navContainer">
+                <button class="nav-btn active" data-view="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-view="volunteers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Volunteers</span>
+                </button>
+                <button class="nav-btn" data-view="events">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Events</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Reports</span>
+                </button>
+            </div>
+            <div class="nav-overlay" id="navOverlay"></div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <div class="card">
+                <h2>✨ Improved Sizing Test</h2>
+                <p><strong>Single row layout with better sizing and spacing!</strong></p>
+                
+                <div class="improvements">
+                    <h3>🎯 Improvements Made:</h3>
+                    <ul>
+                        <li><strong>Hamburger Menu:</strong> 40px × 40px (was 28px)</li>
+                        <li><strong>Logo:</strong> 32px height (was 20px)</li>
+                        <li><strong>Title:</strong> 1.3rem font size (was 0.9rem)</li>
+                        <li><strong>Icon Buttons:</strong> 36px × 36px (was 24px)</li>
+                        <li><strong>Sync Indicator:</strong> 8px (was 4px)</li>
+                        <li><strong>Spacing:</strong> 0.5rem gaps (was 0.125rem)</li>
+                        <li><strong>Padding:</strong> 0.75rem (was 0.25rem)</li>
+                    </ul>
+                </div>
+                
+                <div class="dev-badge-info">
+                    <h3>🏷️ DEV Badge Fix:</h3>
+                    <ul>
+                        <li>Moved DEV badge below header (top: 70px)</li>
+                        <li>Added z-index management</li>
+                        <li>Settings button should now be visible</li>
+                    </ul>
+                </div>
+                
+                <button id="toggleMenu" class="btn btn-primary">Test Hamburger Menu</button>
+                <button id="testButtons" class="btn btn-secondary">Test All Buttons</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Debug Info -->
+    <div class="debug-info" id="debugInfo">
+        <div class="measurement">Header Height: <span id="headerHeight">-</span>px</div>
+        <div class="measurement">Logo Size: <span id="logoSize">-</span>px</div>
+        <div class="measurement">Button Size: <span id="buttonSize">-</span>px</div>
+        <div class="measurement">Controls Width: <span id="controlsWidth">-</span>px</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const navContainer = document.getElementById('navContainer');
+            const navOverlay = document.getElementById('navOverlay');
+            const toggleMenuBtn = document.getElementById('toggleMenu');
+            const testButtonsBtn = document.getElementById('testButtons');
+            
+            // Debug elements
+            const headerHeight = document.getElementById('headerHeight');
+            const logoSize = document.getElementById('logoSize');
+            const buttonSize = document.getElementById('buttonSize');
+            const controlsWidth = document.getElementById('controlsWidth');
+            
+            function updateMeasurements() {
+                const headerContent = document.getElementById('headerContent');
+                const logo = document.querySelector('.app-logo');
+                const button = document.querySelector('.btn-icon');
+                const controls = document.getElementById('headerControls');
+                
+                headerHeight.textContent = headerContent ? headerContent.offsetHeight : 0;
+                logoSize.textContent = logo ? logo.offsetHeight : 0;
+                buttonSize.textContent = button ? button.offsetWidth : 0;
+                controlsWidth.textContent = controls ? controls.offsetWidth : 0;
+            }
+            
+            function toggleMenu() {
+                if (!hamburgerBtn || !navContainer || !navOverlay) return;
+                
+                const isActive = navContainer.classList.contains('active');
+                
+                if (isActive) {
+                    hamburgerBtn.classList.remove('active');
+                    navContainer.classList.remove('active');
+                    navOverlay.classList.remove('active');
+                    hamburgerBtn.setAttribute('aria-expanded', 'false');
+                } else {
+                    hamburgerBtn.classList.add('active');
+                    navContainer.classList.add('active');
+                    navOverlay.classList.add('active');
+                    hamburgerBtn.setAttribute('aria-expanded', 'true');
+                }
+            }
+            
+            function testAllButtons() {
+                const buttons = document.querySelectorAll('.btn-icon');
+                buttons.forEach((btn, index) => {
+                    setTimeout(() => {
+                        btn.style.background = 'rgba(255, 255, 255, 0.3)';
+                        setTimeout(() => {
+                            btn.style.background = '';
+                        }, 200);
+                    }, index * 300);
+                });
+            }
+            
+            // Event listeners
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', toggleMenu);
+            }
+            
+            if (navOverlay) {
+                navOverlay.addEventListener('click', toggleMenu);
+            }
+            
+            if (toggleMenuBtn) {
+                toggleMenuBtn.addEventListener('click', toggleMenu);
+            }
+            
+            if (testButtonsBtn) {
+                testButtonsBtn.addEventListener('click', testAllButtons);
+            }
+            
+            // Update measurements
+            updateMeasurements();
+            window.addEventListener('resize', updateMeasurements);
+            
+            // Update measurements after image loads
+            setTimeout(updateMeasurements, 1000);
+        });
+    </script>
+</body>
+</html>

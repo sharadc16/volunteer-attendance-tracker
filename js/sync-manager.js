@@ -187,6 +187,18 @@ class SyncManager {
 
         this.syncTimer = setInterval(() => {
             if (this.isOnline && !this.isSyncing && this.syncQueue.length > 0) {
+                // Check if Google Sheets sync is disabled or authentication is cancelled
+                if (window.GoogleSheetsService) {
+                    const status = window.GoogleSheetsService.getStatus();
+                    if (status.syncDisabled) {
+                        console.log(`Sync skipped: Google Sheets sync disabled after ${status.cancelCount} cancellations.`);
+                        return;
+                    }
+                    if (status.authenticationCancelled && status.inCooldown) {
+                        console.log(`Sync skipped: Google Sheets authentication cancelled. ${status.cooldownRemaining} minutes remaining.`);
+                        return;
+                    }
+                }
                 this.syncPendingData();
             }
         }, this.syncInterval);
@@ -347,7 +359,16 @@ class SyncManager {
             throw new Error('Google Sheets credentials not configured');
         }
 
+        if (status.syncDisabled) {
+            throw new Error(`Google Sheets sync has been disabled after ${status.cancelCount} authentication cancellations. Please re-enable in settings.`);
+        }
+
         if (!status.isAuthenticated) {
+            // Check if authentication was cancelled and we're in cooldown
+            if (status.authenticationCancelled && status.inCooldown) {
+                throw new Error(`Google Sheets authentication was cancelled. Please wait ${status.cooldownRemaining} minutes before trying again.`);
+            }
+            
             console.log('Authenticating with Google Sheets...');
             await sheetsService.authenticate();
         }

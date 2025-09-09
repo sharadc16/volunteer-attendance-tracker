@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamburger Menu Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Test styles */
+        body { margin: 0; padding: 0; }
+        .test-content {
+            padding: 2rem;
+            text-align: center;
+        }
+        .test-scanner {
+            max-width: 400px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-scanner input {
+            width: 100%;
+            padding: 1.5rem;
+            font-size: 1.4rem;
+            border: 3px solid #3498db;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <!-- Hamburger menu button -->
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                
+                <!-- App title (flexible, can wrap) -->
+                <div class="header-title">
+                    <h1>Volunteer Attendance Tracker</h1>
+                </div>
+                
+                <!-- Right controls -->
+                <div class="header-controls">
+                    <div class="sync-status-compact">
+                        <span class="sync-status-indicator online"></span>
+                    </div>
+                    <button class="btn-icon" title="Sync with Google Sheets">📊</button>
+                    <button class="btn-icon" title="Settings">⚙️</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation with Hamburger Menu -->
+        <nav class="app-nav" role="navigation" aria-label="Main navigation">
+            
+            <!-- Navigation container -->
+            <div class="nav-container" id="navContainer">
+                <button class="nav-btn active" data-view="dashboard" aria-current="page">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-view="volunteers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Volunteers</span>
+                </button>
+                <button class="nav-btn" data-view="events">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Events</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Reports</span>
+                </button>
+
+            </div>
+            
+            <!-- Mobile nav overlay -->
+            <div class="nav-overlay" id="navOverlay"></div>
+        </nav>
+
+        <!-- Test Content -->
+        <main class="test-content">
+            <div class="test-scanner">
+                <h2>📱 Scan Volunteer Badge</h2>
+                <p>This is now much more prominent on mobile!</p>
+                <input type="text" placeholder="Scan or type volunteer ID..." style="margin-top: 1rem;">
+            </div>
+            
+            <div style="margin-top: 2rem;">
+                <h3>Test Instructions:</h3>
+                <ul style="text-align: left; max-width: 500px; margin: 0 auto;">
+                    <li><strong>All Screens:</strong> Single-row header: ☰ | Title | 📊⚙️</li>
+                    <li><strong>All Screens:</strong> Hamburger menu contains all navigation (Dashboard, Volunteers, Events, Reports)</li>
+                    <li><strong>All Screens:</strong> Only sync and settings in header</li>
+                    <li><strong>Mobile:</strong> Scanner input is prominent and large</li>
+                    <li><strong>Very Small Screens:</strong> Title wraps to second row if needed</li>
+                    <li><strong>Removed:</strong> Force sync button (⚡) - simplified to single sync</li>
+                    <li><strong>Test:</strong> Resize browser to see responsive behavior</li>
+                    <li><strong>Test:</strong> Click hamburger menu to access all navigation</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Simple hamburger menu functionality for testing
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const navContainer = document.getElementById('navContainer');
+            const navOverlay = document.getElementById('navOverlay');
+            
+            function toggleMobileNav() {
+                const isActive = navContainer.classList.contains('active');
+                
+                if (isActive) {
+                    closeMobileNav();
+                } else {
+                    openMobileNav();
+                }
+            }
+            
+            function openMobileNav() {
+                hamburgerBtn.classList.add('active');
+                navContainer.classList.add('active');
+                navOverlay.classList.add('active');
+                hamburgerBtn.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+            }
+            
+            function closeMobileNav() {
+                hamburgerBtn.classList.remove('active');
+                navContainer.classList.remove('active');
+                navOverlay.classList.remove('active');
+                hamburgerBtn.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            }
+            
+            // Event listeners
+            hamburgerBtn.addEventListener('click', toggleMobileNav);
+            navOverlay.addEventListener('click', closeMobileNav);
+            
+            // Close nav when clicking nav items
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Update active state
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    
+                    // Close mobile nav
+                    closeMobileNav();
+                    
+                    console.log('Navigated to:', e.currentTarget.dataset.view);
+                });
+            });
+            
+            // Close nav with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && navContainer.classList.contains('active')) {
+                    closeMobileNav();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

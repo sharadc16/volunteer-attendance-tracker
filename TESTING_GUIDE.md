@@ -11,15 +11,16 @@ This guide provides comprehensive testing instructions for the Volunteer Attenda
 - **Database**: `VolunteerAttendanceDB_Dev`
 - **Visual Indicator**: Orange "DEV" badge
 
-### Online Development (Separate Deployment)
-- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/dev/`
-- **Setup**: Push changes to `dev` branch, GitHub Actions auto-deploys to `/dev/` path
-- **Features**: Separate dev environment with latest dev branch code
+### Online Development (Dev Branch Deployment)
+- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/?env=dev` (reliable)
+- **Alternative**: `https://sharadc16.github.io/volunteer-attendance-tracker/dev/` (may have caching issues)
+- **Setup**: Push changes to `dev` branch, GitHub Actions auto-deploys
+- **Features**: Latest dev branch code with development environment settings
 - **Database**: `VolunteerAttendanceDB_Dev`
 - **Visual Indicator**: Orange "DEV" badge + "[DEV]" in title
 - **Deployment Time**: 2-3 minutes after push to dev branch
 
-**Workflow**: Push to `dev` → Test at `/dev/` URL → Merge to `main` when ready
+**Workflow**: Push to `dev` → Test online → Merge to `main` when ready
 
 ### Production
 - **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/`
@@ -258,20 +259,230 @@ This guide provides comprehensive testing instructions for the Volunteer Attenda
 3. **Different committees**: Mix Events, Hospitality, Setup volunteers
 4. **Error cases**: Try INVALID, X999, empty input
 
-## 🔄 Development Workflow Testing
+## 🔄 Complete Development Workflow
 
-### Local → Dev → Production
-1. **Test locally**: `http://localhost:8080`
-2. **Push to dev**: `git push origin dev`
-3. **Test online dev**: `?env=dev` parameter
-4. **Merge to main**: `git checkout main && git merge dev`
-5. **Test production**: Main GitHub Pages URL
+### Phase 1: Local Development & Testing
 
-### Rollback Testing
-1. **If issues found**: `git checkout dev`
-2. **Fix problems**: Make corrections
-3. **Test again**: Verify fixes work
-4. **Re-deploy**: Push to dev, then merge to main
+```bash
+# Start local development
+git checkout dev
+# Make your changes...
+
+# Test locally
+python3 -m http.server 8080
+# Open: http://localhost:8080
+```
+
+**Local Testing Checklist:**
+- [ ] Application loads without errors
+- [ ] Core functionality works (volunteer registration, scanner, events)
+- [ ] No JavaScript console errors
+- [ ] Mobile responsiveness verified
+- [ ] Run test files: `test-*.html` and validation scripts
+- [ ] Google Sheets integration tested (if applicable)
+
+### Phase 2: Development Environment Testing
+
+```bash
+# Deploy to dev environment
+git add .
+git commit -m "feat: describe your changes"
+git push origin dev
+
+# Wait 2-3 minutes for GitHub Actions deployment
+# Test at: https://sharadc16.github.io/volunteer-attendance-tracker/?env=dev
+# (Alternative: https://sharadc16.github.io/volunteer-attendance-tracker/dev/)
+```
+
+**Development Environment Verification:**
+- [ ] DEV badge visible in top-right corner
+- [ ] "[DEV]" appears in browser tab title
+- [ ] Console shows: "🔧 DEV environment active - deployed from dev branch"
+- [ ] Uses `VolunteerAttendanceDB_Dev` database
+- [ ] All new features work as expected
+- [ ] Cross-browser testing completed
+- [ ] Team members can access and validate
+- [ ] Performance acceptable with test data
+
+**Team Collaboration Testing:**
+- [ ] Share dev URL with team members
+- [ ] Collect feedback on new features
+- [ ] Verify functionality across different devices
+- [ ] Test edge cases and error scenarios
+
+### Phase 3: Pre-Production Validation
+
+**Pre-Production Checklist:**
+- [ ] All development testing completed successfully
+- [ ] No critical bugs or issues identified
+- [ ] Team approval obtained (if required)
+- [ ] Documentation updated for new features
+- [ ] Google Sheets integration verified
+- [ ] Performance benchmarks met
+- [ ] Security considerations reviewed
+- [ ] Ready for production users
+
+**Final Testing Round:**
+```bash
+# Test the dev environment one more time
+# https://sharadc16.github.io/volunteer-attendance-tracker/dev/
+
+# Run comprehensive test suite
+# - Scanner functionality
+# - Dashboard updates
+# - Google Sheets sync
+# - Navigation and UI
+# - Error handling
+# - Mobile responsiveness
+```
+
+### Phase 4: Production Deployment
+
+```bash
+# Switch to main branch
+git checkout main
+
+# Merge dev branch changes
+git merge dev
+
+# Verify merge was clean (no conflicts)
+git status
+
+# Push to deploy production
+git push origin main
+
+# Wait 2-3 minutes for GitHub Actions deployment
+```
+
+**Post-Deployment Verification:**
+```bash
+# Production URL: https://sharadc16.github.io/volunteer-attendance-tracker/
+```
+
+**Production Testing Checklist:**
+- [ ] Production URL loads correctly
+- [ ] No DEV badge or indicators visible
+- [ ] Clean production interface displayed
+- [ ] Uses `VolunteerAttendanceDB` (production database)
+- [ ] All features work as expected
+- [ ] No console errors or warnings
+- [ ] Mobile experience verified
+- [ ] Performance acceptable with production data
+- [ ] Google Sheets sync works with production credentials
+
+### Phase 5: Post-Production Monitoring
+
+**Immediate Checks (within 5 minutes):**
+- [ ] Application loads without errors
+- [ ] Basic functionality works (scanner, dashboard)
+- [ ] No JavaScript errors in console
+- [ ] Database operations successful
+
+**Extended Monitoring (within 30 minutes):**
+- [ ] Google Sheets sync functioning
+- [ ] All navigation working
+- [ ] Mobile devices tested
+- [ ] Performance metrics acceptable
+- [ ] User feedback collected (if applicable)
+
+### Emergency Rollback Procedures
+
+**If Critical Issues Found:**
+
+```bash
+# Option 1: Quick revert (recommended)
+git checkout main
+git revert HEAD
+git push origin main
+# → Reverts to previous working version
+
+# Option 2: Reset to last known good commit
+git checkout main
+git log --oneline  # Find last good commit hash
+git reset --hard <last-good-commit-hash>
+git push --force origin main
+# → Resets to specific previous version
+```
+
+**Rollback Verification:**
+- [ ] Previous version restored successfully
+- [ ] Application functioning normally
+- [ ] Users can access the system
+- [ ] Critical functionality working
+
+**Post-Rollback Actions:**
+1. **Investigate the issue** in dev environment
+2. **Fix the problem** in dev branch
+3. **Test thoroughly** before re-deploying
+4. **Document the incident** for future reference
+
+### Branch Management Best Practices
+
+**Development Branch (`dev`):**
+- Always work in `dev` branch for new features
+- Keep `dev` branch up to date with `main`
+- Test thoroughly before merging to `main`
+- Use descriptive commit messages
+
+**Production Branch (`main`):**
+- Only merge tested and approved changes
+- Never commit directly to `main`
+- Always merge from `dev` branch
+- Tag releases for easy rollback
+
+**Workflow Commands:**
+```bash
+# Daily development workflow
+git checkout dev
+git pull origin dev  # Get latest changes
+# ... make changes ...
+git add .
+git commit -m "feat: descriptive message"
+git push origin dev
+
+# When ready for production
+git checkout main
+git pull origin main  # Ensure main is current
+git merge dev        # Merge dev changes
+git push origin main # Deploy to production
+
+# Keep dev updated with main (after production deployment)
+git checkout dev
+git merge main       # Sync any hotfixes or direct main changes
+```
+
+### Continuous Integration Checks
+
+**Automated Checks (GitHub Actions):**
+- [ ] Build process completes successfully
+- [ ] No syntax errors in code
+- [ ] File structure validation
+- [ ] Deployment artifacts created correctly
+
+**Manual Verification:**
+- [ ] GitHub Actions workflow shows green checkmark
+- [ ] Deployment logs show no errors
+- [ ] Both environments accessible after deployment
+
+### Testing Metrics & KPIs
+
+**Performance Benchmarks:**
+- Page load time: < 3 seconds
+- Scanner response time: < 1 second
+- Dashboard update time: < 2 seconds
+- Google Sheets sync time: < 10 seconds
+
+**Quality Metrics:**
+- Zero JavaScript console errors
+- 100% core functionality working
+- Mobile responsiveness score: > 90%
+- Cross-browser compatibility: Chrome, Firefox, Safari, Edge
+
+**User Experience Metrics:**
+- Intuitive navigation (no user confusion)
+- Clear error messages
+- Responsive feedback for all actions
+- Consistent visual design
 
 ## 📝 Testing Log Template
 

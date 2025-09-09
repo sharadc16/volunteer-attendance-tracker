@@ -29,21 +29,47 @@ git push origin dev
 # URL: https://[username].github.io/volunteer-attendance-tracker/
 ```
 
-## Deploy to Production
+## Complete Dev-to-Production Workflow
 
+### 1. Development Phase
 ```bash
-# 1. Switch to main branch
+# Work in dev branch
+git checkout dev
+# ... make changes ...
+git add .
+git commit -m "feat: describe your changes"
+git push origin dev
+
+# Test at: https://[username].github.io/volunteer-attendance-tracker/?env=dev
+# (Alternative: https://[username].github.io/volunteer-attendance-tracker/dev/)
+```
+
+### 2. Pre-Production Validation
+- [ ] Dev environment testing completed
+- [ ] All features working correctly
+- [ ] Team approval obtained
+- [ ] No critical issues identified
+
+### 3. Deploy to Production
+```bash
+# Switch to main branch
 git checkout main
 
-# 2. Merge dev branch
+# Merge dev branch changes
 git merge dev
 
-# 3. Push to production
+# Push to deploy production
 git push origin main
 
-# 4. Verify deployment
-# URL: https://[username].github.io/volunteer-attendance-tracker/
+# Wait 2-3 minutes for deployment
+# Test at: https://[username].github.io/volunteer-attendance-tracker/
 ```
+
+### 4. Post-Production Verification
+- [ ] Production URL loads correctly
+- [ ] No DEV badge visible
+- [ ] All functionality working
+- [ ] Performance acceptable
 
 ## Quick Test Commands
 

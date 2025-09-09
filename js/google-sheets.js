@@ -7,6 +7,12 @@ class GoogleSheetsService {
     constructor() {
         this.isInitialized = false;
         this.isAuthenticated = false;
+        this.authenticationCancelled = false;
+        this.lastAuthAttempt = null;
+        this.authCooldownPeriod = 5 * 60 * 1000; // 5 minutes cooldown
+        this.cancelCount = 0;
+        this.maxCancelCount = 3; // Disable after 3 cancellations
+        this.syncDisabled = false;
         this.gapi = null;
         this.spreadsheetId = null;
         this.apiKey = null;
@@ -355,7 +361,24 @@ class GoogleSheetsService {
             throw new Error('Google Sheets service not initialized');
         }
 
+        // Check if authentication was recently cancelled and we're in cooldown
+        if (this.authenticationCancelled && this.lastAuthAttempt) {
+            const timeSinceLastAttempt = Date.now() - this.lastAuthAttempt;
+            if (timeSinceLastAttempt < this.authCooldownPeriod) {
+                const remainingTime = Math.ceil((this.authCooldownPeriod - timeSinceLastAttempt) / 1000 / 60);
+                console.log(`Authentication cooldown active. Try again in ${remainingTime} minutes.`);
+                throw new Error(`Authentication cancelled. Please wait ${remainingTime} minutes before trying again.`);
+            } else {
+                // Cooldown period has passed, reset the cancellation flag
+                this.authenticationCancelled = false;
+                this.lastAuthAttempt = null;
+            }
+        }
+
         try {
+            // Record this authentication attempt
+            this.lastAuthAttempt = Date.now();
+
             // If GAPI isn't loaded yet, load it now
             if (!this.gapi || !this.tokenClient) {
                 console.log('Loading Google API for authentication...');
@@ -370,12 +393,47 @@ class GoogleSheetsService {
                     if (response.access_token) {
                         this.accessToken = response.access_token;
                         this.isAuthenticated = true;
+                        this.authenticationCancelled = false; // Reset cancellation flag on success
+                        this.lastAuthAttempt = null;
                         console.log('Google Sheets authentication successful');
                         resolve(true);
+                    } else if (response.error) {
+                        // Handle user cancellation or other errors
+                        if (response.error === 'popup_closed_by_user' || response.error === 'access_denied') {
+                            this.authenticationCancelled = true;
+                            this.cancelCount++;
+                            
+                            // Disable sync after multiple cancellations
+                            if (this.cancelCount >= this.maxCancelCount) {
+                                this.syncDisabled = true;
+                                console.log(`Google Sheets sync disabled after ${this.cancelCount} cancellations. You can re-enable it in settings.`);
+                            }
+                            
+                            console.log(`Authentication cancelled by user (${this.cancelCount}/${this.maxCancelCount})`);
+                            reject(new Error('Authentication cancelled by user'));
+                        } else {
+                            console.error('Authentication failed:', response);
+                            reject(new Error('Authentication failed: ' + response.error));
+                        }
                     } else {
-                        console.error('Authentication failed:', response);
+                        console.error('Authentication failed: No access token received');
                         reject(new Error('Authentication failed: No access token received'));
                     }
+                };
+
+                // Set up error handler for popup blocking or other issues
+                this.tokenClient.error_callback = (error) => {
+                    this.authenticationCancelled = true;
+                    this.cancelCount++;
+                    
+                    // Disable sync after multiple cancellations
+                    if (this.cancelCount >= this.maxCancelCount) {
+                        this.syncDisabled = true;
+                        console.log(`Google Sheets sync disabled after ${this.cancelCount} cancellations. You can re-enable it in settings.`);
+                    }
+                    
+                    console.log('Authentication error:', error);
+                    reject(new Error('Authentication error: ' + error.message));
                 };
 
                 // Request access token
@@ -385,6 +443,7 @@ class GoogleSheetsService {
             });
             
         } catch (error) {
+            this.authenticationCancelled = true;
             console.error('Google Sheets authentication failed:', error);
             throw new Error('Authentication failed: ' + error.message);
         }
@@ -805,12 +864,38 @@ class GoogleSheetsService {
         const hasStoredCredentials = !!stored;
         const hasInstanceCredentials = !!(this.apiKey && this.clientId && this.spreadsheetId);
         
+        // Check if we're in cooldown period
+        let inCooldown = false;
+        let cooldownRemaining = 0;
+        if (this.authenticationCancelled && this.lastAuthAttempt) {
+            const timeSinceLastAttempt = Date.now() - this.lastAuthAttempt;
+            inCooldown = timeSinceLastAttempt < this.authCooldownPeriod;
+            cooldownRemaining = Math.ceil((this.authCooldownPeriod - timeSinceLastAttempt) / 1000 / 60);
+        }
+        
         return {
             isInitialized: this.isInitialized,
             isAuthenticated: this.isAuthenticated,
             hasCredentials: hasInstanceCredentials || hasStoredCredentials,
-            spreadsheetId: this.spreadsheetId || (hasStoredCredentials ? JSON.parse(stored).spreadsheetId : null)
+            spreadsheetId: this.spreadsheetId || (hasStoredCredentials ? JSON.parse(stored).spreadsheetId : null),
+            authenticationCancelled: this.authenticationCancelled,
+            inCooldown: inCooldown,
+            cooldownRemaining: cooldownRemaining,
+            syncDisabled: this.syncDisabled,
+            cancelCount: this.cancelCount,
+            maxCancelCount: this.maxCancelCount
         };
+    }
+
+    /**
+     * Re-enable Google Sheets sync
+     */
+    enableSync() {
+        this.syncDisabled = false;
+        this.cancelCount = 0;
+        this.authenticationCancelled = false;
+        this.lastAuthAttempt = null;
+        console.log('Google Sheets sync re-enabled');
     }
 
     /**
@@ -822,6 +907,10 @@ class GoogleSheetsService {
         this.clientId = null;
         this.spreadsheetId = null;
         this.isAuthenticated = false;
+        this.syncDisabled = false;
+        this.cancelCount = 0;
+        this.authenticationCancelled = false;
+        this.lastAuthAttempt = null;
         console.log('Google Sheets credentials cleared');
     }
 }

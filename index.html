@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Volunteer Attendance Tracker</title>
+    <title>Gurukul - Volunteer Attendance Tracker</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
 </head>
@@ -13,33 +13,34 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-content">
-                <h1>Volunteer Attendance Tracker</h1>
+                <!-- Hamburger menu button -->
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                
+                <!-- App title with logo (flexible, can wrap) -->
+                <div class="header-title">
+                    <div class="logo-container">
+                        <img src="https://gurukulweb.azurewebsites.net/Images/GurukulLogoShadow.png" alt="Gurukul Logo" class="app-logo">
+                        <h1 class="app-title">Gurukul</h1>
+                    </div>
+                </div>
+                
+                <!-- Right controls -->
                 <div class="header-controls">
-                    <div class="sync-status" id="syncStatus">
-                        <span class="sync-status-indicator offline"></span>
-                        <span class="sync-status-text">Offline</span>
-                        <div class="sync-info" style="display: none;">
-                            <div class="sync-detail">Queue: 0 items</div>
-                            <div class="sync-detail">Last sync: Never</div>
-                            <div class="sync-detail">Success rate: 100%</div>
-                        </div>
-                    </div>
-                    <div class="sync-controls">
-                        <button class="btn btn-secondary" id="googleSyncBtn" title="Sync with Google Sheets">
-                            📊 Sync
-                        </button>
-                        <button class="btn btn-secondary btn-sm" id="forceSyncBtn" title="Force immediate sync">
-                            ⚡
-                        </button>
-                    </div>
-                    <button class="btn btn-secondary" id="settingsBtn">Settings</button>
+                    <button class="btn-icon" id="googleSyncBtn" title="Sync with Google Sheets">🔄</button>
+                    <button class="btn-icon" id="settingsBtn" title="Settings">⚙️</button>
                 </div>
             </div>
         </header>
 
         <!-- Navigation -->
         <nav class="app-nav" role="navigation" aria-label="Main navigation">
-            <div class="nav-container">
+            
+            <!-- Navigation container -->
+            <div class="nav-container" id="navContainer">
                 <button class="nav-btn active" data-view="dashboard" aria-current="page">
                     <span class="nav-icon">🏠</span>
                     <span class="nav-text">Dashboard</span>
@@ -56,11 +57,11 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Reports</span>
                 </button>
-                <button class="nav-btn" data-view="settings">
-                    <span class="nav-icon">⚙️</span>
-                    <span class="nav-text">Settings</span>
-                </button>
+
             </div>
+            
+            <!-- Mobile nav overlay -->
+            <div class="nav-overlay" id="navOverlay"></div>
         </nav>
 
         <!-- Main Content -->
@@ -72,9 +73,15 @@
                     <div class="card scanner-card">
                         <div class="scanner-header">
                             <h2>📱 Scan Volunteer Badge</h2>
-                            <div class="scanner-status" id="scannerStatus">
-                                <span class="scanner-indicator ready"></span>
-                                <span class="scanner-text">Ready to scan</span>
+                            <div class="scanner-status-container">
+                                <div class="scanner-status" id="scannerStatus">
+                                    <span class="scanner-indicator ready"></span>
+                                    <span class="scanner-text">Ready to scan</span>
+                                </div>
+                                <div class="sync-status-compact" id="syncStatus">
+                                    <span class="sync-status-indicator offline"></span>
+                                    <span class="sync-status-text">Sync</span>
+                                </div>
                             </div>
                         </div>
                         <div class="scanner-input-container">

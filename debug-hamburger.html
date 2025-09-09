@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Hamburger Menu</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <!-- Hamburger menu button -->
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                
+                <!-- App title with logo -->
+                <div class="header-title">
+                    <div class="logo-container">
+                        <img src="https://gurukulweb.azurewebsites.net/Images/GurukulLogoShadow.png" alt="Gurukul Logo" class="app-logo">
+                        <h1 class="app-title">Gurukul</h1>
+                    </div>
+                </div>
+                
+                <!-- Right controls -->
+                <div class="header-controls">
+                    <div class="sync-status-compact" id="syncStatus">
+                        <span class="sync-status-indicator offline"></span>
+                    </div>
+                    <button class="btn-icon" id="googleSyncBtn" title="Sync with Google Sheets">📊</button>
+                    <button class="btn-icon" id="settingsBtn" title="Settings">⚙️</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="app-nav" role="navigation" aria-label="Main navigation">
+            <!-- Navigation container -->
+            <div class="nav-container" id="navContainer">
+                <button class="nav-btn active" data-view="dashboard" aria-current="page">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-view="volunteers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Volunteers</span>
+                </button>
+                <button class="nav-btn" data-view="events">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-text">Events</span>
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Reports</span>
+                </button>
+            </div>
+            
+            <!-- Mobile nav overlay -->
+            <div class="nav-overlay" id="navOverlay"></div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <div class="card">
+                <h2>Debug: Hamburger Menu</h2>
+                <p>This page tests only the hamburger menu functionality without the full app initialization.</p>
+                
+                <div id="debug-info">
+                    <h3>Debug Information:</h3>
+                    <ul id="debug-list">
+                        <li>Loading...</li>
+                    </ul>
+                </div>
+                
+                <button id="testBtn" class="btn btn-primary">Test Menu Toggle</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Debug Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const debugList = document.getElementById('debug-list');
+            const testBtn = document.getElementById('testBtn');
+            
+            function addDebugInfo(message) {
+                const li = document.createElement('li');
+                li.textContent = message;
+                debugList.appendChild(li);
+                console.log('DEBUG:', message);
+            }
+            
+            // Clear loading message
+            debugList.innerHTML = '';
+            
+            // Check elements
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const navContainer = document.getElementById('navContainer');
+            const navOverlay = document.getElementById('navOverlay');
+            
+            addDebugInfo(`Hamburger button found: ${!!hamburgerBtn}`);
+            addDebugInfo(`Nav container found: ${!!navContainer}`);
+            addDebugInfo(`Nav overlay found: ${!!navOverlay}`);
+            
+            if (hamburgerBtn) {
+                addDebugInfo(`Hamburger button classes: ${hamburgerBtn.className}`);
+                addDebugInfo(`Hamburger button style: ${hamburgerBtn.style.cssText || 'none'}`);
+            }
+            
+            if (navContainer) {
+                addDebugInfo(`Nav container classes: ${navContainer.className}`);
+                addDebugInfo(`Nav container style: ${navContainer.style.cssText || 'none'}`);
+            }
+            
+            // Test function
+            function toggleMenu() {
+                if (!hamburgerBtn || !navContainer || !navOverlay) {
+                    addDebugInfo('ERROR: Missing elements for menu toggle');
+                    return;
+                }
+                
+                const isActive = navContainer.classList.contains('active');
+                addDebugInfo(`Current state: ${isActive ? 'open' : 'closed'}`);
+                
+                if (isActive) {
+                    // Close menu
+                    hamburgerBtn.classList.remove('active');
+                    navContainer.classList.remove('active');
+                    navOverlay.classList.remove('active');
+                    hamburgerBtn.setAttribute('aria-expanded', 'false');
+                    addDebugInfo('Menu closed');
+                } else {
+                    // Open menu
+                    hamburgerBtn.classList.add('active');
+                    navContainer.classList.add('active');
+                    navOverlay.classList.add('active');
+                    hamburgerBtn.setAttribute('aria-expanded', 'true');
+                    addDebugInfo('Menu opened');
+                }
+            }
+            
+            // Add event listeners
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', function(e) {
+                    addDebugInfo('Hamburger button clicked');
+                    toggleMenu();
+                });
+                addDebugInfo('Hamburger click listener added');
+            }
+            
+            if (navOverlay) {
+                navOverlay.addEventListener('click', function(e) {
+                    addDebugInfo('Overlay clicked');
+                    toggleMenu();
+                });
+                addDebugInfo('Overlay click listener added');
+            }
+            
+            if (testBtn) {
+                testBtn.addEventListener('click', function(e) {
+                    addDebugInfo('Test button clicked');
+                    toggleMenu();
+                });
+            }
+            
+            addDebugInfo('Debug initialization complete');
+        });
+    </script>
+</body>
+</html>

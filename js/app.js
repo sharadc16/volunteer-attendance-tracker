@@ -72,6 +72,23 @@ class VolunteerAttendanceApp {
      * Setup event listeners
      */
     setupEventListeners() {
+        // Hamburger menu
+        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+        const navContainer = Utils.DOM.getElementById('navContainer');
+        const navOverlay = Utils.DOM.getElementById('navOverlay');
+        
+        if (hamburgerBtn && navContainer && navOverlay) {
+            hamburgerBtn.addEventListener('click', () => this.toggleMobileNav());
+            navOverlay.addEventListener('click', () => this.closeMobileNav());
+            
+            // Close nav when pressing Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && navContainer.classList.contains('active')) {
+                    this.closeMobileNav();
+                }
+            });
+        }
+
         // Navigation
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -79,6 +96,9 @@ class VolunteerAttendanceApp {
                 const view = e.currentTarget.dataset.view;
                 console.log('Navigation clicked:', view); // Debug log
                 this.switchView(view);
+                
+                // Close mobile nav after selection
+                this.closeMobileNav();
             });
         });
 
@@ -3293,6 +3313,69 @@ class VolunteerAttendanceApp {
         } catch (error) {
             console.error('Error exporting report:', error);
             this.showError('Failed to export report. Please try again.');
+        }
+    }
+
+    /**
+     * Toggle mobile navigation menu
+     */
+    toggleMobileNav() {
+        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+        const navContainer = Utils.DOM.getElementById('navContainer');
+        const navOverlay = Utils.DOM.getElementById('navOverlay');
+        
+        if (hamburgerBtn && navContainer && navOverlay) {
+            const isActive = navContainer.classList.contains('active');
+            
+            if (isActive) {
+                this.closeMobileNav();
+            } else {
+                this.openMobileNav();
+            }
+        }
+    }
+
+    /**
+     * Open mobile navigation menu
+     */
+    openMobileNav() {
+        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+        const navContainer = Utils.DOM.getElementById('navContainer');
+        const navOverlay = Utils.DOM.getElementById('navOverlay');
+        
+        if (hamburgerBtn && navContainer && navOverlay) {
+            hamburgerBtn.classList.add('active');
+            navContainer.classList.add('active');
+            navOverlay.classList.add('active');
+            hamburgerBtn.setAttribute('aria-expanded', 'true');
+            
+            // Prevent body scroll when nav is open
+            document.body.style.overflow = 'hidden';
+            
+            // Focus first nav item for accessibility
+            const firstNavBtn = navContainer.querySelector('.nav-btn');
+            if (firstNavBtn) {
+                setTimeout(() => firstNavBtn.focus(), 100);
+            }
+        }
+    }
+
+    /**
+     * Close mobile navigation menu
+     */
+    closeMobileNav() {
+        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+        const navContainer = Utils.DOM.getElementById('navContainer');
+        const navOverlay = Utils.DOM.getElementById('navOverlay');
+        
+        if (hamburgerBtn && navContainer && navOverlay) {
+            hamburgerBtn.classList.remove('active');
+            navContainer.classList.remove('active');
+            navOverlay.classList.remove('active');
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+            
+            // Restore body scroll
+            document.body.style.overflow = '';
         }
     }
 }

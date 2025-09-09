@@ -2,7 +2,7 @@ name: Deploy Multi-Environment
 
 on:
   push:
-    branches: [main, dev]  # Deploy from both branches
+    branches: [main, dev]  # Deploy from both branches - dev first, then main
 
 permissions:
   contents: read
