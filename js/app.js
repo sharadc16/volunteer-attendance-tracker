@@ -2432,65 +2432,16 @@ handleCredentialsSubmit(event) {
 
 // Placeholder methods for future implementation
 showSettings() {
-    const status = window.GoogleSheetsService ? window.GoogleSheetsService.getStatus() : null;
-
-    // Debug: Check localStorage directly
-    const storedCreds = localStorage.getItem('googleSheetsCredentials');
-    console.log('Settings debug:', {
-        status: status,
-        storedCredentials: storedCreds ? 'Present' : 'Missing',
-        parsedCreds: storedCreds ? JSON.parse(storedCreds) : null
-    });
-
-    let googleSheetsStatus = 'Not available';
-    if (status) {
-        if (status.isAuthenticated) {
-            googleSheetsStatus = `✅ Connected (Sheet: ${status.spreadsheetId?.substring(0, 10)}...)`;
-        } else if (status.hasCredentials || storedCreds) {
-            googleSheetsStatus = '🔑 Configured (not authenticated)';
-        } else {
-            googleSheetsStatus = '❌ Not configured';
-        }
+    console.log('🔧 showSettings called - redirecting to settings.html');
+    
+    // Force redirect to the comprehensive settings page
+    try {
+        window.location.href = 'settings.html';
+    } catch (error) {
+        console.error('Error redirecting to settings:', error);
+        // Fallback: try different redirect methods
+        window.location.assign('settings.html');
     }
-
-    const settingsContent = `
-            <div>
-                <h4>Google Sheets Integration</h4>
-                <p><strong>Status:</strong> ${googleSheetsStatus}</p>
-                
-                <div style="margin: 1rem 0;">
-                    <button class="btn btn-primary" onclick="app.handleGoogleSync()">
-                        📊 Sync Now
-                    </button>
-                    ${(status?.hasCredentials || storedCreds) ? `
-                        <button class="btn btn-secondary" onclick="app.testBasicConnection()">
-                            🔍 Test API Key
-                        </button>
-                        <button class="btn btn-secondary" onclick="app.testGoogleSheetsConnection()">
-                            🔐 Test OAuth
-                        </button>
-                        <button class="btn btn-secondary" onclick="window.GoogleSheetsService.clearCredentials(); app.hideModal();">
-                            🗑️ Clear Credentials
-                        </button>
-                    ` : ''}
-                </div>
-                
-                <hr style="margin: 1.5rem 0;">
-                
-                <h4>System Information</h4>
-                <p><strong>Environment:</strong> ${window.Config?.environment || 'Unknown'}</p>
-                <p><strong>Database:</strong> ${window.StorageManager?.dbName || 'Unknown'}</p>
-                <p><strong>Version:</strong> 1.0.0</p>
-                
-                <div style="margin-top: 1.5rem;">
-                    <button class="btn btn-secondary" onclick="resetAppDatabase()">
-                        🔄 Reset Database
-                    </button>
-                </div>
-            </div>
-        `;
-
-    this.showModal('Settings', settingsContent, 'Close', '');
 }
 
 /**

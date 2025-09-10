@@ -230,41 +230,10 @@ function switchView(viewName) {
 }
 
 function showSettings() {
-    console.log('Showing settings...');
+    console.log('🔧 showSettings called from comprehensive-fix.js - redirecting to settings.html');
     
-    const settingsContent = `
-        <div style="text-align: left;">
-            <h3>Settings</h3>
-            <div style="margin: 1rem 0;">
-                <h4>System Information</h4>
-                <p><strong>Version:</strong> 1.0.0</p>
-                <p><strong>Database:</strong> IndexedDB</p>
-                <p><strong>Storage:</strong> Local Browser Storage</p>
-            </div>
-            
-            <div style="margin: 1rem 0;">
-                <h4>Event Management</h4>
-                <button onclick="createTestEventsForDemo()" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Create Test Events
-                </button>
-                <button onclick="clearAllEvents()" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Clear All Events
-                </button>
-            </div>
-            
-            <div style="margin: 1rem 0;">
-                <h4>Debug Tools</h4>
-                <button onclick="window.open('debug-current-event.html', '_blank')" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Open Debug Page
-                </button>
-                <button onclick="window.open('test-current-event-simple.html', '_blank')" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Open Test Page
-                </button>
-            </div>
-        </div>
-    `;
-    
-    showModal('Settings', settingsContent, 'Close', '');
+    // Redirect to the comprehensive settings page instead of showing modal
+    window.location.href = 'settings.html';
 }
 
 function showModal(title, content, confirmText = 'Confirm', cancelText = 'Cancel') {

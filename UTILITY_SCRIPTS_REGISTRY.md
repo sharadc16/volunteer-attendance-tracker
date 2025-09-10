@@ -2,6 +2,17 @@
 
 This document catalogs all utility, debug, and fix scripts in the project to prevent duplication and improve maintainability.
 
+## 🎯 **New Consolidated Approach**
+
+**Main Access Point**: `settings.html` - Comprehensive settings and utilities page
+- Replaces multiple scattered debug tools
+- Provides organized access to all utilities
+- Includes configuration management
+- Features project maintenance tools
+- Offers system diagnostics
+
+**Quick Access**: Click the ⚙️ settings button in the main app header
+
 ## 📋 **Core Utilities (Keep)**
 
 ### **Main Application**
@@ -18,12 +29,15 @@ This document catalogs all utility, debug, and fix scripts in the project to pre
 - `fix-event-date-mismatch.js` - Event date mismatch fixes
 - `manual-scanner-fix.html` - Step-by-step scanner fixes
 - `force-enable-scanner.html` - Emergency scanner enable
+- `settings.html` - **NEW** Comprehensive settings and utilities page
+- `cleanup-utilities.js` - **NEW** Script to remove redundant files
 
 ### **Documentation**
 - `PROJECT_REQUIREMENTS.md` - Project requirements
 - `GOOGLE_SHEETS_SETUP.md` - Google Sheets setup guide
 - `DEPLOYMENT_WORKFLOW.md` - Deployment instructions
 - `TESTING_GUIDE.md` - Testing procedures
+- `UTILITIES_GUIDE.md` - **NEW** Comprehensive utilities documentation
 
 ## 🗑️ **Redundant Files (Remove)**
 
