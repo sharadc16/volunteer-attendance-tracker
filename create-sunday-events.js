@@ -22,9 +22,10 @@ async function createSundayEvents() {
             });
         }
         
-        // Define the date range
-        const startDate = new Date('2025-09-14'); // September 14, 2025 (Sunday)
-        const endDate = new Date('2026-05-17');   // May 17, 2026 (Sunday)
+        // Define the date range (using local PST timezone)
+        // Create dates using year, month, day to avoid timezone conversion
+        const startDate = new Date(2025, 8, 14); // September 14, 2025 (Sunday) - month is 0-indexed
+        const endDate = new Date(2026, 4, 17);   // May 17, 2026 (Sunday)
         
         // Define exception dates (no events on these dates)
         const exceptionDates = [
@@ -38,6 +39,18 @@ async function createSundayEvents() {
         console.log(`📅 Start Date: ${startDate.toDateString()}`);
         console.log(`📅 End Date: ${endDate.toDateString()}`);
         console.log(`🚫 Exception Dates: ${exceptionDates.join(', ')}`);
+        
+        // Verify start date is actually a Sunday
+        const startDayOfWeek = startDate.getDay();
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        console.log(`🔍 Start date validation: ${startDate.toDateString()} is a ${dayNames[startDayOfWeek]} (day ${startDayOfWeek})`);
+        
+        if (startDayOfWeek !== 0) {
+            console.error(`❌ Start date ${startDate.toDateString()} is not a Sunday! It's a ${dayNames[startDayOfWeek]} (day ${startDayOfWeek})`);
+            throw new Error(`Start date must be a Sunday, but ${startDate.toDateString()} is a ${dayNames[startDayOfWeek]}`);
+        }
+        
+        console.log(`✅ Start date validation passed: ${startDate.toDateString()} is a Sunday`);
         
         // Generate all Sunday dates
         const events = [];

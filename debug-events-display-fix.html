@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Events Display Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        #eventsDisplay {
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 200px;
+            background: #f8f9fa;
+        }
+        .event-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Events Display Fix</h1>
+    
+    <div class="test-container">
+        <h2>Issue Description</h2>
+        <div class="status info">
+            <strong>Problem:</strong> Events are synced to local storage but Event Management page shows "Loading events..." and doesn't display any events.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Diagnostic Tests</h2>
+        <button onclick="checkLocalStorage()">📊 Check Local Storage</button>
+        <button onclick="testStorageManager()">🗄️ Test Storage Manager</button>
+        <button onclick="testEventsDisplay()">📅 Test Events Display</button>
+        <button onclick="fixEventsDisplay()">🔧 Fix Events Display</button>
+        <button onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+
+    <div class="test-container">
+        <h2>Events Display Test</h2>
+        <div id="eventsDisplay">
+            <div style="text-align: center; color: #666;">
+                Events will be displayed here when test is run
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/environment-manager.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            document.getElementById('log').textContent += logEntry + '\n';
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        async function checkLocalStorage() {
+            log('📊 Checking local storage for events...');
+            
+            try {
+                // Check IndexedDB directly
+                const request = indexedDB.open('VolunteerAttendanceDB', 1);
+                
+                request.onsuccess = function(event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction(['events'], 'readonly');
+                    const store = transaction.objectStore('events');
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = function() {
+                        const events = getAllRequest.result;
+                        log(`📊 Found ${events.length} events in IndexedDB`);
+                        
+                        if (events.length > 0) {
+                            log('📋 Sample events:');
+                            events.slice(0, 3).forEach((event, index) => {
+                                log(`  ${index + 1}. ${event.name} - ${event.date} (${event.status})`);
+                            });
+                        } else {
+                            log('⚠️ No events found in IndexedDB');
+                        }
+                    };
+                    
+                    getAllRequest.onerror = function() {
+                        log('❌ Error reading events from IndexedDB');
+                    };
+                };
+                
+                request.onerror = function() {
+                    log('❌ Error opening IndexedDB');
+                };
+                
+            } catch (error) {
+                log(`❌ Error checking local storage: ${error.message}`);
+            }
+        }
+        
+        async function testStorageManager() {
+            log('🗄️ Testing Storage Manager...');
+            
+            try {
+                if (!window.StorageManager) {
+                    log('❌ StorageManager not available');
+                    return;
+                }
+                
+                log('✅ StorageManager is available');
+                
+                // Test getAllEvents method
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 StorageManager.getAllEvents() returned ${events.length} events`);
+                
+                if (events.length > 0) {
+                    log('📋 Sample events from StorageManager:');
+                    events.slice(0, 3).forEach((event, index) => {
+                        log(`  ${index + 1}. ${event.name} - ${event.date} (${event.status})`);
+                    });
+                } else {
+                    log('⚠️ StorageManager returned no events');
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing StorageManager: ${error.message}`);
+            }
+        }
+        
+        async function testEventsDisplay() {
+            log('📅 Testing events display functionality...');
+            
+            try {
+                if (!window.StorageManager) {
+                    log('❌ StorageManager not available');
+                    return;
+                }
+                
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 Retrieved ${events.length} events for display`);
+                
+                const eventsDisplay = document.getElementById('eventsDisplay');
+                
+                if (events.length === 0) {
+                    eventsDisplay.innerHTML = `
+                        <div class="status warning">
+                            <strong>No Events Found</strong><br>
+                            No events are available in local storage to display.
+                        </div>
+                    `;
+                    log('⚠️ No events to display');
+                    return;
+                }
+                
+                // Generate simple events display
+                let eventsHTML = `<h3>📅 Events (${events.length} total)</h3>`;
+                
+                // Separate events by status and date
+                const today = new Date().toISOString().split('T')[0];
+                const activeEvents = events.filter(e => e.status === 'Active');
+                const upcomingEvents = activeEvents.filter(e => e.date >= today);
+                const pastEvents = activeEvents.filter(e => e.date < today);
+                
+                log(`📊 Active: ${activeEvents.length}, Upcoming: ${upcomingEvents.length}, Past: ${pastEvents.length}`);
+                
+                if (upcomingEvents.length > 0) {
+                    eventsHTML += `<h4>🔜 Upcoming Events (${upcomingEvents.length})</h4>`;
+                    upcomingEvents.slice(0, 5).forEach(event => {
+                        eventsHTML += `
+                            <div class="event-card">
+                                <strong>${event.name}</strong><br>
+                                📅 ${event.date}<br>
+                                📍 ${event.location || 'No location'}<br>
+                                👥 ${event.committee || 'No committee'}<br>
+                                📊 Status: ${event.status}
+                            </div>
+                        `;
+                    });
+                }
+                
+                if (pastEvents.length > 0) {
+                    eventsHTML += `<h4>📋 Recent Past Events (${Math.min(pastEvents.length, 3)})</h4>`;
+                    pastEvents.slice(0, 3).forEach(event => {
+                        eventsHTML += `
+                            <div class="event-card">
+                                <strong>${event.name}</strong><br>
+                                📅 ${event.date}<br>
+                                📍 ${event.location || 'No location'}<br>
+                                👥 ${event.committee || 'No committee'}<br>
+                                📊 Status: ${event.status}
+                            </div>
+                        `;
+                    });
+                }
+                
+                eventsDisplay.innerHTML = eventsHTML;
+                log('✅ Events display test completed successfully');
+                
+            } catch (error) {
+                log(`❌ Error testing events display: ${error.message}`);
+                document.getElementById('eventsDisplay').innerHTML = `
+                    <div class="status error">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function fixEventsDisplay() {
+            log('🔧 Attempting to fix events display...');
+            
+            try {
+                // Check if the main app's updateEventsView method exists
+                if (typeof window.app !== 'undefined' && window.app.updateEventsView) {
+                    log('✅ Found app.updateEventsView method');
+                    
+                    // Try to call it
+                    await window.app.updateEventsView();
+                    log('✅ Called app.updateEventsView successfully');
+                    
+                } else {
+                    log('❌ app.updateEventsView method not found');
+                    
+                    // Create a simple fix function
+                    log('🔧 Creating alternative events display fix...');
+                    
+                    const eventsList = document.getElementById('eventsList');
+                    if (eventsList) {
+                        log('✅ Found eventsList element in main app');
+                        
+                        const events = await window.StorageManager.getAllEvents();
+                        log(`📊 Loading ${events.length} events into main app`);
+                        
+                        if (events.length === 0) {
+                            eventsList.innerHTML = `
+                                <div class="card">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">📅</div>
+                                        <h3>No Events Found</h3>
+                                        <p>Events may need to be synced from Google Sheets.</p>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Simple events list
+                            let eventsHTML = `
+                                <div class="card events-section">
+                                    <div class="section-header">
+                                        <h3>📅 All Events</h3>
+                                        <span class="event-count">${events.length} event(s)</span>
+                                    </div>
+                                    <div class="events-grid">
+                            `;
+                            
+                            events.forEach(event => {
+                                eventsHTML += `
+                                    <div class="event-card">
+                                        <div class="event-header">
+                                            <h4>${event.name}</h4>
+                                            <span class="event-date">${event.date}</span>
+                                        </div>
+                                        <div class="event-details">
+                                            <p><strong>Location:</strong> ${event.location || 'Not specified'}</p>
+                                            <p><strong>Committee:</strong> ${event.committee || 'Not specified'}</p>
+                                            <p><strong>Status:</strong> ${event.status}</p>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            
+                            eventsHTML += `
+                                    </div>
+                                </div>
+                            `;
+                            
+                            eventsList.innerHTML = eventsHTML;
+                        }
+                        
+                        log('✅ Events display fix applied to main app');
+                        
+                    } else {
+                        log('❌ eventsList element not found in main app');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Error fixing events display: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', async () => {
+            log('🚀 Debug page loaded');
+            
+            // Wait for StorageManager to be ready
+            if (window.StorageManager) {
+                log('✅ StorageManager is available');
+            } else {
+                log('⏳ Waiting for StorageManager...');
+                
+                // Create StorageManager if it doesn't exist
+                try {
+                    window.StorageManager = new StorageManager();
+                    await window.StorageManager.init();
+                    log('✅ StorageManager initialized');
+                } catch (error) {
+                    log(`❌ Error initializing StorageManager: ${error.message}`);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

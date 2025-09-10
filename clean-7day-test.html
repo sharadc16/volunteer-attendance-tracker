@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean 7-Day Scanning Window Test</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .status-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .event-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .event-card.today { border-left: 4px solid #17a2b8; }
+        .event-card.backfill { border-left: 4px solid #ffc107; }
+        .event-card.expired { border-left: 4px solid #dc3545; }
+        .event-card.future { border-left: 4px solid #6c757d; }
+        
+        .event-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .event-date {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .event-status {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .status-today { background: #d1ecf1; color: #0c5460; }
+        .status-backfill { background: #fff3cd; color: #856404; }
+        .status-expired { background: #f8d7da; color: #721c24; }
+        .status-future { background: #e2e3e5; color: #383d41; }
+        
+        .log-area {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin: 1rem 0;
+        }
+        
+        .scanner-demo {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .scanner-input-demo {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .scanner-input-demo[placeholder*="TODAY"] {
+            border-color: #17a2b8;
+            box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25);
+        }
+        
+        .scanner-input-demo[placeholder*="BACKFILL"] {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎯 Clean 7-Day Scanning Window Test</h1>
+        <p>This page tests the 7-day scanning window without any sync interference.</p>
+        
+        <div class="status-section">
+            <h2>📅 Current Event Status</h2>
+            <div id="currentEvent" class="current-event inactive">Loading...</div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="updateCurrentEvent()">🔄 Refresh Status</button>
+                <button class="btn btn-success" onclick="testGetCurrentScannableEvent()">🧪 Test Logic</button>
+            </div>
+        </div>
+        
+        <div class="status-section">
+            <h2>🎮 Scanner Demo</h2>
+            <p>This shows how the scanner input would appear based on the current event:</p>
+            <div class="scanner-demo">
+                <input type="text" id="scannerInputDemo" class="scanner-input-demo" placeholder="Scanner input will update based on event context" readonly>
+            </div>
+        </div>
+        
+        <div class="status-section">
+            <h2>🛠️ Event Management</h2>
+            <div class="controls">
+                <button class="btn btn-success" onclick="createTodayEvent()">📅 Create Today's Event</button>
+                <button class="btn btn-warning" onclick="createYesterdayEvent()">🔄 Create Yesterday's Event</button>
+                <button class="btn btn-warning" onclick="createBackfillEvents()">📊 Create Backfill Events</button>
+                <button class="btn btn-primary" onclick="createFutureEvent()">⏳ Create Future Event</button>
+                <button class="btn btn-danger" onclick="clearAllEvents()">🗑️ Clear All Events</button>
+            </div>
+        </div>
+        
+        <div class="status-section">
+            <h2>📋 Events Overview</h2>
+            <div id="eventsGrid" class="events-grid">Loading events...</div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="refreshEvents()">🔄 Refresh Events</button>
+            </div>
+        </div>
+        
+        <div class="status-section">
+            <h2>📝 Activity Log</h2>
+            <div id="activityLog" class="log-area">Initializing...</div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="clearLog()">🧹 Clear Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Only load essential scripts (no sync) -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        let logMessages = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logMessages.push(`[${timestamp}] ${message}`);
+            document.getElementById('activityLog').textContent = logMessages.slice(-30).join('\n');
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logMessages = [];
+            document.getElementById('activityLog').textContent = 'Log cleared.';
+        }
+        
+        async function waitForStorage() {
+            log('Waiting for storage manager...');
+            let attempts = 0;
+            while (!window.StorageManager || !window.StorageManager.db) {
+                if (attempts > 100) {
+                    throw new Error('Storage initialization timeout');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            log('✅ Storage manager ready');
+        }
+        
+        function formatDate(date) {
+            return date.getFullYear() + '-' + 
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(date.getDate()).padStart(2, '0');
+        }
+        
+        function getDaysFromToday(dateStr) {
+            const today = new Date();
+            const todayStr = formatDate(today);
+            const eventDate = new Date(dateStr);
+            const todayDate = new Date(todayStr);
+            
+            return Math.floor((todayDate - eventDate) / (1000 * 60 * 60 * 24));
+        }
+        
+        async function updateCurrentEvent() {
+            try {
+                log('🔄 Updating current event status...');
+                
+                const currentEvent = await window.StorageManager.getCurrentScannableEvent();
+                const displayEl = document.getElementById('currentEvent');
+                const scannerDemo = document.getElementById('scannerInputDemo');
+                
+                if (currentEvent) {
+                    const context = currentEvent.scanningContext;
+                    log(`✅ Found scannable event: ${currentEvent.eventName}`);
+                    
+                    if (context?.isToday) {
+                        displayEl.textContent = `📅 Today: ${currentEvent.eventName}`;
+                        displayEl.className = 'current-event active today';
+                        scannerDemo.placeholder = `📅 Scan for TODAY: ${currentEvent.eventName}`;
+                        log(`   Status: Today's event (priority)`);
+                    } else if (context?.isPastEvent) {
+                        const daysAgo = context.daysFromEventDate;
+                        displayEl.textContent = `🔄 Backfill: ${currentEvent.eventName} (${daysAgo}d ago)`;
+                        displayEl.className = 'current-event active backfill';
+                        scannerDemo.placeholder = `🔄 BACKFILL (${daysAgo}d ago): ${currentEvent.eventName}`;
+                        log(`   Status: Backfill event (${daysAgo} days ago)`);
+                    } else {
+                        displayEl.textContent = `📋 ${currentEvent.eventName}`;
+                        displayEl.className = 'current-event active';
+                        scannerDemo.placeholder = `Scan badge for: ${currentEvent.eventName}`;
+                        log(`   Status: Active event`);
+                    }
+                } else {
+                    log('❌ No scannable event found');
+                    displayEl.textContent = '❌ No scannable events';
+                    displayEl.className = 'current-event inactive';
+                    scannerDemo.placeholder = 'No scannable events available - scanner disabled';
+                }
+                
+                await refreshEvents();
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        async function testGetCurrentScannableEvent() {
+            try {
+                log('🧪 Testing getCurrentScannableEvent() method...');
+                
+                if (typeof window.StorageManager.getCurrentScannableEvent !== 'function') {
+                    log('❌ getCurrentScannableEvent method not found');
+                    return;
+                }
+                
+                const result = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (result) {
+                    log(`✅ Method returned event: ${result.eventName}`);
+                    log(`   Event ID: ${result.eventId}`);
+                    log(`   Date: ${result.date}`);
+                    log(`   Context: ${JSON.stringify(result.scanningContext, null, 2)}`);
+                } else {
+                    log('✅ Method returned null (no scannable events)');
+                }
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`);
+            }
+        }
+        
+        async function createTodayEvent() {
+            try {
+                const today = new Date();
+                const todayStr = formatDate(today);
+                
+                const event = {
+                    eventId: `TODAY_${Date.now()}`,
+                    eventName: 'Today\'s Service',
+                    date: todayStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(event);
+                log(`✅ Created today's event: ${event.eventName}`);
+                
+                setTimeout(updateCurrentEvent, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating today's event: ${error.message}`);
+            }
+        }
+        
+        async function createYesterdayEvent() {
+            try {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = formatDate(yesterday);
+                
+                const event = {
+                    eventId: `YESTERDAY_${Date.now()}`,
+                    eventName: 'Yesterday\'s Service',
+                    date: yesterdayStr,
+                    type: 'Recurring',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(event);
+                log(`✅ Created yesterday's event: ${event.eventName}`);
+                
+                setTimeout(updateCurrentEvent, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating yesterday's event: ${error.message}`);
+            }
+        }
+        
+        async function createBackfillEvents() {
+            try {
+                const today = new Date();
+                const events = [
+                    {
+                        eventId: `BACKFILL_3D_${Date.now()}`,
+                        eventName: 'Service 3 Days Ago',
+                        date: formatDate(new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000)),
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `BACKFILL_5D_${Date.now()}`,
+                        eventName: 'Service 5 Days Ago',
+                        date: formatDate(new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)),
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `EXPIRED_10D_${Date.now()}`,
+                        eventName: 'Service 10 Days Ago (Expired)',
+                        date: formatDate(new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000)),
+                        type: 'Special',
+                        status: 'Active'
+                    }
+                ];
+                
+                for (const event of events) {
+                    await window.StorageManager.addEvent(event);
+                    log(`✅ Created: ${event.eventName}`);
+                }
+                
+                log(`🎉 Created ${events.length} backfill test events`);
+                setTimeout(updateCurrentEvent, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating backfill events: ${error.message}`);
+            }
+        }
+        
+        async function createFutureEvent() {
+            try {
+                const future = new Date();
+                future.setDate(future.getDate() + 3);
+                const futureStr = formatDate(future);
+                
+                const event = {
+                    eventId: `FUTURE_${Date.now()}`,
+                    eventName: 'Future Service',
+                    date: futureStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(event);
+                log(`✅ Created future event: ${event.eventName}`);
+                
+                setTimeout(updateCurrentEvent, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating future event: ${error.message}`);
+            }
+        }
+        
+        async function clearAllEvents() {
+            try {
+                if (!confirm('Are you sure you want to clear all events?')) {
+                    return;
+                }
+                
+                const allEvents = await window.StorageManager.getAllEvents();
+                for (const event of allEvents) {
+                    await window.StorageManager.deleteEvent(event.eventId);
+                }
+                
+                log(`✅ Cleared ${allEvents.length} events`);
+                setTimeout(updateCurrentEvent, 500);
+                
+            } catch (error) {
+                log(`❌ Error clearing events: ${error.message}`);
+            }
+        }
+        
+        async function refreshEvents() {
+            try {
+                const allEvents = await window.StorageManager.getAllEvents();
+                const eventsGridEl = document.getElementById('eventsGrid');
+                
+                if (allEvents.length === 0) {
+                    eventsGridEl.innerHTML = '<p>No events found. Create some events to test the 7-day scanning window.</p>';
+                    return;
+                }
+                
+                const today = new Date();
+                const todayStr = formatDate(today);
+                
+                // Sort events by date (most recent first)
+                allEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                const eventsHTML = allEvents.map(event => {
+                    const daysFromToday = getDaysFromToday(event.date);
+                    let statusClass, statusText, cardClass;
+                    
+                    if (daysFromToday === 0) {
+                        statusClass = 'status-today';
+                        statusText = 'Today - Current Event';
+                        cardClass = 'today';
+                    } else if (daysFromToday > 0 && daysFromToday <= 7) {
+                        statusClass = 'status-backfill';
+                        statusText = `${daysFromToday}d ago - Backfill Available`;
+                        cardClass = 'backfill';
+                    } else if (daysFromToday > 7) {
+                        statusClass = 'status-expired';
+                        statusText = `${daysFromToday}d ago - Expired`;
+                        cardClass = 'expired';
+                    } else {
+                        statusClass = 'status-future';
+                        statusText = `${Math.abs(daysFromToday)}d future - Not Yet Scannable`;
+                        cardClass = 'future';
+                    }
+                    
+                    return `
+                        <div class="event-card ${cardClass}">
+                            <div class="event-name">${event.eventName}</div>
+                            <div class="event-date">${event.date} (${event.type})</div>
+                            <div class="event-status ${statusClass}">${statusText}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                eventsGridEl.innerHTML = eventsHTML;
+                log(`📋 Refreshed events grid (${allEvents.length} events)`);
+                
+            } catch (error) {
+                log(`❌ Error refreshing events: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await waitForStorage();
+                await updateCurrentEvent();
+                log('🎉 Clean 7-day test page ready!');
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

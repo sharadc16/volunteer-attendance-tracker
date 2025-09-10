@@ -7,7 +7,25 @@ class VolunteerAttendanceApp {
         this.currentView = 'dashboard';
         this.isInitialized = false;
         this.updateInterval = null;
-        
+
+        // Add caching to reduce database calls
+        this.cache = {
+            volunteers: null,
+            events: null,
+            attendance: null,
+            lastUpdated: {
+                volunteers: 0,
+                events: 0,
+                attendance: 0
+            }
+        };
+        this.cacheTimeout = 30000; // 30 seconds cache
+
+        // Listen for environment changes
+        window.addEventListener('environmentChanged', (e) => {
+            this.handleEnvironmentChange(e.detail);
+        });
+
         this.init();
     }
 
@@ -51,20 +69,20 @@ class VolunteerAttendanceApp {
         const maxAttempts = 100; // 10 seconds max
 
         console.log('Waiting for storage manager to initialize...');
-        
+
         while (!window.StorageManager || !window.StorageManager.db) {
             if (attempts >= maxAttempts) {
                 throw new Error('Storage manager failed to initialize within 10 seconds');
             }
-            
+
             if (attempts % 10 === 0) {
                 console.log(`Waiting for storage manager... attempt ${attempts + 1}`);
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
-        
+
         console.log('Storage manager is ready!');
     }
 
@@ -76,11 +94,11 @@ class VolunteerAttendanceApp {
         const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
         const navContainer = Utils.DOM.getElementById('navContainer');
         const navOverlay = Utils.DOM.getElementById('navOverlay');
-        
+
         if (hamburgerBtn && navContainer && navOverlay) {
             hamburgerBtn.addEventListener('click', () => this.toggleMobileNav());
             navOverlay.addEventListener('click', () => this.closeMobileNav());
-            
+
             // Close nav when pressing Escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && navContainer.classList.contains('active')) {
@@ -96,7 +114,7 @@ class VolunteerAttendanceApp {
                 const view = e.currentTarget.dataset.view;
                 console.log('Navigation clicked:', view); // Debug log
                 this.switchView(view);
-                
+
                 // Close mobile nav after selection
                 this.closeMobileNav();
             });
@@ -105,6 +123,18 @@ class VolunteerAttendanceApp {
         // Sync status updates
         window.addEventListener('syncStatusChanged', (e) => {
             this.handleSyncStatusChange(e.detail);
+        });
+
+        // Events updated from Google Sheets sync
+        window.addEventListener('eventsUpdated', (e) => {
+            console.log('📡 Received eventsUpdated event:', e.detail);
+            if (this.currentView === 'events') {
+                console.log('🔄 Refreshing events view due to sync update');
+                setTimeout(() => this.updateEventsView(), 100);
+            }
+            // Clear events cache to force refresh
+            this.cache.events = null;
+            this.cache.lastUpdated.events = 0;
         });
 
         // Settings button
@@ -160,7 +190,7 @@ class VolunteerAttendanceApp {
         }
 
         if (volunteerSearch) {
-            volunteerSearch.addEventListener('input', 
+            volunteerSearch.addEventListener('input',
                 Utils.Event.debounce((e) => this.filterVolunteers(e.target.value), 300)
             );
         }
@@ -184,14 +214,14 @@ class VolunteerAttendanceApp {
                 this.showFullCalendar();
                 return;
             }
-            
+
             // Modal close buttons (additional event delegation for reliability)
             if (e.target && (e.target.id === 'modalClose' || e.target.id === 'modalCancel')) {
                 console.log('Modal close button clicked:', e.target.id);
                 this.hideModal();
                 return;
             }
-            
+
             // Modal confirm button when used as "Close" button
             if (e.target && e.target.id === 'modalConfirm') {
                 const confirmText = e.target.textContent;
@@ -201,21 +231,21 @@ class VolunteerAttendanceApp {
                     return;
                 }
             }
-            
+
             // Modal overlay click (close modal when clicking outside)
             if (e.target && e.target.id === 'modalOverlay') {
                 console.log('Modal overlay clicked');
                 this.hideModal();
                 return;
             }
-            
+
             // Event card action buttons (using data attributes for better targeting)
             if (e.target && e.target.dataset.action) {
                 const action = e.target.dataset.action;
                 const eventId = e.target.dataset.eventId;
-                
+
                 console.log('Event action clicked:', action, 'for event:', eventId);
-                
+
                 switch (action) {
                     case 'edit-event':
                         this.editEvent(eventId);
@@ -245,13 +275,68 @@ class VolunteerAttendanceApp {
     }
 
     /**
-     * Initialize all views
+     * Get cached data or fetch from database
+     */
+    async getCachedData(type) {
+        const now = Date.now();
+        const lastUpdated = this.cache.lastUpdated[type];
+
+        // Return cached data if it's still fresh
+        if (this.cache[type] && (now - lastUpdated) < this.cacheTimeout) {
+            console.log(`Using cached ${type} data`);
+            return this.cache[type];
+        }
+
+        // Fetch fresh data
+        console.log(`Fetching fresh ${type} data`);
+        let data;
+        switch (type) {
+            case 'volunteers':
+                data = await window.StorageManager.getAllVolunteers();
+                break;
+            case 'events':
+                data = await window.StorageManager.getAllEvents();
+                break;
+            case 'attendance':
+                data = await window.StorageManager.getAllAttendance();
+                break;
+            default:
+                throw new Error(`Unknown data type: ${type}`);
+        }
+
+        // Cache the data
+        this.cache[type] = data;
+        this.cache.lastUpdated[type] = now;
+
+        return data;
+    }
+
+    /**
+     * Clear cache for a specific type or all types
+     */
+    clearCache(type = null) {
+        if (type) {
+            this.cache[type] = null;
+            this.cache.lastUpdated[type] = 0;
+            console.log(`Cleared ${type} cache`);
+        } else {
+            this.cache.volunteers = null;
+            this.cache.events = null;
+            this.cache.attendance = null;
+            this.cache.lastUpdated = { volunteers: 0, events: 0, attendance: 0 };
+            console.log('Cleared all cache');
+        }
+    }
+
+    /**
+     * Initialize all views (optimized to reduce database load)
      */
     async initializeViews() {
+        // Only initialize the dashboard view initially
+        // Other views will be loaded when user navigates to them
         await this.updateDashboard();
-        await this.updateVolunteersView();
-        await this.updateEventsView();
-        await this.updateReports('week');
+
+        console.log('Dashboard initialized. Other views will load on demand.');
     }
 
     /**
@@ -341,7 +426,7 @@ class VolunteerAttendanceApp {
 
         try {
             const attendance = attendanceData || await window.StorageManager.getTodayAttendance();
-            
+
             // Sort by most recent first
             attendance.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
 
@@ -421,26 +506,88 @@ class VolunteerAttendanceApp {
     }
 
     /**
-     * Update current event display
+     * Update current event display with enhanced 7-day scanning window feedback
+     * Shows clear indication of which event is active and scanning context
      */
     async updateCurrentEvent() {
         const currentEventEl = Utils.DOM.getElementById('currentEvent');
         if (!currentEventEl) return;
 
         try {
-            const today = new Date();
-            const todayEventId = `E${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-            const currentEvent = await window.StorageManager.getEvent(todayEventId);
+            // Get the current scannable event with enhanced metadata
+            const currentScannableEvent = await window.StorageManager.getCurrentScannableEvent();
 
-            if (currentEvent) {
-                currentEventEl.textContent = currentEvent.eventName;
+            if (currentScannableEvent) {
+                const context = currentScannableEvent.scanningContext;
+
+                if (context?.isToday) {
+                    // Today's event (Requirement 8.1, 8.4)
+                    currentEventEl.textContent = `📅 Today: ${currentScannableEvent.eventName}`;
+                    currentEventEl.className = 'current-event active today';
+                    currentEventEl.title = `Recording attendance for today's event: ${currentScannableEvent.eventName}`;
+                    console.log('Current event (today):', currentScannableEvent.eventName);
+
+                } else if (context?.isPastEvent) {
+                    // Past event for backfilling (Requirement 8.2, 8.4, 8.6)
+                    const daysAgo = context.daysFromEventDate;
+                    currentEventEl.textContent = `🔄 Backfill: ${currentScannableEvent.eventName} (${daysAgo}d ago)`;
+                    currentEventEl.className = 'current-event active backfill';
+                    currentEventEl.title = `Manual backfilling for ${currentScannableEvent.eventName} from ${currentScannableEvent.date} (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)`;
+                    console.log('Current event (backfill):', currentScannableEvent.eventName, `${daysAgo} days ago`);
+
+                } else {
+                    // Fallback for events without context
+                    currentEventEl.textContent = `📋 ${currentScannableEvent.eventName}`;
+                    currentEventEl.className = 'current-event active';
+                    currentEventEl.title = `Recording attendance for ${currentScannableEvent.eventName}`;
+                    console.log('Current event (active):', currentScannableEvent.eventName);
+                }
+
             } else {
-                currentEventEl.textContent = 'No active event';
+                // No scannable event - get detailed status for better feedback (Requirement 8.3)
+                if (window.scanner && typeof window.scanner.getScanningStatus === 'function') {
+                    const scanningStatus = await window.scanner.getScanningStatus();
+
+                    switch (scanningStatus.type) {
+                        case 'no-events':
+                            currentEventEl.textContent = '❌ No events created';
+                            currentEventEl.className = 'current-event inactive no-events';
+                            currentEventEl.title = 'No events have been created. Contact an administrator.';
+                            break;
+
+                        case 'future-event':
+                            const nextEvent = scanningStatus.nextEvent;
+                            const daysUntil = Math.ceil((new Date(nextEvent.date) - new Date()) / (1000 * 60 * 60 * 24));
+                            currentEventEl.textContent = `⏳ Next: ${nextEvent.eventName} (${daysUntil}d)`;
+                            currentEventEl.className = 'current-event inactive future';
+                            currentEventEl.title = `Next event "${nextEvent.eventName}" is in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
+                            break;
+
+                        case 'expired-event':
+                            const lastEvent = scanningStatus.lastEvent;
+                            const daysAgo = Math.floor((new Date() - new Date(lastEvent.date)) / (1000 * 60 * 60 * 24));
+                            currentEventEl.textContent = `⏰ Expired: ${lastEvent.eventName} (${daysAgo}d ago)`;
+                            currentEventEl.className = 'current-event inactive expired';
+                            currentEventEl.title = `Last event "${lastEvent.eventName}" was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago (outside 7-day window)`;
+                            break;
+
+                        default:
+                            currentEventEl.textContent = '❌ No scannable events';
+                            currentEventEl.className = 'current-event inactive';
+                            currentEventEl.title = 'No events are currently available for scanning';
+                    }
+                } else {
+                    currentEventEl.textContent = '❌ No active event';
+                    currentEventEl.className = 'current-event inactive';
+                    currentEventEl.title = 'No events are currently available for scanning';
+                }
             }
 
         } catch (error) {
             console.error('Error updating current event:', error);
-            currentEventEl.textContent = 'Error loading event';
+            currentEventEl.textContent = '⚠️ Error loading event';
+            currentEventEl.className = 'current-event error';
+            currentEventEl.title = 'Error loading event information. Please refresh the page.';
         }
     }
 
@@ -490,8 +637,10 @@ class VolunteerAttendanceApp {
 
             // Separate events into categories
             const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            
+            const todayStr = today.getFullYear() + '-' +
+                String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                String(today.getDate()).padStart(2, '0');
+
             const upcomingEvents = events.filter(event => event.date >= todayStr && event.status === 'Active');
             const pastEvents = events.filter(event => event.date < todayStr);
             const inactiveEvents = events.filter(event => event.status !== 'Active');
@@ -583,13 +732,13 @@ class VolunteerAttendanceApp {
         const today = new Date();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
-        
+
         // Get events for current month
         const monthEvents = events.filter(event => {
             const eventDate = new Date(event.date);
-            return eventDate.getMonth() === currentMonth && 
-                   eventDate.getFullYear() === currentYear &&
-                   event.status === 'Active';
+            return eventDate.getMonth() === currentMonth &&
+                eventDate.getFullYear() === currentYear &&
+                event.status === 'Active';
         });
 
         if (monthEvents.length === 0) {
@@ -608,7 +757,7 @@ class VolunteerAttendanceApp {
         // Generate calendar grid (simplified)
         const monthName = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         const eventsByDate = {};
-        
+
         monthEvents.forEach(event => {
             const date = new Date(event.date).getDate();
             if (!eventsByDate[date]) {
@@ -653,12 +802,21 @@ class VolunteerAttendanceApp {
      */
     generateEventCard(event, category) {
         const eventDate = Utils.Date.format(new Date(event.date), 'long');
-        const isToday = event.date === new Date().toISOString().split('T')[0];
-        const isPast = new Date(event.date) < new Date();
-        
+
+        // Fix timezone issues for today comparison
+        const today = new Date();
+        const todayStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+        const isToday = event.date === todayStr;
+
+        const eventDateObj = new Date(event.date + 'T00:00:00');
+        const todayDateObj = new Date(todayStr + 'T00:00:00');
+        const isPast = eventDateObj < todayDateObj;
+
         let statusClass = event.status.toLowerCase();
         let statusIcon = '';
-        
+
         switch (event.status) {
             case 'Active':
                 statusIcon = isToday ? '🟢' : (isPast ? '✅' : '📅');
@@ -744,14 +902,14 @@ class VolunteerAttendanceApp {
      */
     showFullCalendar() {
         this.showModal(
-            'Full Calendar', 
+            'Full Calendar',
             `<div style="text-align: center; padding: 2rem;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
                 <h3>Full Calendar View</h3>
                 <p>This feature will be available in a future update.</p>
                 <p>For now, you can view events by month in the main events list.</p>
-            </div>`, 
-            'Close', 
+            </div>`,
+            'Close',
             ''
         );
     }
@@ -797,7 +955,7 @@ class VolunteerAttendanceApp {
                         if (typeof window.createSundayEvents === 'function') {
                             console.log('🚀 Starting Sunday events creation...');
                             const result = await window.createSundayEvents();
-                            
+
                             // Show success modal with results
                             const successContent = `
                                 <div style="text-align: center;">
@@ -815,12 +973,12 @@ class VolunteerAttendanceApp {
                                     <p>All Regular Class events have been added to your calendar!</p>
                                 </div>
                             `;
-                            
+
                             this.showModal('Success', successContent, 'Close', '');
-                            
+
                             // Refresh the events view
                             await this.updateEventsView();
-                            
+
                         } else {
                             throw new Error('Sunday events creation function not available');
                         }
@@ -846,11 +1004,11 @@ class VolunteerAttendanceApp {
     async showAllPastEvents() {
         try {
             this.showLoading(true);
-            
+
             const events = await window.StorageManager.getAllEvents();
             const today = new Date().toISOString().split('T')[0];
             const pastEvents = events.filter(event => event.date < today);
-            
+
             // Sort by date (most recent first)
             pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -861,8 +1019,8 @@ class VolunteerAttendanceApp {
                     </div>
                     <div class="past-events-list">
                         ${pastEvents.map(event => {
-                            const eventDate = Utils.Date.format(new Date(event.date), 'long');
-                            return `
+                const eventDate = Utils.Date.format(new Date(event.date), 'long');
+                return `
                                 <div class="past-event-item">
                                     <div class="event-info">
                                         <h4>${event.eventName}</h4>
@@ -877,7 +1035,7 @@ class VolunteerAttendanceApp {
                                     </div>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 </div>
             `;
@@ -947,12 +1105,12 @@ class VolunteerAttendanceApp {
 
             // Generate comprehensive report
             const reportHTML = this.generateComprehensiveReport(
-                volunteerScores, 
-                committeeStats, 
-                attendanceTrends, 
+                volunteerScores,
+                committeeStats,
+                attendanceTrends,
                 period
             );
-            
+
             reportsContent.innerHTML = reportHTML;
 
             // Setup interactive elements
@@ -978,7 +1136,7 @@ class VolunteerAttendanceApp {
         const periodTitle = period.charAt(0).toUpperCase() + period.slice(1);
         const totalVolunteers = volunteerScores.length;
         const activeVolunteers = volunteerScores.filter(v => v.attendedEvents > 0).length;
-        const avgAttendanceRate = totalVolunteers > 0 
+        const avgAttendanceRate = totalVolunteers > 0
             ? Math.round(volunteerScores.reduce((sum, v) => sum + v.attendanceRate, 0) / totalVolunteers * 100) / 100
             : 0;
 
@@ -1216,10 +1374,10 @@ class VolunteerAttendanceApp {
                 <div class="trends-chart">
                     <div class="chart-container">
                         ${trends.map((trend, index) => {
-                            const maxAttendance = Math.max(...trends.map(t => t.totalAttendances));
-                            const barHeight = maxAttendance > 0 ? (trend.totalAttendances / maxAttendance) * 100 : 0;
-                            
-                            return `
+            const maxAttendance = Math.max(...trends.map(t => t.totalAttendances));
+            const barHeight = maxAttendance > 0 ? (trend.totalAttendances / maxAttendance) * 100 : 0;
+
+            return `
                                 <div class="trend-bar-container">
                                     <div class="trend-bar" style="height: ${barHeight}%">
                                         <div class="trend-value">${trend.totalAttendances}</div>
@@ -1231,7 +1389,7 @@ class VolunteerAttendanceApp {
                                     </div>
                                 </div>
                             `;
-                        }).join('')}
+        }).join('')}
                     </div>
                 </div>
             </div>
@@ -1260,10 +1418,10 @@ class VolunteerAttendanceApp {
                                 <span class="tier-count">${volunteers.length} volunteers</span>
                             </div>
                             <div class="tier-criteria">
-                                ${tierName === 'Platinum' ? '90%+ attendance' : 
-                                  tierName === 'Gold' ? '80-89% attendance' :
-                                  tierName === 'Silver' ? '70-79% attendance' : 
-                                  'Below 70% attendance'}
+                                ${tierName === 'Platinum' ? '90%+ attendance' :
+                tierName === 'Gold' ? '80-89% attendance' :
+                    tierName === 'Silver' ? '70-79% attendance' :
+                        'Below 70% attendance'}
                             </div>
                             <div class="tier-volunteers">
                                 ${volunteers.slice(0, 3).map(volunteer => `
@@ -1303,11 +1461,11 @@ class VolunteerAttendanceApp {
             toggleDetailsBtn.addEventListener('click', () => {
                 const details = document.querySelectorAll('.committee-details');
                 const isVisible = details[0]?.style.display !== 'none';
-                
+
                 details.forEach(detail => {
                     detail.style.display = isVisible ? 'none' : 'block';
                 });
-                
+
                 toggleDetailsBtn.textContent = isVisible ? 'Show Details' : 'Hide Details';
             });
         }
@@ -1327,7 +1485,7 @@ class VolunteerAttendanceApp {
     async sortVolunteerScores(sortBy) {
         try {
             const reportPeriod = Utils.DOM.getElementById('reportPeriod')?.value || 'week';
-            
+
             // Calculate date range
             let dateRange = null;
             if (reportPeriod !== 'all') {
@@ -1354,7 +1512,7 @@ class VolunteerAttendanceApp {
 
             // Get sorted scores
             const sortedScores = await window.StorageManager.getVolunteerAttendanceScores(dateRange, sortBy);
-            
+
             // Update table
             const tableBody = document.querySelector('#volunteerScoresTable tbody');
             if (tableBody) {
@@ -1407,7 +1565,7 @@ class VolunteerAttendanceApp {
     async exportDetailedReport() {
         try {
             const reportPeriod = Utils.DOM.getElementById('reportPeriod')?.value || 'week';
-            
+
             // Calculate date range
             let dateRange = null;
             if (reportPeriod !== 'all') {
@@ -1440,7 +1598,7 @@ class VolunteerAttendanceApp {
 
             // Create CSV content
             const csvContent = this.generateDetailedReportCSV(volunteerScores, committeeStats, reportPeriod);
-            
+
             // Download CSV
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -1463,8 +1621,8 @@ class VolunteerAttendanceApp {
      */
     generateDetailedReportCSV(volunteerScores, committeeStats, period) {
         const headers = [
-            'Rank', 'Volunteer Name', 'Committee', 'Attended Events', 'Total Events', 
-            'Attendance Rate (%)', 'Engagement Score', 'Consistency Score', 'Tier', 
+            'Rank', 'Volunteer Name', 'Committee', 'Attended Events', 'Total Events',
+            'Attendance Rate (%)', 'Engagement Score', 'Consistency Score', 'Tier',
             'Last Attendance', 'Year to Date Attendance'
         ];
 
@@ -1510,12 +1668,14 @@ class VolunteerAttendanceApp {
      * Start periodic updates
      */
     startPeriodicUpdates() {
-        // Update dashboard every 30 seconds
+        // Update dashboard every 2 minutes (reduced from 30 seconds to minimize database load)
         this.updateInterval = setInterval(() => {
             if (this.currentView === 'dashboard') {
+                // Clear cache before update to get fresh data
+                this.clearCache('attendance');
                 this.updateDashboard();
             }
-        }, 30000);
+        }, 120000); // 2 minutes instead of 30 seconds
     }
 
     /**
@@ -1563,7 +1723,7 @@ class VolunteerAttendanceApp {
         if (modalTitle) modalTitle.textContent = title;
         if (modalBody) modalBody.innerHTML = content;
         if (modalConfirm) modalConfirm.textContent = confirmText;
-        
+
         // Handle cancel button visibility
         if (modalCancel) {
             if (cancelText && cancelText.trim() !== '') {
@@ -1579,6 +1739,9 @@ class VolunteerAttendanceApp {
         }
     }
 
+    /**
+     * Hide modal
+     */
     hideModal() {
         const modalOverlay = Utils.DOM.getElementById('modalOverlay');
         if (modalOverlay) {
@@ -1587,157 +1750,389 @@ class VolunteerAttendanceApp {
     }
 
     /**
-     * Handle sync status changes
+     * Handle environment change
      */
-    handleSyncStatusChange(detail) {
-        const { status, isOnline, isSyncing, queueLength, stats } = detail;
-        
-        // Update sync status indicator
-        const statusIndicator = document.querySelector('.sync-status-indicator');
-        const statusText = document.querySelector('.sync-status-text');
-        const syncInfo = document.querySelector('.sync-info');
-
-        if (statusIndicator) {
-            statusIndicator.className = `sync-status-indicator ${status}`;
-        }
-
-        if (statusText) {
-            const statusMessages = {
-                online: 'Online',
-                offline: 'Offline',
-                syncing: 'Syncing...',
-                error: 'Sync Error'
-            };
-            statusText.textContent = statusMessages[status] || 'Unknown';
-        }
-
-        if (syncInfo) {
-            const pendingItems = queueLength || 0;
-            const lastSync = stats?.lastSyncTime ? 
-                new Date(stats.lastSyncTime).toLocaleTimeString() : 'Never';
-            const successRate = stats?.successRate || 100;
-            
-            syncInfo.innerHTML = `
-                <div class="sync-detail">Queue: ${pendingItems} items</div>
-                <div class="sync-detail">Last sync: ${lastSync}</div>
-                <div class="sync-detail">Success rate: ${successRate}%</div>
-            `;
-        }
-    }
-
-    /**
-     * Handle Google Sheets sync
-     */
-    async handleGoogleSync() {
-        if (!window.SyncManager) {
-            this.showError('Sync manager not available');
-            return;
-        }
-
-        if (!window.GoogleSheetsService) {
-            this.showError('Google Sheets service not available');
-            return;
-        }
+    async handleEnvironmentChange(eventDetail) {
+        console.log('🔄 App handling environment change:', eventDetail);
 
         try {
-            const status = window.GoogleSheetsService.getStatus();
-            console.log('Google Sheets status:', status);
-            
-            if (!status.hasCredentials) {
-                // Show credentials setup modal using existing modal system
-                this.showGoogleSheetsSetupModal();
-                return;
+            // Show loading overlay
+            this.showLoading(true, 'Switching environments...');
+
+            // Clear cache
+            this.cache = {
+                volunteers: null,
+                events: null,
+                attendance: null,
+                lastUpdated: {
+                    volunteers: 0,
+                    events: 0,
+                    attendance: 0
+                }
+            };
+
+            // Stop periodic updates
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
             }
-            
-            // Show loading
-            this.showLoading(true);
-            
-            if (!status.isAuthenticated) {
-                // Authenticate with Google
-                console.log('Authenticating with Google...');
-                await window.GoogleSheetsService.authenticate();
-            }
-            
-            // Force immediate sync of all pending data
-            console.log('Starting immediate sync...');
-            await window.SyncManager.forcSync();
-            
-            // Also perform full sync to ensure everything is up to date
-            const result = await window.GoogleSheetsService.syncAllData();
-            
-            // Get sync statistics
-            const syncStats = window.SyncManager.getStats();
-            
-            // Show success message
-            this.showModal(
-                'Sync Complete', 
-                `
-                <div style="text-align: center;">
-                    <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
-                    <p>Successfully synced data to Google Sheets:</p>
-                    <ul style="text-align: left; display: inline-block;">
-                        <li>${result.volunteers} volunteers</li>
-                        <li>${result.attendance} attendance records</li>
-                        <li>${result.events} events</li>
-                    </ul>
-                    <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
-                        <p><strong>Sync Statistics:</strong></p>
-                        <ul style="text-align: left; display: inline-block; font-size: 0.9rem;">
-                            <li>Queue: ${syncStats.pendingItems} pending items</li>
-                            <li>Success rate: ${syncStats.successRate}%</li>
-                            <li>Total syncs: ${syncStats.totalSyncs}</li>
-                        </ul>
-                    </div>
-                    <p style="margin-top: 1rem;">
-                        <a href="https://docs.google.com/spreadsheets/d/${window.GoogleSheetsService.spreadsheetId}" 
-                           target="_blank" class="btn btn-primary">
-                            View Google Sheet
-                        </a>
-                    </p>
-                </div>
-                `, 
-                'Close', 
-                ''
-            );
-            
+
+            // Wait for storage manager to reinitialize
+            await this.waitForStorageManager();
+
+            // Reinitialize views with new environment data
+            await this.initializeViews();
+
+            // Restart periodic updates
+            this.startPeriodicUpdates();
+
+            // Update UI to reflect new environment
+            this.updateEnvironmentUI();
+
+            // Hide loading overlay
+            this.showLoading(false);
+
+            console.log(`✅ App successfully switched to ${eventDetail.newEnvironment} environment`);
+
         } catch (error) {
-            console.error('Google Sheets sync failed:', error);
-            
-            let errorMessage = 'Sync failed: ' + error.message;
-            
-            if (error.message.includes('Authentication')) {
-                errorMessage += '<br><br>Please check your Google Sheets credentials and try again.';
-            } else if (error.message.includes('not found')) {
-                errorMessage += '<br><br>Please verify your Google Sheet ID is correct.';
-            }
-            
-            this.showModal('Sync Failed', `<div style="color: #e74c3c;">${errorMessage}</div>`, 'Close', '');
-            
-        } finally {
+            console.error('Failed to handle environment change:', error);
+            this.showError('Failed to switch environments. Please refresh the page.');
             this.showLoading(false);
         }
     }
 
     /**
-     * Handle force sync
+     * Update UI elements for current environment
      */
-    async handleForceSync() {
-        if (!window.SyncManager) {
-            this.showError('Sync manager not available');
+    updateEnvironmentUI() {
+        // Update any environment-specific UI elements
+        const config = window.EnvironmentManager ? window.EnvironmentManager.getCurrentConfig() : null;
+
+        if (config) {
+            // Update header styling for non-production environments
+            const header = document.querySelector('.app-header');
+            if (header && config.name !== 'Production') {
+                header.style.borderBottom = `3px solid ${config.color}`;
+            } else if (header) {
+                header.style.borderBottom = '';
+            }
+
+            // Show/hide debug features
+            const debugElements = document.querySelectorAll('.debug-only');
+            debugElements.forEach(el => {
+                el.style.display = config.features.debugMode ? 'block' : 'none';
+            });
+        }
+    }
+}
+
+// Global troubleshooting functions for settings page
+window.forceEnableScanner = function () {
+    try {
+        const scannerInput = document.getElementById('scannerInput');
+        if (scannerInput) {
+            scannerInput.disabled = false;
+            scannerInput.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+            scannerInput.focus();
+            console.log('✅ Scanner force enabled from settings');
+            alert('✅ Scanner has been force enabled!');
+        } else {
+            console.error('❌ Scanner input not found');
+            alert('❌ Scanner input not found. Try refreshing the page.');
+        }
+
+        // Also try via scanner manager
+        if (window.scanner && typeof window.scanner.forceEnable === 'function') {
+            window.scanner.forceEnable();
+        }
+    } catch (error) {
+        console.error('Error force enabling scanner:', error);
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+window.disableGoogleSync = function () {
+    try {
+        if (window.Config) {
+            window.Config.features.googleSheetsSync = false;
+        }
+        localStorage.removeItem('googleSheetsToken');
+        localStorage.removeItem('googleSheetsCredentials');
+        localStorage.removeItem('googleSheetsCredentials_development');
+        localStorage.removeItem('googleSheetsCredentials_production');
+
+        console.log('✅ Google Sheets sync disabled');
+        alert('✅ Google Sheets sync has been disabled. Refresh the page to apply changes.');
+    } catch (error) {
+        console.error('Error disabling Google sync:', error);
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+window.clearAppCache = function () {
+    try {
+        // Clear app cache
+        if (window.app && typeof window.app.clearCache === 'function') {
+            window.app.clearCache();
+        }
+
+        // Clear localStorage items (keep credentials)
+        const keysToKeep = ['googleSheetsCredentials', 'googleSheetsCredentials_development', 'googleSheetsCredentials_production'];
+        const allKeys = Object.keys(localStorage);
+
+        allKeys.forEach(key => {
+            if (!keysToKeep.includes(key)) {
+                localStorage.removeItem(key);
+            }
+        });
+
+        console.log('✅ App cache cleared');
+        alert('✅ App cache cleared. The page will refresh.');
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+window.createTestEvent = function () {
+    try {
+        if (!window.StorageManager) {
+            alert('❌ Storage manager not available');
             return;
         }
 
-        try {
-            this.showLoading(true);
-            console.log('Force sync requested');
-            
-            await window.SyncManager.forcSync();
-            
-            const stats = window.SyncManager.getStats();
-            
-            this.showModal(
-                'Force Sync Complete',
-                `
+        const today = new Date();
+        const todayStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+        const eventId = `TEST${Date.now()}`;
+
+        const event = {
+            eventId: eventId,
+            eventName: 'Test Event for Scanner',
+            date: todayStr,
+            type: 'Special',
+            status: 'Active',
+            description: 'Test event created from troubleshooting'
+        };
+
+        window.StorageManager.addEvent(event).then(() => {
+            console.log('✅ Test event created');
+            alert('✅ Test event created for today! Scanner should now work.');
+
+            // Refresh events view if we're on it
+            if (window.app && window.app.currentView === 'events') {
+                window.app.updateEventsView();
+            }
+        }).catch(error => {
+            console.error('Error creating test event:', error);
+            alert('❌ Error creating test event: ' + error.message);
+        });
+
+    } catch (error) {
+        console.error('Error creating test event:', error);
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+window.runSystemDiagnostics = function () {
+    try {
+        let diagnostics = '🏥 SYSTEM DIAGNOSTICS REPORT\n\n';
+
+        // Check storage
+        diagnostics += '💾 STORAGE:\n';
+        diagnostics += `- StorageManager: ${window.StorageManager ? '✅ Available' : '❌ Not available'}\n`;
+        diagnostics += `- Database: ${window.StorageManager?.db ? '✅ Connected' : '❌ Not connected'}\n`;
+
+        // Check scanner
+        diagnostics += '\n📱 SCANNER:\n';
+        const scannerInput = document.getElementById('scannerInput');
+        diagnostics += `- Scanner Input: ${scannerInput ? '✅ Found' : '❌ Not found'}\n`;
+        diagnostics += `- Scanner Disabled: ${scannerInput?.disabled ? '❌ Yes' : '✅ No'}\n`;
+        diagnostics += `- Scanner Manager: ${window.scanner ? '✅ Available' : '❌ Not available'}\n`;
+
+        // Check config
+        diagnostics += '\n⚙️ CONFIGURATION:\n';
+        diagnostics += `- Config: ${window.Config ? '✅ Available' : '❌ Not available'}\n`;
+        diagnostics += `- Environment: ${window.Config?.environment || 'Unknown'}\n`;
+        diagnostics += `- Google Sheets Sync: ${window.Config?.features?.googleSheetsSync ? '✅ Enabled' : '❌ Disabled'}\n`;
+
+        // Check sync
+        diagnostics += '\n🔄 SYNC SYSTEM:\n';
+        diagnostics += `- Sync Manager: ${window.SyncManager ? '✅ Available' : '❌ Not available'}\n`;
+        diagnostics += `- Google Sheets Service: ${window.GoogleSheetsService ? '✅ Available' : '❌ Not available'}\n`;
+
+        console.log(diagnostics);
+        alert(diagnostics);
+
+    } catch (error) {
+        console.error('Error running diagnostics:', error);
+        alert('❌ Error running diagnostics: ' + error.message);
+    }
+};
+
+window.showSystemInfo = function () {
+    try {
+        let info = '📋 SYSTEM INFORMATION\n\n';
+
+        info += `🌐 Browser: ${navigator.userAgent}\n`;
+        info += `📱 Platform: ${navigator.platform}\n`;
+        info += `🔗 URL: ${window.location.href}\n`;
+        info += `⏰ Current Time: ${new Date().toLocaleString()}\n`;
+        info += `💾 Local Storage: ${Object.keys(localStorage).length} items\n`;
+
+        console.log(info);
+        alert(info);
+
+    } catch (error) {
+        console.error('Error showing system info:', error);
+        alert('❌ Error: ' + error.message);
+    }
+};
+
+// Add handleSyncStatusChange to the VolunteerAttendanceApp prototype
+VolunteerAttendanceApp.prototype.handleSyncStatusChange = function (detail) {
+    const { status, isOnline, isSyncing, queueLength, stats } = detail;
+
+    // Update sync status indicator
+    const statusIndicator = document.querySelector('.sync-status-indicator');
+    const statusText = document.querySelector('.sync-status-text');
+    const syncInfo = document.querySelector('.sync-info');
+
+    if (statusIndicator) {
+        statusIndicator.className = `sync-status-indicator ${status}`;
+    }
+
+    if (statusText) {
+        const statusMessages = {
+            online: 'Online',
+            offline: 'Offline',
+            syncing: 'Syncing...',
+            error: 'Sync Error'
+        };
+        statusText.textContent = statusMessages[status] || 'Unknown';
+    }
+
+    if (syncInfo) {
+        const pendingItems = queueLength || 0;
+        const lastSync = stats?.lastSyncTime ?
+            new Date(stats.lastSyncTime).toLocaleTimeString() : 'Never';
+        const successRate = stats?.successRate || 100;
+
+        syncInfo.innerHTML = `
+                <div class="sync-detail">Queue: ${pendingItems} items</div>
+                <div class="sync-detail">Last sync: ${lastSync}</div>
+                <div class="sync-detail">Success rate: ${successRate}%</div>
+            `;
+    }
+};
+
+// Add handleGoogleSync to the VolunteerAttendanceApp prototype
+VolunteerAttendanceApp.prototype.handleGoogleSync = async function () {
+    if (!window.SyncManager) {
+        this.showError('Sync manager not available');
+        return;
+    }
+
+    if (!window.GoogleSheetsService) {
+        this.showError('Google Sheets service not available');
+        return;
+    }
+
+    try {
+        const status = window.GoogleSheetsService.getStatus();
+        console.log('Google Sheets status:', status);
+
+        if (!status.hasCredentials) {
+            // Show credentials setup modal using existing modal system
+            this.showGoogleSheetsSetupModal();
+            return;
+        }
+
+        // Show loading
+        this.showLoading(true);
+
+        if (!status.isAuthenticated) {
+            // Authenticate with Google
+            console.log('Authenticating with Google...');
+            await window.GoogleSheetsService.authenticate();
+        }
+
+        // Load events from Google Sheets using StorageManager method
+        console.log('📊 Loading events from Google Sheets...');
+        await window.StorageManager.syncEventsFromGoogleSheets();
+
+        // Check how many events we now have
+        const events = await window.StorageManager.getAllEvents();
+        console.log(`📊 Total events after sync: ${events.length}`);
+
+        // Show success message
+        this.showModal(
+            'Google Sheets Sync Complete',
+            `
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
+                    <p><strong>Successfully loaded events from Google Sheets!</strong></p>
+                    <div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                        <div style="font-size: 1.5rem; color: #28a745; font-weight: bold;">${events.length}</div>
+                        <div style="color: #666;">Events loaded</div>
+                    </div>
+                    <p style="font-size: 0.9rem; color: #666;">
+                        Events are now available in the Events tab.
+                    </p>
+                </div>
+                `,
+            'Close',
+            ''
+        );
+
+        // Refresh events view
+        if (this.currentView === 'events') {
+            await this.updateEventsView();
+        }
+
+        // Clear cache to ensure fresh data
+        this.clearCache();
+
+    } catch (error) {
+        console.error('📊 Google Sheets sync failed:', error);
+
+        let errorMessage = error.message;
+        if (error.message.includes('credentials')) {
+            errorMessage = 'Google Sheets credentials not configured. Please set up your API credentials.';
+        } else if (error.message.includes('authentication')) {
+            errorMessage = 'Google Sheets authentication failed. Please check your credentials.';
+        } else if (error.message.includes('spreadsheet')) {
+            errorMessage = 'Could not access the Google Sheet. Please check the spreadsheet ID and permissions.';
+        }
+
+        this.showError(`Sync failed: ${errorMessage}`);
+
+    } finally {
+        this.showLoading(false);
+    }
+};
+
+// Add handleForceSync to the VolunteerAttendanceApp prototype
+VolunteerAttendanceApp.prototype.handleForceSync = async function () {
+    if (!window.SyncManager) {
+        this.showError('Sync manager not available');
+        return;
+    }
+
+    try {
+        this.showLoading(true);
+        console.log('Force sync requested');
+
+        await window.SyncManager.forcSync();
+
+        const stats = window.SyncManager.getStats();
+
+        this.showModal(
+            'Force Sync Complete',
+            `
                 <div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">⚡</div>
                     <p>Force sync completed successfully!</p>
@@ -1750,36 +2145,34 @@ class VolunteerAttendanceApp {
                     </div>
                 </div>
                 `,
-                'Close',
-                ''
-            );
-            
-        } catch (error) {
-            console.error('Force sync failed:', error);
-            this.showModal('Force Sync Failed', `<div style="color: #e74c3c;">Force sync failed: ${error.message}</div>`, 'Close', '');
-        } finally {
-            this.showLoading(false);
-        }
+            'Close',
+            ''
+        );
+
+    } catch (error) {
+        console.error('Force sync failed:', error);
+        this.showModal('Force Sync Failed', `<div style="color: #e74c3c;">Force sync failed: ${error.message}</div>`, 'Close', '');
+    } finally {
+        this.showLoading(false);
+    }
+};
+
+// Add testGoogleSheetsConnection to the VolunteerAttendanceApp prototype
+VolunteerAttendanceApp.prototype.testGoogleSheetsConnection = async function () {
+    if (!window.GoogleSheetsService) {
+        this.showError('Google Sheets service not available');
+        return;
     }
 
-    /**
-     * Test Google Sheets connection
-     */
-    async testGoogleSheetsConnection() {
-        if (!window.GoogleSheetsService) {
-            this.showError('Google Sheets service not available');
-            return;
-        }
+    try {
+        this.showLoading(true);
 
-        try {
-            this.showLoading(true);
-            
-            const result = await window.GoogleSheetsService.testConnection();
-            
-            if (result.success) {
-                this.showModal(
-                    'Connection Test Successful', 
-                    `
+        const result = await window.GoogleSheetsService.testConnection();
+
+        if (result.success) {
+            this.showModal(
+                'Connection Test Successful',
+                `
                     <div style="text-align: center;">
                         <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                         <p><strong>${result.message}</strong></p>
@@ -1796,14 +2189,14 @@ class VolunteerAttendanceApp {
                             </a>
                         </p>
                     </div>
-                    `, 
-                    'Close', 
-                    ''
-                );
-            } else {
-                this.showModal(
-                    'Connection Test Failed', 
-                    `
+                    `,
+                'Close',
+                ''
+            );
+        } else {
+            this.showModal(
+                'Connection Test Failed',
+                `
                     <div style="color: #e74c3c; text-align: center;">
                         <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
                         <p><strong>${result.message}</strong></p>
@@ -1816,38 +2209,36 @@ class VolunteerAttendanceApp {
                             </ul>
                         </div>
                     </div>
-                    `, 
-                    'Close', 
-                    ''
-                );
-            }
-            
-        } catch (error) {
-            console.error('Connection test error:', error);
-            this.showModal('Test Failed', `<div style="color: #e74c3c;">Test failed: ${error.message}</div>`, 'Close', '');
-        } finally {
-            this.showLoading(false);
+                    `,
+                'Close',
+                ''
+            );
         }
+
+    } catch (error) {
+        console.error('Connection test error:', error);
+        this.showModal('Test Failed', `<div style="color: #e74c3c;">Test failed: ${error.message}</div>`, 'Close', '');
+    } finally {
+        this.showLoading(false);
+    }
+};
+
+// Add testBasicConnection to the VolunteerAttendanceApp prototype
+VolunteerAttendanceApp.prototype.testBasicConnection = async function () {
+    if (!window.GoogleSheetsService) {
+        this.showError('Google Sheets service not available');
+        return;
     }
 
-    /**
-     * Test basic Google Sheets connection (API key only)
-     */
-    async testBasicConnection() {
-        if (!window.GoogleSheetsService) {
-            this.showError('Google Sheets service not available');
-            return;
-        }
+    try {
+        this.showLoading(true);
 
-        try {
-            this.showLoading(true);
-            
-            const result = await window.GoogleSheetsService.testBasicConnection();
-            
-            if (result.success) {
-                this.showModal(
-                    'Basic Connection Test Successful', 
-                    `
+        const result = await window.GoogleSheetsService.testBasicConnection();
+
+        if (result.success) {
+            this.showModal(
+                'Basic Connection Test Successful',
+                `
                     <div style="text-align: center;">
                         <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                         <p><strong>${result.message}</strong></p>
@@ -1868,14 +2259,14 @@ class VolunteerAttendanceApp {
                             </a>
                         </p>
                     </div>
-                    `, 
-                    'Close', 
-                    ''
-                );
-            } else {
-                this.showModal(
-                    'Basic Connection Test Failed', 
-                    `
+                    `,
+                'Close',
+                ''
+            );
+        } else {
+            this.showModal(
+                'Basic Connection Test Failed',
+                `
                     <div style="color: #e74c3c; text-align: center;">
                         <div style="font-size: 2rem; margin-bottom: 1rem;">❌</div>
                         <p><strong>${result.message}</strong></p>
@@ -1889,25 +2280,25 @@ class VolunteerAttendanceApp {
                             </ul>
                         </div>
                     </div>
-                    `, 
-                    'Close', 
-                    ''
-                );
-            }
-            
-        } catch (error) {
-            console.error('Basic connection test error:', error);
-            this.showModal('Test Failed', `<div style="color: #e74c3c;">Test failed: ${error.message}</div>`, 'Close', '');
-        } finally {
-            this.showLoading(false);
+                    `,
+                'Close',
+                ''
+            );
         }
-    }
 
-    /**
-     * Show Google Sheets setup modal
-     */
-    showGoogleSheetsSetupModal() {
-        const setupContent = `
+    } catch (error) {
+        console.error('Basic connection test error:', error);
+        this.showModal('Test Failed', `<div style="color: #e74c3c;">Test failed: ${error.message}</div>`, 'Close', '');
+    } finally {
+        this.showLoading(false);
+    }
+}
+
+/**
+ * Show Google Sheets setup modal
+ */
+showGoogleSheetsSetupModal() {
+    const setupContent = `
             <div>
                 <p>To enable Google Sheets integration, you need to set up a Google Cloud project and get API credentials.</p>
                 
@@ -1950,119 +2341,119 @@ class VolunteerAttendanceApp {
             </div>
         `;
 
-        // Update modal footer to have custom buttons
-        this.showModal('Google Sheets Integration Setup', setupContent, 'Save & Connect', 'Cancel');
-        
-        // Override the confirm button behavior
-        const modalConfirm = document.getElementById('modalConfirm');
-        const modalCancel = document.getElementById('modalCancel');
-        
-        if (modalConfirm) {
-            modalConfirm.onclick = () => {
-                const form = document.getElementById('credentialsForm');
-                if (form) {
-                    this.handleCredentialsSubmit({ preventDefault: () => {}, target: form });
-                }
-            };
-        }
+    // Update modal footer to have custom buttons
+    this.showModal('Google Sheets Integration Setup', setupContent, 'Save & Connect', 'Cancel');
 
-        // Focus first input
-        setTimeout(() => {
-            const firstInput = document.getElementById('apiKey');
-            if (firstInput) {
-                firstInput.focus();
+    // Override the confirm button behavior
+    const modalConfirm = document.getElementById('modalConfirm');
+    const modalCancel = document.getElementById('modalCancel');
+
+    if (modalConfirm) {
+        modalConfirm.onclick = () => {
+            const form = document.getElementById('credentialsForm');
+            if (form) {
+                this.handleCredentialsSubmit({ preventDefault: () => { }, target: form });
             }
-        }, 100);
+        };
     }
 
-    /**
-     * Handle credentials form submission
-     */
-    handleCredentialsSubmit(event) {
-        event.preventDefault();
-        
-        const form = event.target || document.getElementById('credentialsForm');
-        const credentials = {
-            apiKey: form.apiKey.value.trim(),
-            clientId: form.clientId.value.trim(),
-            spreadsheetId: form.spreadsheetId.value.trim()
-        };
-
-        console.log('Credentials entered:', {
-            apiKey: credentials.apiKey ? 'Present' : 'Missing',
-            clientId: credentials.clientId ? 'Present' : 'Missing',
-            spreadsheetId: credentials.spreadsheetId ? 'Present' : 'Missing'
-        });
-
-        // Validate credentials
-        if (!credentials.apiKey || !credentials.clientId || !credentials.spreadsheetId) {
-            alert('Please fill in all fields');
-            return;
+    // Focus first input
+    setTimeout(() => {
+        const firstInput = document.getElementById('apiKey');
+        if (firstInput) {
+            firstInput.focus();
         }
+    }, 100);
+}
 
-        // Store credentials
-        localStorage.setItem('googleSheetsCredentials', JSON.stringify(credentials));
-        
-        // Update Google Sheets service
-        if (window.GoogleSheetsService) {
-            window.GoogleSheetsService.apiKey = credentials.apiKey;
-            window.GoogleSheetsService.clientId = credentials.clientId;
-            window.GoogleSheetsService.spreadsheetId = credentials.spreadsheetId;
-        }
+/**
+ * Handle credentials form submission
+ */
+handleCredentialsSubmit(event) {
+    event.preventDefault();
 
-        console.log('Credentials stored successfully');
-        
-        // Close modal
-        this.hideModal();
-        
-        // Show success message and offer to sync
-        this.showModal(
-            'Credentials Saved', 
-            `
+    const form = event.target || document.getElementById('credentialsForm');
+    const credentials = {
+        apiKey: form.apiKey.value.trim(),
+        clientId: form.clientId.value.trim(),
+        spreadsheetId: form.spreadsheetId.value.trim()
+    };
+
+    console.log('Credentials entered:', {
+        apiKey: credentials.apiKey ? 'Present' : 'Missing',
+        clientId: credentials.clientId ? 'Present' : 'Missing',
+        spreadsheetId: credentials.spreadsheetId ? 'Present' : 'Missing'
+    });
+
+    // Validate credentials
+    if (!credentials.apiKey || !credentials.clientId || !credentials.spreadsheetId) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    // Store credentials
+    localStorage.setItem('googleSheetsCredentials', JSON.stringify(credentials));
+
+    // Update Google Sheets service
+    if (window.GoogleSheetsService) {
+        window.GoogleSheetsService.apiKey = credentials.apiKey;
+        window.GoogleSheetsService.clientId = credentials.clientId;
+        window.GoogleSheetsService.spreadsheetId = credentials.spreadsheetId;
+    }
+
+    console.log('Credentials stored successfully');
+
+    // Close modal
+    this.hideModal();
+
+    // Show success message and offer to sync
+    this.showModal(
+        'Credentials Saved',
+        `
             <div style="text-align: center;">
                 <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                 <p>Google Sheets credentials have been saved successfully!</p>
                 <p style="margin-top: 1rem;">Would you like to test the connection and sync your data now?</p>
             </div>
-            `, 
-            'Sync Now', 
-            'Later'
-        );
+            `,
+        'Sync Now',
+        'Later'
+    );
 
-        // Override confirm button to trigger sync
-        const modalConfirm = document.getElementById('modalConfirm');
-        if (modalConfirm) {
-            modalConfirm.onclick = () => {
-                this.hideModal();
-                this.handleGoogleSync();
-            };
+    // Override confirm button to trigger sync
+    const modalConfirm = document.getElementById('modalConfirm');
+    if (modalConfirm) {
+        modalConfirm.onclick = () => {
+            this.hideModal();
+            this.handleGoogleSync();
+        };
+    }
+}
+
+// Placeholder methods for future implementation
+showSettings() {
+    const status = window.GoogleSheetsService ? window.GoogleSheetsService.getStatus() : null;
+
+    // Debug: Check localStorage directly
+    const storedCreds = localStorage.getItem('googleSheetsCredentials');
+    console.log('Settings debug:', {
+        status: status,
+        storedCredentials: storedCreds ? 'Present' : 'Missing',
+        parsedCreds: storedCreds ? JSON.parse(storedCreds) : null
+    });
+
+    let googleSheetsStatus = 'Not available';
+    if (status) {
+        if (status.isAuthenticated) {
+            googleSheetsStatus = `✅ Connected (Sheet: ${status.spreadsheetId?.substring(0, 10)}...)`;
+        } else if (status.hasCredentials || storedCreds) {
+            googleSheetsStatus = '🔑 Configured (not authenticated)';
+        } else {
+            googleSheetsStatus = '❌ Not configured';
         }
     }
 
-    // Placeholder methods for future implementation
-    showSettings() {
-        const status = window.GoogleSheetsService ? window.GoogleSheetsService.getStatus() : null;
-        
-        // Debug: Check localStorage directly
-        const storedCreds = localStorage.getItem('googleSheetsCredentials');
-        console.log('Settings debug:', {
-            status: status,
-            storedCredentials: storedCreds ? 'Present' : 'Missing',
-            parsedCreds: storedCreds ? JSON.parse(storedCreds) : null
-        });
-        
-        let googleSheetsStatus = 'Not available';
-        if (status) {
-            if (status.isAuthenticated) {
-                googleSheetsStatus = `✅ Connected (Sheet: ${status.spreadsheetId?.substring(0, 10)}...)`;
-            } else if (status.hasCredentials || storedCreds) {
-                googleSheetsStatus = '🔑 Configured (not authenticated)';
-            } else {
-                googleSheetsStatus = '❌ Not configured';
-            }
-        }
-        
-        const settingsContent = `
+    const settingsContent = `
             <div>
                 <h4>Google Sheets Integration</h4>
                 <p><strong>Status:</strong> ${googleSheetsStatus}</p>
@@ -2098,15 +2489,15 @@ class VolunteerAttendanceApp {
                 </div>
             </div>
         `;
-        
-        this.showModal('Settings', settingsContent, 'Close', '');
-    }
 
-    /**
-     * Show add volunteer modal with form
-     */
-    showAddVolunteerModal() {
-        const modalContent = `
+    this.showModal('Settings', settingsContent, 'Close', '');
+}
+
+/**
+ * Show add volunteer modal with form
+ */
+showAddVolunteerModal() {
+    const modalContent = `
             <form id="addVolunteerForm">
                 <div style="margin-bottom: 1rem;">
                     <label for="volunteerId">Volunteer ID *</label>
@@ -2147,75 +2538,75 @@ class VolunteerAttendanceApp {
             </form>
         `;
 
-        this.showModal('Add Volunteer', modalContent, 'Add Volunteer', 'Cancel');
+    this.showModal('Add Volunteer', modalContent, 'Add Volunteer', 'Cancel');
 
-        // Handle form submission
-        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-        if (modalConfirm) {
-            modalConfirm.onclick = () => this.handleAddVolunteer();
-        }
+    // Handle form submission
+    const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+    if (modalConfirm) {
+        modalConfirm.onclick = () => this.handleAddVolunteer();
     }
+}
 
     /**
      * Handle add volunteer form submission
      */
     async handleAddVolunteer() {
-        try {
-            const form = Utils.DOM.getElementById('addVolunteerForm');
-            if (!form) return;
+    try {
+        const form = Utils.DOM.getElementById('addVolunteerForm');
+        if (!form) return;
 
-            const formData = new FormData(form);
-            const volunteerData = {
-                id: formData.get('id').trim(),
-                name: formData.get('name').trim(),
-                committee: formData.get('committee') || 'General',
-                email: formData.get('email').trim() || null,
-                status: formData.get('status') || 'Active'
-            };
+        const formData = new FormData(form);
+        const volunteerData = {
+            id: formData.get('id').trim(),
+            name: formData.get('name').trim(),
+            committee: formData.get('committee') || 'General',
+            email: formData.get('email').trim() || null,
+            status: formData.get('status') || 'Active'
+        };
 
-            // Validate required fields
-            if (!volunteerData.id || !volunteerData.name) {
-                this.showError('Volunteer ID and Name are required');
-                return;
-            }
+        // Validate required fields
+        if (!volunteerData.id || !volunteerData.name) {
+            this.showError('Volunteer ID and Name are required');
+            return;
+        }
 
-            // Show loading
-            this.showLoading(true);
+        // Show loading
+        this.showLoading(true);
 
-            // Add volunteer to storage
-            await window.StorageManager.addVolunteer(volunteerData);
+        // Add volunteer to storage
+        await window.StorageManager.addVolunteer(volunteerData);
 
-            // Hide modal and loading
-            this.hideModal();
-            this.showLoading(false);
+        // Hide modal and loading
+        this.hideModal();
+        this.showLoading(false);
 
-            // Refresh volunteers view
-            await this.updateVolunteersView();
+        // Refresh volunteers view
+        await this.updateVolunteersView();
 
-            // Show success message
-            this.showModal(
-                'Success', 
-                `<div style="text-align: center;">
+        // Show success message
+        this.showModal(
+            'Success',
+            `<div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                     <p><strong>${volunteerData.name}</strong> has been added successfully!</p>
                     <p style="color: #666; margin-top: 0.5rem;">ID: ${volunteerData.id}</p>
-                </div>`, 
-                'Close', 
-                ''
-            );
+                </div>`,
+            'Close',
+            ''
+        );
 
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Error adding volunteer:', error);
-            this.showError(error.message || 'Failed to add volunteer');
-        }
+    } catch (error) {
+        this.showLoading(false);
+        console.error('Error adding volunteer:', error);
+        this.showError(error.message || 'Failed to add volunteer');
     }
+}
 
-    /**
-     * Show import volunteers modal with CSV upload
-     */
-    showImportVolunteersModal() {
-        const modalContent = `
+/**
+ * Show import volunteers modal with CSV upload
+ */
+showImportVolunteersModal() {
+    const modalContent = `
             <div style="margin-bottom: 1.5rem;">
                 <h4 style="margin-bottom: 1rem;">Import Volunteers from CSV</h4>
                 <p style="color: #666; margin-bottom: 1rem;">
@@ -2243,95 +2634,95 @@ class VolunteerAttendanceApp {
             </div>
         `;
 
-        this.showModal('Import Volunteers', modalContent, 'Import', 'Cancel');
+    this.showModal('Import Volunteers', modalContent, 'Import', 'Cancel');
 
-        // Handle file selection
-        const csvFile = Utils.DOM.getElementById('csvFile');
-        if (csvFile) {
-            csvFile.addEventListener('change', (e) => this.previewCSV(e.target.files[0]));
-        }
-
-        // Handle import
-        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-        if (modalConfirm) {
-            modalConfirm.onclick = () => this.handleImportVolunteers();
-        }
+    // Handle file selection
+    const csvFile = Utils.DOM.getElementById('csvFile');
+    if (csvFile) {
+        csvFile.addEventListener('change', (e) => this.previewCSV(e.target.files[0]));
     }
+
+    // Handle import
+    const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+    if (modalConfirm) {
+        modalConfirm.onclick = () => this.handleImportVolunteers();
+    }
+}
 
     /**
      * Preview CSV file contents
      */
     async previewCSV(file) {
-        if (!file) return;
+    if (!file) return;
 
-        try {
-            const text = await file.text();
-            const lines = text.split('\n').filter(line => line.trim());
-            
-            if (lines.length < 2) {
-                this.showError('CSV file must have at least a header row and one data row');
-                return;
-            }
+    try {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
 
-            const preview = lines.slice(0, 6); // Show first 5 rows + header
-            const previewHTML = preview.map((line, index) => {
-                const cells = line.split(',').map(cell => cell.trim());
-                const cellsHTML = cells.map(cell => `<td style="padding: 0.25rem; border: 1px solid #ddd;">${cell}</td>`).join('');
-                const rowStyle = index === 0 ? 'background: #f0f0f0; font-weight: bold;' : '';
-                return `<tr style="${rowStyle}">${cellsHTML}</tr>`;
-            }).join('');
+        if (lines.length < 2) {
+            this.showError('CSV file must have at least a header row and one data row');
+            return;
+        }
 
-            const previewDiv = Utils.DOM.getElementById('csvPreview');
-            const previewContent = Utils.DOM.getElementById('csvPreviewContent');
-            
-            if (previewDiv && previewContent) {
-                previewContent.innerHTML = `
+        const preview = lines.slice(0, 6); // Show first 5 rows + header
+        const previewHTML = preview.map((line, index) => {
+            const cells = line.split(',').map(cell => cell.trim());
+            const cellsHTML = cells.map(cell => `<td style="padding: 0.25rem; border: 1px solid #ddd;">${cell}</td>`).join('');
+            const rowStyle = index === 0 ? 'background: #f0f0f0; font-weight: bold;' : '';
+            return `<tr style="${rowStyle}">${cellsHTML}</tr>`;
+        }).join('');
+
+        const previewDiv = Utils.DOM.getElementById('csvPreview');
+        const previewContent = Utils.DOM.getElementById('csvPreviewContent');
+
+        if (previewDiv && previewContent) {
+            previewContent.innerHTML = `
                     <table style="width: 100%; border-collapse: collapse;">
                         ${previewHTML}
                     </table>
                     ${lines.length > 6 ? `<p style="margin-top: 0.5rem; color: #666;">... and ${lines.length - 6} more rows</p>` : ''}
                 `;
-                previewDiv.style.display = 'block';
-            }
-
-        } catch (error) {
-            console.error('Error previewing CSV:', error);
-            this.showError('Error reading CSV file');
+            previewDiv.style.display = 'block';
         }
+
+    } catch (error) {
+        console.error('Error previewing CSV:', error);
+        this.showError('Error reading CSV file');
     }
+}
 
     /**
      * Handle CSV import
      */
     async handleImportVolunteers() {
-        try {
-            const csvFile = Utils.DOM.getElementById('csvFile');
-            const skipDuplicates = Utils.DOM.getElementById('skipDuplicates');
-            
-            if (!csvFile || !csvFile.files[0]) {
-                this.showError('Please select a CSV file');
-                return;
-            }
+    try {
+        const csvFile = Utils.DOM.getElementById('csvFile');
+        const skipDuplicates = Utils.DOM.getElementById('skipDuplicates');
 
-            const file = csvFile.files[0];
-            const skipDups = skipDuplicates ? skipDuplicates.checked : true;
+        if (!csvFile || !csvFile.files[0]) {
+            this.showError('Please select a CSV file');
+            return;
+        }
 
-            // Show loading
-            this.showLoading(true);
+        const file = csvFile.files[0];
+        const skipDups = skipDuplicates ? skipDuplicates.checked : true;
 
-            // Read and import CSV
-            const csvContent = await file.text();
-            const result = await window.StorageManager.importVolunteersFromCSV(csvContent, skipDups);
+        // Show loading
+        this.showLoading(true);
 
-            // Hide modal and loading
-            this.hideModal();
-            this.showLoading(false);
+        // Read and import CSV
+        const csvContent = await file.text();
+        const result = await window.StorageManager.importVolunteersFromCSV(csvContent, skipDups);
 
-            // Refresh volunteers view
-            await this.updateVolunteersView();
+        // Hide modal and loading
+        this.hideModal();
+        this.showLoading(false);
 
-            // Show results
-            const resultMessage = `
+        // Refresh volunteers view
+        await this.updateVolunteersView();
+
+        // Show results
+        const resultMessage = `
                 <div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">📊</div>
                     <h4>Import Results</h4>
@@ -2351,20 +2742,20 @@ class VolunteerAttendanceApp {
                 </div>
             `;
 
-            this.showModal('Import Complete', resultMessage, 'Close', '');
+        this.showModal('Import Complete', resultMessage, 'Close', '');
 
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Error importing volunteers:', error);
-            this.showError(error.message || 'Failed to import volunteers');
-        }
+    } catch (error) {
+        this.showLoading(false);
+        console.error('Error importing volunteers:', error);
+        this.showError(error.message || 'Failed to import volunteers');
     }
+}
 
-    /**
-     * Show add event modal
-     */
-    showAddEventModal() {
-        const modalContent = `
+/**
+ * Show add event modal
+ */
+showAddEventModal() {
+    const modalContent = `
             <form id="addEventForm" class="event-form">
                 <div class="form-group">
                     <label for="eventName">Event Name *</label>
@@ -2432,218 +2823,218 @@ class VolunteerAttendanceApp {
             </form>
         `;
 
-        this.showModal('Add Event', modalContent, 'Create Event', 'Cancel');
+    this.showModal('Add Event', modalContent, 'Create Event', 'Cancel');
 
-        // Setup form behavior
-        const eventTypeSelect = Utils.DOM.getElementById('eventType');
-        const recurringOptions = document.querySelectorAll('.recurring-options');
-        
-        if (eventTypeSelect) {
-            eventTypeSelect.addEventListener('change', (e) => {
-                const isRecurring = e.target.value === 'Recurring';
-                recurringOptions.forEach(option => {
-                    option.style.display = isRecurring ? 'block' : 'none';
-                });
-                
-                // Set default day of week to Sunday for recurring events
-                if (isRecurring) {
-                    const dayOfWeekSelect = Utils.DOM.getElementById('dayOfWeek');
-                    if (dayOfWeekSelect) {
-                        dayOfWeekSelect.value = 'Sunday';
-                    }
-                }
+    // Setup form behavior
+    const eventTypeSelect = Utils.DOM.getElementById('eventType');
+    const recurringOptions = document.querySelectorAll('.recurring-options');
+
+    if (eventTypeSelect) {
+        eventTypeSelect.addEventListener('change', (e) => {
+            const isRecurring = e.target.value === 'Recurring';
+            recurringOptions.forEach(option => {
+                option.style.display = isRecurring ? 'block' : 'none';
             });
-        }
 
-        // Set default date to today
-        const eventDateInput = Utils.DOM.getElementById('eventDate');
-        if (eventDateInput) {
-            const today = new Date();
-            eventDateInput.value = today.toISOString().split('T')[0];
-        }
-
-        // Handle form submission
-        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-        if (modalConfirm) {
-            modalConfirm.onclick = () => this.handleAddEvent();
-        }
+            // Set default day of week to Sunday for recurring events
+            if (isRecurring) {
+                const dayOfWeekSelect = Utils.DOM.getElementById('dayOfWeek');
+                if (dayOfWeekSelect) {
+                    dayOfWeekSelect.value = 'Sunday';
+                }
+            }
+        });
     }
+
+    // Set default date to today
+    const eventDateInput = Utils.DOM.getElementById('eventDate');
+    if (eventDateInput) {
+        const today = new Date();
+        eventDateInput.value = today.toISOString().split('T')[0];
+    }
+
+    // Handle form submission
+    const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+    if (modalConfirm) {
+        modalConfirm.onclick = () => this.handleAddEvent();
+    }
+}
 
     /**
      * Handle add event form submission
      */
     async handleAddEvent() {
-        try {
-            const form = Utils.DOM.getElementById('addEventForm');
-            if (!form) return;
+    try {
+        const form = Utils.DOM.getElementById('addEventForm');
+        if (!form) return;
 
-            const formData = new FormData(form);
-            const eventData = {
-                eventName: formData.get('eventName')?.trim(),
-                eventDate: formData.get('eventDate'),
-                eventType: formData.get('eventType'),
-                recurringPattern: formData.get('recurringPattern'),
-                dayOfWeek: formData.get('dayOfWeek'),
-                endDate: formData.get('endDate') || null,
-                description: formData.get('eventDescription')?.trim() || null,
-                status: formData.get('eventStatus') || 'Active'
-            };
+        const formData = new FormData(form);
+        const eventData = {
+            eventName: formData.get('eventName')?.trim(),
+            eventDate: formData.get('eventDate'),
+            eventType: formData.get('eventType'),
+            recurringPattern: formData.get('recurringPattern'),
+            dayOfWeek: formData.get('dayOfWeek'),
+            endDate: formData.get('endDate') || null,
+            description: formData.get('eventDescription')?.trim() || null,
+            status: formData.get('eventStatus') || 'Active'
+        };
 
-            // Validate required fields
-            if (!eventData.eventName) {
-                this.showError('Event name is required');
-                return;
-            }
+        // Validate required fields
+        if (!eventData.eventName) {
+            this.showError('Event name is required');
+            return;
+        }
 
-            if (!eventData.eventDate) {
-                this.showError('Event date is required');
-                return;
-            }
+        if (!eventData.eventDate) {
+            this.showError('Event date is required');
+            return;
+        }
 
-            if (!eventData.eventType) {
-                this.showError('Event type is required');
-                return;
-            }
+        if (!eventData.eventType) {
+            this.showError('Event type is required');
+            return;
+        }
 
-            // Show loading
-            this.showLoading(true);
+        // Show loading
+        this.showLoading(true);
 
-            // Create the event(s)
-            if (eventData.eventType === 'Recurring') {
-                await this.createRecurringEvents(eventData);
-            } else {
-                await this.createSingleEvent(eventData);
-            }
+        // Create the event(s)
+        if (eventData.eventType === 'Recurring') {
+            await this.createRecurringEvents(eventData);
+        } else {
+            await this.createSingleEvent(eventData);
+        }
 
-            // Hide modal and refresh events view
-            this.hideModal();
-            await this.updateEventsView();
-            
-            // Show success message
-            const eventCount = eventData.eventType === 'Recurring' ? 'recurring events' : 'event';
-            this.showModal(
-                'Success', 
-                `<div style="text-align: center;">
+        // Hide modal and refresh events view
+        this.hideModal();
+        await this.updateEventsView();
+
+        // Show success message
+        const eventCount = eventData.eventType === 'Recurring' ? 'recurring events' : 'event';
+        this.showModal(
+            'Success',
+            `<div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                     <p><strong>${eventData.eventName}</strong> ${eventCount} created successfully!</p>
-                </div>`, 
-                'Close', 
-                ''
-            );
+                </div>`,
+            'Close',
+            ''
+        );
 
-        } catch (error) {
-            console.error('Error creating event:', error);
-            this.showError(`Failed to create event: ${error.message}`);
-        } finally {
-            this.showLoading(false);
-        }
+    } catch (error) {
+        console.error('Error creating event:', error);
+        this.showError(`Failed to create event: ${error.message}`);
+    } finally {
+        this.showLoading(false);
     }
+}
 
     /**
      * Create a single event
      */
     async createSingleEvent(eventData) {
-        const eventDate = new Date(eventData.eventDate);
-        const eventId = `E${eventDate.getFullYear()}${String(eventDate.getMonth() + 1).padStart(2, '0')}${String(eventDate.getDate()).padStart(2, '0')}`;
-        
-        const event = {
-            eventId: eventId,
-            eventName: eventData.eventName,
-            date: eventData.eventDate,
-            type: eventData.eventType,
-            status: eventData.status,
-            description: eventData.description,
-            dayOfWeek: eventDate.toLocaleDateString('en-US', { weekday: 'long' })
-        };
+    const eventDate = new Date(eventData.eventDate);
+    const eventId = `E${eventDate.getFullYear()}${String(eventDate.getMonth() + 1).padStart(2, '0')}${String(eventDate.getDate()).padStart(2, '0')}`;
 
-        await window.StorageManager.addEvent(event);
-        console.log('Single event created:', event);
-    }
+    const event = {
+        eventId: eventId,
+        eventName: eventData.eventName,
+        date: eventData.eventDate,
+        type: eventData.eventType,
+        status: eventData.status,
+        description: eventData.description,
+        dayOfWeek: eventDate.toLocaleDateString('en-US', { weekday: 'long' })
+    };
+
+    await window.StorageManager.addEvent(event);
+    console.log('Single event created:', event);
+}
 
     /**
      * Create recurring events
      */
     async createRecurringEvents(eventData) {
-        const startDate = new Date(eventData.eventDate);
-        const endDate = eventData.endDate ? new Date(eventData.endDate) : null;
-        const pattern = eventData.recurringPattern || 'Weekly';
-        const dayOfWeek = eventData.dayOfWeek || 'Sunday';
-        
-        // Calculate how many events to create (default: 1 year or until end date)
-        const maxDate = endDate || new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
-        const events = [];
-        
-        let currentDate = new Date(startDate);
-        let eventCount = 0;
-        const maxEvents = 100; // Safety limit
-        
-        // Adjust start date to match the specified day of week for weekly recurring events
-        if (pattern === 'Weekly') {
-            const targetDayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayOfWeek);
-            const currentDayIndex = currentDate.getDay();
-            const daysToAdd = (targetDayIndex - currentDayIndex + 7) % 7;
-            currentDate.setDate(currentDate.getDate() + daysToAdd);
-        }
-        
-        while (currentDate <= maxDate && eventCount < maxEvents) {
-            const eventId = `E${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}`;
-            
-            const event = {
-                eventId: eventId,
-                eventName: eventData.eventName,
-                date: currentDate.toISOString().split('T')[0],
-                type: 'Recurring',
-                status: eventData.status,
-                recurringPattern: pattern,
-                dayOfWeek: dayOfWeek,
-                description: eventData.description,
-                parentEventId: `${eventData.eventName.replace(/\s+/g, '')}_${pattern}_${dayOfWeek}`
-            };
-            
-            events.push(event);
-            eventCount++;
-            
-            // Calculate next occurrence
-            switch (pattern) {
-                case 'Weekly':
-                    currentDate.setDate(currentDate.getDate() + 7);
-                    break;
-                case 'Monthly':
-                    currentDate.setMonth(currentDate.getMonth() + 1);
-                    break;
-                case 'Daily':
-                    currentDate.setDate(currentDate.getDate() + 1);
-                    break;
-            }
-        }
-        
-        // Create all events
-        for (const event of events) {
-            try {
-                await window.StorageManager.addEvent(event);
-            } catch (error) {
-                // Skip if event already exists (duplicate date)
-                if (!error.message.includes('already exists')) {
-                    throw error;
-                }
-            }
-        }
-        
-        console.log(`Created ${events.length} recurring events for ${eventData.eventName}`);
+    const startDate = new Date(eventData.eventDate);
+    const endDate = eventData.endDate ? new Date(eventData.endDate) : null;
+    const pattern = eventData.recurringPattern || 'Weekly';
+    const dayOfWeek = eventData.dayOfWeek || 'Sunday';
+
+    // Calculate how many events to create (default: 1 year or until end date)
+    const maxDate = endDate || new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    const events = [];
+
+    let currentDate = new Date(startDate);
+    let eventCount = 0;
+    const maxEvents = 100; // Safety limit
+
+    // Adjust start date to match the specified day of week for weekly recurring events
+    if (pattern === 'Weekly') {
+        const targetDayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayOfWeek);
+        const currentDayIndex = currentDate.getDay();
+        const daysToAdd = (targetDayIndex - currentDayIndex + 7) % 7;
+        currentDate.setDate(currentDate.getDate() + daysToAdd);
     }
+
+    while (currentDate <= maxDate && eventCount < maxEvents) {
+        const eventId = `E${currentDate.getFullYear()}${String(currentDate.getMonth() + 1).padStart(2, '0')}${String(currentDate.getDate()).padStart(2, '0')}`;
+
+        const event = {
+            eventId: eventId,
+            eventName: eventData.eventName,
+            date: currentDate.toISOString().split('T')[0],
+            type: 'Recurring',
+            status: eventData.status,
+            recurringPattern: pattern,
+            dayOfWeek: dayOfWeek,
+            description: eventData.description,
+            parentEventId: `${eventData.eventName.replace(/\s+/g, '')}_${pattern}_${dayOfWeek}`
+        };
+
+        events.push(event);
+        eventCount++;
+
+        // Calculate next occurrence
+        switch (pattern) {
+            case 'Weekly':
+                currentDate.setDate(currentDate.getDate() + 7);
+                break;
+            case 'Monthly':
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                break;
+            case 'Daily':
+                currentDate.setDate(currentDate.getDate() + 1);
+                break;
+        }
+    }
+
+    // Create all events
+    for (const event of events) {
+        try {
+            await window.StorageManager.addEvent(event);
+        } catch (error) {
+            // Skip if event already exists (duplicate date)
+            if (!error.message.includes('already exists')) {
+                throw error;
+            }
+        }
+    }
+
+    console.log(`Created ${events.length} recurring events for ${eventData.eventName}`);
+}
 
     /**
      * Show edit event modal
      */
     async showEditEventModal(eventId) {
-        try {
-            const event = await window.StorageManager.getEvent(eventId);
-            if (!event) {
-                this.showError('Event not found');
-                return;
-            }
+    try {
+        const event = await window.StorageManager.getEvent(eventId);
+        if (!event) {
+            this.showError('Event not found');
+            return;
+        }
 
-            const modalContent = `
+        const modalContent = `
                 <form id="editEventForm" class="event-form">
                     <input type="hidden" id="editEventId" value="${event.eventId}">
                     
@@ -2692,124 +3083,124 @@ class VolunteerAttendanceApp {
                 </form>
             `;
 
-            this.showModal('Edit Event', modalContent, 'Update Event', 'Cancel');
+        this.showModal('Edit Event', modalContent, 'Update Event', 'Cancel');
 
-            // Handle form submission
-            const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-            if (modalConfirm) {
-                modalConfirm.onclick = () => this.handleEditEvent();
-            }
-
-        } catch (error) {
-            console.error('Error loading event for edit:', error);
-            this.showError(`Failed to load event: ${error.message}`);
+        // Handle form submission
+        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+        if (modalConfirm) {
+            modalConfirm.onclick = () => this.handleEditEvent();
         }
+
+    } catch (error) {
+        console.error('Error loading event for edit:', error);
+        this.showError(`Failed to load event: ${error.message}`);
     }
+}
 
     /**
      * Handle edit event form submission
      */
     async handleEditEvent() {
-        try {
-            const form = Utils.DOM.getElementById('editEventForm');
-            if (!form) return;
+    try {
+        const form = Utils.DOM.getElementById('editEventForm');
+        if (!form) return;
 
-            const formData = new FormData(form);
-            const eventId = Utils.DOM.getElementById('editEventId')?.value;
-            
-            if (!eventId) {
-                this.showError('Event ID not found');
-                return;
-            }
+        const formData = new FormData(form);
+        const eventId = Utils.DOM.getElementById('editEventId')?.value;
 
-            const eventData = {
-                eventId: eventId,
-                eventName: formData.get('eventName')?.trim(),
-                date: formData.get('eventDate'),
-                type: formData.get('eventType'),
-                description: formData.get('eventDescription')?.trim() || null,
-                status: formData.get('eventStatus')
-            };
+        if (!eventId) {
+            this.showError('Event ID not found');
+            return;
+        }
 
-            // Validate required fields
-            if (!eventData.eventName) {
-                this.showError('Event name is required');
-                return;
-            }
+        const eventData = {
+            eventId: eventId,
+            eventName: formData.get('eventName')?.trim(),
+            date: formData.get('eventDate'),
+            type: formData.get('eventType'),
+            description: formData.get('eventDescription')?.trim() || null,
+            status: formData.get('eventStatus')
+        };
 
-            if (!eventData.date) {
-                this.showError('Event date is required');
-                return;
-            }
+        // Validate required fields
+        if (!eventData.eventName) {
+            this.showError('Event name is required');
+            return;
+        }
 
-            // Show loading
-            this.showLoading(true);
+        if (!eventData.date) {
+            this.showError('Event date is required');
+            return;
+        }
 
-            // Update the event
-            await window.StorageManager.updateEvent(eventData);
+        // Show loading
+        this.showLoading(true);
 
-            // Hide modal and refresh events view
-            this.hideModal();
-            await this.updateEventsView();
-            
-            // Show success message
-            this.showModal(
-                'Success', 
-                `<div style="text-align: center;">
+        // Update the event
+        await window.StorageManager.updateEvent(eventData);
+
+        // Hide modal and refresh events view
+        this.hideModal();
+        await this.updateEventsView();
+
+        // Show success message
+        this.showModal(
+            'Success',
+            `<div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                     <p><strong>${eventData.eventName}</strong> updated successfully!</p>
-                </div>`, 
-                'Close', 
-                ''
-            );
+                </div>`,
+            'Close',
+            ''
+        );
 
-        } catch (error) {
-            console.error('Error updating event:', error);
-            this.showError(`Failed to update event: ${error.message}`);
-        } finally {
-            this.showLoading(false);
-        }
+    } catch (error) {
+        console.error('Error updating event:', error);
+        this.showError(`Failed to update event: ${error.message}`);
+    } finally {
+        this.showLoading(false);
     }
+}
 
-    /**
-     * Edit event (called from event card)
-     */
-    editEvent(eventId) {
-        this.showEditEventModal(eventId);
-    }
+/**
+ * Edit event (called from event card)
+ */
+editEvent(eventId) {
+    this.showEditEventModal(eventId);
+}
 
     /**
      * View event attendance
      */
     async viewEventAttendance(eventId) {
-        try {
-            this.showLoading(true);
-            
-            const event = await window.StorageManager.getEvent(eventId);
-            const attendance = await window.StorageManager.getAttendanceByEvent(eventId);
-            
-            if (!event) {
-                this.showError('Event not found');
-                return;
-            }
+    try {
+        this.showLoading(true);
 
-            const eventDate = Utils.Date.format(new Date(event.date), 'long');
-            
-            let attendanceHTML = '';
-            if (attendance.length === 0) {
-                attendanceHTML = '<p>No attendance records for this event.</p>';
-            } else {
-                // Sort by check-in time
-                attendance.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-                
-                attendanceHTML = `
+        const event = await window.StorageManager.getEvent(eventId);
+        const attendance = await window.StorageManager.getAttendanceByEvent(eventId);
+
+        if (!event) {
+            this.showError('Event not found');
+            return;
+        }
+
+        const eventDate = Utils.Date.format(new Date(event.date), 'long');
+
+        let attendanceHTML = '';
+        if (attendance.length === 0) {
+            attendanceHTML = '<p>No attendance records for this event.</p>';
+        } else {
+            // Sort by check-in time
+            attendance.sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+
+            attendanceHTML = `
                     <div class="attendance-summary">
                         <p><strong>Total Check-ins:</strong> ${attendance.length}</p>
                     </div>
                     <div class="attendance-list">
                         ${attendance.map(record => {
-                            const checkInTime = Utils.Date.format(new Date(record.dateTime), 'time');
-                            return `
+                const checkInTime = Utils.Date.format(new Date(record.dateTime), 'time');
+                return `
                                 <div class="attendance-item">
                                     <div class="volunteer-info">
                                         <span class="volunteer-name">${record.volunteerName || record.volunteerId}</span>
@@ -2818,12 +3209,12 @@ class VolunteerAttendanceApp {
                                     <span class="check-in-time">${checkInTime}</span>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 `;
-            }
+        }
 
-            const modalContent = `
+        const modalContent = `
                 <div class="event-attendance-view">
                     <div class="event-info">
                         <h3>${event.eventName}</h3>
@@ -2839,39 +3230,39 @@ class VolunteerAttendanceApp {
                 </div>
             `;
 
-            this.showModal(`Attendance - ${event.eventName}`, modalContent, 'Close', '');
+        this.showModal(`Attendance - ${event.eventName}`, modalContent, 'Close', '');
 
-        } catch (error) {
-            console.error('Error viewing event attendance:', error);
-            this.showError(`Failed to load event attendance: ${error.message}`);
-        } finally {
-            this.showLoading(false);
-        }
+    } catch (error) {
+        console.error('Error viewing event attendance:', error);
+        this.showError(`Failed to load event attendance: ${error.message}`);
+    } finally {
+        this.showLoading(false);
     }
+}
 
     /**
      * Delete event with confirmation
      */
     async deleteEvent(eventId) {
-        try {
-            const event = await window.StorageManager.getEvent(eventId);
-            if (!event) {
-                this.showError('Event not found');
-                return;
-            }
+    try {
+        const event = await window.StorageManager.getEvent(eventId);
+        if (!event) {
+            this.showError('Event not found');
+            return;
+        }
 
-            // Check if event has attendance records
-            const attendance = await window.StorageManager.getAttendanceByEvent(eventId);
-            
-            let warningMessage = '';
-            if (attendance.length > 0) {
-                warningMessage = `<div class="warning-message">
+        // Check if event has attendance records
+        const attendance = await window.StorageManager.getAttendanceByEvent(eventId);
+
+        let warningMessage = '';
+        if (attendance.length > 0) {
+            warningMessage = `<div class="warning-message">
                     <p><strong>⚠️ Warning:</strong> This event has ${attendance.length} attendance record(s). 
                     Deleting the event will not delete the attendance records, but they may become orphaned.</p>
                 </div>`;
-            }
+        }
 
-            const modalContent = `
+        const modalContent = `
                 <div class="delete-confirmation">
                     <div style="text-align: center; margin-bottom: 1rem;">
                         <div style="font-size: 3rem; color: #e74c3c;">🗑️</div>
@@ -2884,55 +3275,55 @@ class VolunteerAttendanceApp {
                 </div>
             `;
 
-            this.showModal('Delete Event', modalContent, 'Delete Event', 'Cancel');
+        this.showModal('Delete Event', modalContent, 'Delete Event', 'Cancel');
 
-            // Handle confirmation
-            const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-            if (modalConfirm) {
-                modalConfirm.onclick = async () => {
-                    try {
-                        this.showLoading(true);
-                        await window.StorageManager.deleteEvent(eventId);
-                        this.hideModal();
-                        await this.updateEventsView();
-                        
-                        this.showModal(
-                            'Event Deleted', 
-                            `<div style="text-align: center;">
+        // Handle confirmation
+        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+        if (modalConfirm) {
+            modalConfirm.onclick = async () => {
+                try {
+                    this.showLoading(true);
+                    await window.StorageManager.deleteEvent(eventId);
+                    this.hideModal();
+                    await this.updateEventsView();
+
+                    this.showModal(
+                        'Event Deleted',
+                        `<div style="text-align: center;">
                                 <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                                 <p><strong>${event.eventName}</strong> has been deleted.</p>
-                            </div>`, 
-                            'Close', 
-                            ''
-                        );
-                    } catch (error) {
-                        console.error('Error deleting event:', error);
-                        this.showError(`Failed to delete event: ${error.message}`);
-                    } finally {
-                        this.showLoading(false);
-                    }
-                };
-            }
-
-        } catch (error) {
-            console.error('Error preparing event deletion:', error);
-            this.showError(`Failed to load event: ${error.message}`);
+                            </div>`,
+                        'Close',
+                        ''
+                    );
+                } catch (error) {
+                    console.error('Error deleting event:', error);
+                    this.showError(`Failed to delete event: ${error.message}`);
+                } finally {
+                    this.showLoading(false);
+                }
+            };
         }
+
+    } catch (error) {
+        console.error('Error preparing event deletion:', error);
+        this.showError(`Failed to load event: ${error.message}`);
     }
+}
 
     /**
      * Edit volunteer information
      */
     async editVolunteer(volunteerId) {
-        try {
-            // Get volunteer data
-            const volunteer = await window.StorageManager.getVolunteer(volunteerId);
-            if (!volunteer) {
-                this.showError('Volunteer not found');
-                return;
-            }
+    try {
+        // Get volunteer data
+        const volunteer = await window.StorageManager.getVolunteer(volunteerId);
+        if (!volunteer) {
+            this.showError('Volunteer not found');
+            return;
+        }
 
-            const modalContent = `
+        const modalContent = `
                 <form id="editVolunteerForm">
                     <div style="margin-bottom: 1rem;">
                         <label for="editVolunteerId">Volunteer ID *</label>
@@ -2978,105 +3369,105 @@ class VolunteerAttendanceApp {
                 </form>
             `;
 
-            this.showModal(`Edit Volunteer - ${volunteer.name}`, modalContent, 'Save Changes', 'Cancel');
+        this.showModal(`Edit Volunteer - ${volunteer.name}`, modalContent, 'Save Changes', 'Cancel');
 
-            // Handle form submission
-            const modalConfirm = Utils.DOM.getElementById('modalConfirm');
-            if (modalConfirm) {
-                modalConfirm.onclick = () => this.handleEditVolunteer(volunteerId);
-            }
-
-        } catch (error) {
-            console.error('Error loading volunteer for edit:', error);
-            this.showError('Failed to load volunteer information');
+        // Handle form submission
+        const modalConfirm = Utils.DOM.getElementById('modalConfirm');
+        if (modalConfirm) {
+            modalConfirm.onclick = () => this.handleEditVolunteer(volunteerId);
         }
+
+    } catch (error) {
+        console.error('Error loading volunteer for edit:', error);
+        this.showError('Failed to load volunteer information');
     }
+}
 
     /**
      * Handle edit volunteer form submission
      */
     async handleEditVolunteer(volunteerId) {
-        try {
-            const form = Utils.DOM.getElementById('editVolunteerForm');
-            if (!form) return;
+    try {
+        const form = Utils.DOM.getElementById('editVolunteerForm');
+        if (!form) return;
 
-            const formData = new FormData(form);
-            const volunteerData = {
-                id: volunteerId, // Keep original ID
-                name: formData.get('name').trim(),
-                committee: formData.get('committee') || 'General',
-                email: formData.get('email').trim() || null,
-                status: formData.get('status') || 'Active'
-            };
+        const formData = new FormData(form);
+        const volunteerData = {
+            id: volunteerId, // Keep original ID
+            name: formData.get('name').trim(),
+            committee: formData.get('committee') || 'General',
+            email: formData.get('email').trim() || null,
+            status: formData.get('status') || 'Active'
+        };
 
-            // Validate required fields
-            if (!volunteerData.name) {
-                this.showError('Volunteer name is required');
-                return;
-            }
+        // Validate required fields
+        if (!volunteerData.name) {
+            this.showError('Volunteer name is required');
+            return;
+        }
 
-            // Show loading
-            this.showLoading(true);
+        // Show loading
+        this.showLoading(true);
 
-            // Update volunteer in storage
-            await window.StorageManager.updateVolunteer(volunteerData);
+        // Update volunteer in storage
+        await window.StorageManager.updateVolunteer(volunteerData);
 
-            // Hide modal and loading
-            this.hideModal();
-            this.showLoading(false);
+        // Hide modal and loading
+        this.hideModal();
+        this.showLoading(false);
 
-            // Refresh volunteers view
-            await this.updateVolunteersView();
+        // Refresh volunteers view
+        await this.updateVolunteersView();
 
-            // Show success message
-            this.showModal(
-                'Success', 
-                `<div style="text-align: center;">
+        // Show success message
+        this.showModal(
+            'Success',
+            `<div style="text-align: center;">
                     <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
                     <p><strong>${volunteerData.name}</strong> has been updated successfully!</p>
-                </div>`, 
-                'Close', 
-                ''
-            );
+                </div>`,
+            'Close',
+            ''
+        );
 
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Error updating volunteer:', error);
-            this.showError(error.message || 'Failed to update volunteer');
-        }
+    } catch (error) {
+        this.showLoading(false);
+        console.error('Error updating volunteer:', error);
+        this.showError(error.message || 'Failed to update volunteer');
     }
+}
 
     /**
      * View volunteer attendance history
      */
     async viewVolunteerHistory(volunteerId) {
-        try {
-            // Show loading
-            this.showLoading(true);
+    try {
+        // Show loading
+        this.showLoading(true);
 
-            // Get volunteer data
-            const volunteer = await window.StorageManager.getVolunteer(volunteerId);
-            if (!volunteer) {
-                this.showLoading(false);
-                this.showError('Volunteer not found');
-                return;
-            }
+        // Get volunteer data
+        const volunteer = await window.StorageManager.getVolunteer(volunteerId);
+        if (!volunteer) {
+            this.showLoading(false);
+            this.showError('Volunteer not found');
+            return;
+        }
 
-            // Get attendance history
-            const attendanceHistory = await window.StorageManager.getAttendanceByVolunteer(volunteerId);
-            
-            // Sort by most recent first
-            attendanceHistory.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
+        // Get attendance history
+        const attendanceHistory = await window.StorageManager.getAttendanceByVolunteer(volunteerId);
 
-            // Calculate statistics
-            const totalAttendance = attendanceHistory.length;
-            const uniqueEvents = [...new Set(attendanceHistory.map(record => record.eventId))].length;
-            const lastAttendance = attendanceHistory.length > 0 ? attendanceHistory[0] : null;
+        // Sort by most recent first
+        attendanceHistory.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
 
-            // Get recent attendance (last 10)
-            const recentAttendance = attendanceHistory.slice(0, 10);
+        // Calculate statistics
+        const totalAttendance = attendanceHistory.length;
+        const uniqueEvents = [...new Set(attendanceHistory.map(record => record.eventId))].length;
+        const lastAttendance = attendanceHistory.length > 0 ? attendanceHistory[0] : null;
 
-            const modalContent = `
+        // Get recent attendance (last 10)
+        const recentAttendance = attendanceHistory.slice(0, 10);
+
+        const modalContent = `
                 <div style="margin-bottom: 1.5rem;">
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                         <div>
@@ -3085,9 +3476,9 @@ class VolunteerAttendanceApp {
                         </div>
                         <div style="margin-left: auto;">
                             <span class="status ${volunteer.status.toLowerCase()}" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 500; 
-                                ${volunteer.status === 'Active' ? 'background: #d4edda; color: #155724;' : 
-                                  volunteer.status === 'Inactive' ? 'background: #f8d7da; color: #721c24;' : 
-                                  'background: #fff3cd; color: #856404;'}">${volunteer.status}</span>
+                                ${volunteer.status === 'Active' ? 'background: #d4edda; color: #155724;' :
+                volunteer.status === 'Inactive' ? 'background: #f8d7da; color: #721c24;' :
+                    'background: #fff3cd; color: #856404;'}">${volunteer.status}</span>
                         </div>
                     </div>
 
@@ -3140,83 +3531,83 @@ class VolunteerAttendanceApp {
                 </div>
             `;
 
-            this.showLoading(false);
-            this.showModal(`${volunteer.name} - Attendance History`, modalContent, 'Close', '');
+        this.showLoading(false);
+        this.showModal(`${volunteer.name} - Attendance History`, modalContent, 'Close', '');
 
-        } catch (error) {
-            this.showLoading(false);
-            console.error('Error loading volunteer history:', error);
-            this.showError('Failed to load volunteer history');
-        }
+    } catch (error) {
+        this.showLoading(false);
+        console.error('Error loading volunteer history:', error);
+        this.showError('Failed to load volunteer history');
     }
+}
 
-    editEvent(eventId) {
-        console.log('Edit event:', eventId);
-    }
+editEvent(eventId) {
+    console.log('Edit event:', eventId);
+}
 
-    viewEventAttendance(eventId) {
-        console.log('View event attendance:', eventId);
-    }
+viewEventAttendance(eventId) {
+    console.log('View event attendance:', eventId);
+}
 
     /**
      * Filter volunteers based on search term
      */
     async filterVolunteers(searchTerm) {
-        try {
-            const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
-            if (!volunteersGrid) return;
+    try {
+        const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
+        if (!volunteersGrid) return;
 
-            let volunteers;
-            
-            if (!searchTerm || searchTerm.trim() === '') {
-                // Show all volunteers if no search term
-                volunteers = await window.StorageManager.getAllVolunteers();
-            } else {
-                // Search volunteers
-                volunteers = await window.StorageManager.searchVolunteers(searchTerm.trim());
-            }
+        let volunteers;
 
-            // Update the volunteers grid with filtered results
-            this.renderVolunteersGrid(volunteers, searchTerm);
+        if (!searchTerm || searchTerm.trim() === '') {
+            // Show all volunteers if no search term
+            volunteers = await window.StorageManager.getAllVolunteers();
+        } else {
+            // Search volunteers
+            volunteers = await window.StorageManager.searchVolunteers(searchTerm.trim());
+        }
 
-        } catch (error) {
-            console.error('Error filtering volunteers:', error);
-            const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
-            if (volunteersGrid) {
-                volunteersGrid.innerHTML = `
+        // Update the volunteers grid with filtered results
+        this.renderVolunteersGrid(volunteers, searchTerm);
+
+    } catch (error) {
+        console.error('Error filtering volunteers:', error);
+        const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
+        if (volunteersGrid) {
+            volunteersGrid.innerHTML = `
                     <div class="card">
                         <p>Error filtering volunteers. Please try again.</p>
                     </div>
                 `;
-            }
         }
     }
+}
 
-    /**
-     * Render volunteers grid with given volunteers
-     */
-    renderVolunteersGrid(volunteers, searchTerm = '') {
-        const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
-        if (!volunteersGrid) return;
+/**
+ * Render volunteers grid with given volunteers
+ */
+renderVolunteersGrid(volunteers, searchTerm = '') {
+    const volunteersGrid = Utils.DOM.getElementById('volunteersGrid');
+    if (!volunteersGrid) return;
 
-        if (volunteers.length === 0) {
-            const message = searchTerm 
-                ? `No volunteers found matching "${searchTerm}". Try a different search term.`
-                : 'No volunteers found. Click "Add Volunteer" or "Import CSV" to get started.';
-            
-            volunteersGrid.innerHTML = `
+    if (volunteers.length === 0) {
+        const message = searchTerm
+            ? `No volunteers found matching "${searchTerm}". Try a different search term.`
+            : 'No volunteers found. Click "Add Volunteer" or "Import CSV" to get started.';
+
+        volunteersGrid.innerHTML = `
                 <div class="card">
                     <p>${message}</p>
                     ${searchTerm ? `<button class="btn btn-secondary" onclick="document.getElementById('volunteerSearch').value = ''; app.filterVolunteers('');">Clear Search</button>` : ''}
                 </div>
             `;
-            return;
-        }
+        return;
+    }
 
-        // Sort volunteers by name
-        volunteers.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort volunteers by name
+    volunteers.sort((a, b) => a.name.localeCompare(b.name));
 
-        const volunteersHTML = volunteers.map(volunteer => `
+    const volunteersHTML = volunteers.map(volunteer => `
             <div class="card volunteer-card" data-volunteer-id="${volunteer.id}">
                 <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 1rem;">
                     <div style="flex: 1;">
@@ -3227,9 +3618,9 @@ class VolunteerAttendanceApp {
                     </div>
                     <div style="margin-left: 1rem;">
                         <span class="status ${volunteer.status.toLowerCase()}" style="padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 500; white-space: nowrap;
-                            ${volunteer.status === 'Active' ? 'background: #d4edda; color: #155724;' : 
-                              volunteer.status === 'Inactive' ? 'background: #f8d7da; color: #721c24;' : 
-                              'background: #fff3cd; color: #856404;'}">${volunteer.status}</span>
+                            ${volunteer.status === 'Active' ? 'background: #d4edda; color: #155724;' :
+            volunteer.status === 'Inactive' ? 'background: #f8d7da; color: #721c24;' :
+                'background: #fff3cd; color: #856404;'}">${volunteer.status}</span>
                     </div>
                 </div>
                 <div class="volunteer-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
@@ -3243,141 +3634,141 @@ class VolunteerAttendanceApp {
             </div>
         `).join('');
 
-        volunteersGrid.innerHTML = volunteersHTML;
+    volunteersGrid.innerHTML = volunteersHTML;
 
-        // Show search results count if searching
-        if (searchTerm) {
-            const resultCount = volunteers.length;
-            const countMessage = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: #e3f2fd; border-radius: 4px; text-align: center;">
+    // Show search results count if searching
+    if (searchTerm) {
+        const resultCount = volunteers.length;
+        const countMessage = `<div style="margin-bottom: 1rem; padding: 0.75rem; background: #e3f2fd; border-radius: 4px; text-align: center;">
                 Found <strong>${resultCount}</strong> volunteer${resultCount !== 1 ? 's' : ''} matching "${searchTerm}"
             </div>`;
-            volunteersGrid.insertAdjacentHTML('afterbegin', countMessage);
-        }
+        volunteersGrid.insertAdjacentHTML('afterbegin', countMessage);
     }
+}
 
-    /**
-     * Highlight search term in text
-     */
-    highlightSearchTerm(text, searchTerm) {
-        if (!searchTerm || !text) return text;
-        
-        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark style="background: #fff3cd; padding: 0.1rem 0.2rem; border-radius: 2px;">$1</mark>');
-    }
+/**
+ * Highlight search term in text
+ */
+highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm || !text) return text;
+
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark style="background: #fff3cd; padding: 0.1rem 0.2rem; border-radius: 2px;">$1</mark>');
+}
 
     /**
      * Export basic report (CSV format)
      */
     async exportReport() {
-        try {
-            const reportPeriod = Utils.DOM.getElementById('reportPeriod')?.value || 'week';
-            
-            // Calculate date range
-            let dateRange = null;
-            if (reportPeriod !== 'all') {
-                const endDate = new Date();
-                const startDate = new Date();
+    try {
+        const reportPeriod = Utils.DOM.getElementById('reportPeriod')?.value || 'week';
 
-                switch (reportPeriod) {
-                    case 'week':
-                        startDate.setDate(endDate.getDate() - 7);
-                        break;
-                    case 'month':
-                        startDate.setMonth(endDate.getMonth() - 1);
-                        break;
-                    case 'quarter':
-                        startDate.setMonth(endDate.getMonth() - 3);
-                        break;
-                    case 'year':
-                        startDate.setFullYear(endDate.getFullYear() - 1);
-                        break;
-                }
+        // Calculate date range
+        let dateRange = null;
+        if (reportPeriod !== 'all') {
+            const endDate = new Date();
+            const startDate = new Date();
 
-                dateRange = { start: startDate, end: endDate };
+            switch (reportPeriod) {
+                case 'week':
+                    startDate.setDate(endDate.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setMonth(endDate.getMonth() - 1);
+                    break;
+                case 'quarter':
+                    startDate.setMonth(endDate.getMonth() - 3);
+                    break;
+                case 'year':
+                    startDate.setFullYear(endDate.getFullYear() - 1);
+                    break;
             }
 
-            // Get attendance data for the period
-            const csvContent = await window.StorageManager.exportToCSV('attendance', dateRange);
-            
-            // Download CSV
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `attendance-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            dateRange = { start: startDate, end: endDate };
+        }
 
-        } catch (error) {
-            console.error('Error exporting report:', error);
-            this.showError('Failed to export report. Please try again.');
+        // Get attendance data for the period
+        const csvContent = await window.StorageManager.exportToCSV('attendance', dateRange);
+
+        // Download CSV
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `attendance-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (error) {
+        console.error('Error exporting report:', error);
+        this.showError('Failed to export report. Please try again.');
+    }
+}
+
+/**
+ * Toggle mobile navigation menu
+ */
+toggleMobileNav() {
+    const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+    const navContainer = Utils.DOM.getElementById('navContainer');
+    const navOverlay = Utils.DOM.getElementById('navOverlay');
+
+    if (hamburgerBtn && navContainer && navOverlay) {
+        const isActive = navContainer.classList.contains('active');
+
+        if (isActive) {
+            this.closeMobileNav();
+        } else {
+            this.openMobileNav();
         }
     }
+}
 
-    /**
-     * Toggle mobile navigation menu
-     */
-    toggleMobileNav() {
-        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
-        const navContainer = Utils.DOM.getElementById('navContainer');
-        const navOverlay = Utils.DOM.getElementById('navOverlay');
-        
-        if (hamburgerBtn && navContainer && navOverlay) {
-            const isActive = navContainer.classList.contains('active');
-            
-            if (isActive) {
-                this.closeMobileNav();
-            } else {
-                this.openMobileNav();
-            }
+/**
+ * Open mobile navigation menu
+ */
+openMobileNav() {
+    const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+    const navContainer = Utils.DOM.getElementById('navContainer');
+    const navOverlay = Utils.DOM.getElementById('navOverlay');
+
+    if (hamburgerBtn && navContainer && navOverlay) {
+        hamburgerBtn.classList.add('active');
+        navContainer.classList.add('active');
+        navOverlay.classList.add('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'true');
+
+        // Prevent body scroll when nav is open
+        document.body.style.overflow = 'hidden';
+
+        // Focus first nav item for accessibility
+        const firstNavBtn = navContainer.querySelector('.nav-btn');
+        if (firstNavBtn) {
+            setTimeout(() => firstNavBtn.focus(), 100);
         }
     }
+}
 
-    /**
-     * Open mobile navigation menu
-     */
-    openMobileNav() {
-        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
-        const navContainer = Utils.DOM.getElementById('navContainer');
-        const navOverlay = Utils.DOM.getElementById('navOverlay');
-        
-        if (hamburgerBtn && navContainer && navOverlay) {
-            hamburgerBtn.classList.add('active');
-            navContainer.classList.add('active');
-            navOverlay.classList.add('active');
-            hamburgerBtn.setAttribute('aria-expanded', 'true');
-            
-            // Prevent body scroll when nav is open
-            document.body.style.overflow = 'hidden';
-            
-            // Focus first nav item for accessibility
-            const firstNavBtn = navContainer.querySelector('.nav-btn');
-            if (firstNavBtn) {
-                setTimeout(() => firstNavBtn.focus(), 100);
-            }
-        }
-    }
+/**
+ * Close mobile navigation menu
+ */
+closeMobileNav() {
+    const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
+    const navContainer = Utils.DOM.getElementById('navContainer');
+    const navOverlay = Utils.DOM.getElementById('navOverlay');
 
-    /**
-     * Close mobile navigation menu
-     */
-    closeMobileNav() {
-        const hamburgerBtn = Utils.DOM.getElementById('hamburgerBtn');
-        const navContainer = Utils.DOM.getElementById('navContainer');
-        const navOverlay = Utils.DOM.getElementById('navOverlay');
-        
-        if (hamburgerBtn && navContainer && navOverlay) {
-            hamburgerBtn.classList.remove('active');
-            navContainer.classList.remove('active');
-            navOverlay.classList.remove('active');
-            hamburgerBtn.setAttribute('aria-expanded', 'false');
-            
-            // Restore body scroll
-            document.body.style.overflow = '';
-        }
+    if (hamburgerBtn && navContainer && navOverlay) {
+        hamburgerBtn.classList.remove('active');
+        navContainer.classList.remove('active');
+        navOverlay.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+
+        // Restore body scroll
+        document.body.style.overflow = '';
     }
+}
 }
 
 // Initialize application when DOM is loaded

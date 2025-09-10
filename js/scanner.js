@@ -23,9 +23,9 @@ class ScannerManager {
         this.scanFeedback = Utils.DOM.getElementById('scanFeedback');
 
         if (this.scannerInput) {
-            // Disable input until storage is ready
+            // Start with disabled state and show progress
             this.scannerInput.disabled = true;
-            this.scannerInput.placeholder = 'System initializing...';
+            this.scannerInput.placeholder = 'Initializing system...';
             
             this.setupEventListeners();
             this.waitForStorageAndEnable();
@@ -37,29 +37,155 @@ class ScannerManager {
      */
     async waitForStorageAndEnable() {
         try {
-            // Wait for storage manager
+            console.log('Scanner: Starting system initialization...');
+            this.updatePlaceholder('Initializing system...');
+            
+            // Wait for storage manager with progress updates
             let attempts = 0;
             while (!window.StorageManager || !window.StorageManager.db) {
                 if (attempts > 100) { // 10 seconds max
-                    throw new Error('Storage initialization timeout');
+                    throw new Error('Storage initialization timeout after 10 seconds');
                 }
+                
+                // Update progress every 20 attempts (2 seconds)
+                if (attempts % 20 === 0 && attempts > 0) {
+                    this.updatePlaceholder(`Loading storage... (${Math.round(attempts / 10)}s)`);
+                }
+                
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
             }
 
-            // Enable input
-            if (this.scannerInput) {
-                this.scannerInput.disabled = false;
-                this.scannerInput.placeholder = 'Scan badge or enter volunteer ID...';
-                this.focusInput();
+            console.log('Scanner: Storage ready, waiting for connectivity validator...');
+            this.updatePlaceholder('Checking system connectivity...');
+
+            // Wait for connectivity validator to initialize
+            let validatorAttempts = 0;
+            while (!window.connectivityValidator || !window.connectivityValidator.isInitialized) {
+                if (validatorAttempts > 50) { // 5 seconds max
+                    console.warn('Connectivity validator not ready, proceeding without validation');
+                    break;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+                validatorAttempts++;
             }
 
-            console.log('Scanner ready for input');
+            // Use connectivity validator to determine scanner readiness
+            if (window.connectivityValidator && window.connectivityValidator.isInitialized) {
+                console.log('Scanner: Using connectivity validator for readiness check');
+                
+                // Listen for connectivity status changes
+                window.connectivityValidator.addStatusChangeListener((results) => {
+                    this.handleConnectivityStatusChange(results);
+                });
+                
+                // Check current status
+                const isReady = window.connectivityValidator.isReadyToScan();
+                if (isReady) {
+                    this.enableScanner();
+                } else {
+                    this.updatePlaceholder('System not ready - check connectivity status');
+                }
+            } else {
+                console.warn('Scanner: Connectivity validator not available, using fallback');
+                this.enableScannerWithFallback();
+            }
+            
+            console.log('Scanner: Initialization complete');
+            
         } catch (error) {
             console.error('Scanner initialization failed:', error);
-            if (this.scannerInput) {
-                this.scannerInput.placeholder = 'System initialization failed - please refresh';
+            this.updatePlaceholder('Initialization failed - scanner disabled for safety');
+        }
+    }
+
+    /**
+     * Update scanner placeholder with progress message
+     */
+    updatePlaceholder(message) {
+        if (this.scannerInput) {
+            this.scannerInput.placeholder = message;
+        }
+    }
+
+    /**
+     * Enable scanner when system is ready
+     */
+    enableScanner() {
+        if (this.scannerInput) {
+            this.scannerInput.disabled = false;
+            this.scannerInput.placeholder = 'Scan badge or enter volunteer ID...';
+            this.focusInput();
+            
+            // Notify connectivity validator that scanning is active
+            if (window.connectivityValidator) {
+                window.connectivityValidator.startRealTimeMonitoring();
             }
+            
+            // Dispatch scanner activated event
+            document.dispatchEvent(new CustomEvent('scannerActivated'));
+            
+            console.log('Scanner: Enabled and ready for scanning');
+        }
+    }
+
+    /**
+     * Disable scanner when system is not ready
+     */
+    disableScanner() {
+        if (this.scannerInput) {
+            this.scannerInput.disabled = true;
+            this.scannerInput.placeholder = 'System not ready - check connectivity';
+            
+            // Notify connectivity validator that scanning is inactive
+            if (window.connectivityValidator) {
+                window.connectivityValidator.stopRealTimeMonitoring();
+            }
+            
+            // Dispatch scanner deactivated event
+            document.dispatchEvent(new CustomEvent('scannerDeactivated'));
+            
+            console.log('Scanner: Disabled due to system not ready');
+        }
+    }
+
+    /**
+     * Handle connectivity status changes
+     */
+    handleConnectivityStatusChange(results) {
+        const isReady = results.overall.readyToScan;
+        
+        if (isReady && this.scannerInput && this.scannerInput.disabled) {
+            console.log('Scanner: System became ready, enabling scanner');
+            this.enableScanner();
+        } else if (!isReady && this.scannerInput && !this.scannerInput.disabled) {
+            console.log('Scanner: System not ready, disabling scanner');
+            this.disableScanner();
+        }
+    }
+
+    /**
+     * Enable scanner with fallback settings when initialization fails
+     */
+    enableScannerWithFallback() {
+        if (this.scannerInput) {
+            this.scannerInput.disabled = false;
+            this.scannerInput.placeholder = 'Scan badge or enter volunteer ID...';
+            this.focusInput();
+            console.log('Scanner: Enabled with fallback settings');
+        }
+    }
+
+    /**
+     * Force enable scanner (bypass all checks)
+     */
+    forceEnable() {
+        if (this.scannerInput) {
+            this.scannerInput.disabled = false;
+            this.scannerInput.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+            this.focusInput();
+            console.log('Scanner: Force enabled - bypassing all checks');
         }
     }
 
@@ -94,6 +220,23 @@ class ScannerManager {
                 this.testScanner();
             });
         }
+
+        // Handle force enable button
+        const forceEnableBtn = Utils.DOM.getElementById('forceEnableBtn');
+        if (forceEnableBtn) {
+            forceEnableBtn.addEventListener('click', () => {
+                this.forceEnable();
+            });
+        }
+
+        // Add keyboard shortcut to force enable scanner (Ctrl+Shift+S)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                console.log('Force enable scanner shortcut triggered');
+                this.forceEnable();
+            }
+        });
 
         // Handle clicks elsewhere to refocus
         document.addEventListener('click', (event) => {
@@ -249,15 +392,22 @@ class ScannerManager {
             // Show processing feedback
             this.showFeedback('processing', '⏳ Processing scan...');
 
+            // Step 1: Check if scanning is allowed for current date/event
+            const scanningStatus = await this.getScanningStatus();
+            if (!scanningStatus.canScan) {
+                throw new Error(scanningStatus.message);
+            }
+
             // Debug logging
             console.log('Processing scan:', {
                 original: originalId,
                 cleaned: cleanId,
                 length: cleanId.length,
-                isString: typeof cleanId === 'string'
+                isString: typeof cleanId === 'string',
+                currentEvent: scanningStatus.currentEvent?.eventName
             });
 
-            // Step 1: Validate ID format
+            // Step 2: Validate ID format
             const formatValidation = this.validateVolunteerIdFormat(cleanId);
             if (!formatValidation.isValid) {
                 throw new Error(`Invalid volunteer ID format: ${formatValidation.error}`);
@@ -265,19 +415,28 @@ class ScannerManager {
 
             console.log('ID format validation passed for:', cleanId);
 
-            // Step 2: Get volunteer from local directory
-            const volunteer = await this.getVolunteerFromDirectory(cleanId);
+            // Step 3: Get volunteer from local directory
+            let volunteer = await this.getVolunteerFromDirectory(cleanId);
             if (!volunteer) {
                 // Try alternative ID formats if initial lookup fails
                 const alternativeVolunteer = await this.tryAlternativeIdFormats(cleanId);
-                if (!alternativeVolunteer) {
-                    throw new Error(`Volunteer ID "${cleanId}" not found in directory`);
+                if (alternativeVolunteer) {
+                    volunteer = alternativeVolunteer;
+                } else {
+                    // Try syncing volunteers from Google Sheets as a last resort
+                    console.log(`Volunteer ${cleanId} not found locally, attempting sync from Google Sheets...`);
+                    const syncResult = await this.tryVolunteerSync(cleanId);
+                    
+                    if (syncResult.volunteer) {
+                        volunteer = syncResult.volunteer;
+                        this.showFeedback('info', `✅ Found volunteer ${volunteer.name} after sync`);
+                    } else {
+                        throw new Error(`Volunteer ID "${cleanId}" not found in directory${syncResult.syncAttempted ? ' (even after syncing from Google Sheets)' : ''}`);
+                    }
                 }
-                // Use the found volunteer
-                Object.assign(volunteer, alternativeVolunteer);
             }
 
-            // Step 3: Validate volunteer status
+            // Step 4: Validate volunteer status
             if (volunteer.status !== 'Active') {
                 throw new Error(`Volunteer ${volunteer.name} is ${volunteer.status.toLowerCase()} and cannot check in`);
             }
@@ -586,14 +745,406 @@ class ScannerManager {
     }
 
     /**
-     * Get current active event
+     * Get current active event for scanning using enhanced 7-day window logic
+     * Delegates to StorageManager's getCurrentScannableEvent for consistent logic
      */
     async getCurrentEvent() {
-        // For now, return today's event
-        const today = new Date();
-        const todayEventId = `E${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+        console.log('🎯 ===== SCANNER GET CURRENT EVENT STARTED =====');
         
-        return await window.StorageManager.getEvent(todayEventId);
+        try {
+            // Use the enhanced logic from StorageManager
+            const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+            
+            if (scannableEvent) {
+                console.log('✅ Scanner found scannable event:', {
+                    eventName: scannableEvent.eventName,
+                    date: scannableEvent.date,
+                    isToday: scannableEvent.scanningContext?.isToday,
+                    isPastEvent: scannableEvent.scanningContext?.isPastEvent,
+                    daysFromEventDate: scannableEvent.scanningContext?.daysFromEventDate,
+                    displayMessage: scannableEvent.scanningContext?.displayMessage
+                });
+                
+                console.log('🎯 ===== SCANNER GET CURRENT EVENT COMPLETED (Event found) =====');
+                return scannableEvent;
+            } else {
+                console.log('❌ Scanner found no scannable events');
+                console.log('🎯 ===== SCANNER GET CURRENT EVENT COMPLETED (No events) =====');
+                return null;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error getting current scannable event:', error);
+            console.log('🎯 ===== SCANNER GET CURRENT EVENT COMPLETED (Error) =====');
+            return null;
+        }
+    }
+
+    /**
+     * Check if an event is scannable based on date restrictions
+     * Events can only be scanned up to 7 days after the event date
+     */
+    isEventScannable(event, currentDate = new Date()) {
+        if (!event || event.status !== 'Active') {
+            return false;
+        }
+        
+        const eventDate = new Date(event.date);
+        const currentDateOnly = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        
+        // Calculate days difference
+        const daysDifference = Math.floor((currentDateOnly - eventDateOnly) / (1000 * 60 * 60 * 24));
+        
+        // Allow scanning on event day and up to 7 days after
+        return daysDifference >= 0 && daysDifference <= 7;
+    }
+
+    /**
+     * Update scanner input status based on scanning availability
+     */
+    async updateScannerStatus() {
+        console.log('🔄 ===== SCANNER STATUS UPDATE STARTED =====');
+        console.log('🔄 Current scanner input state:', {
+            exists: !!this.scannerInput,
+            disabled: this.scannerInput?.disabled,
+            placeholder: this.scannerInput?.placeholder
+        });
+        
+        try {
+            console.log('🔍 Step 1: Checking production readiness...');
+            
+            // First check if production requirements are met
+            const productionReadiness = checkProductionReadiness();
+            console.log('🔍 Production readiness result:', productionReadiness);
+            
+            if (!productionReadiness.ready) {
+                console.log('❌ Production requirements NOT met - disabling scanner');
+                // Production requirements not met - keep scanner disabled
+                if (this.scannerInput) {
+                    const oldState = {
+                        disabled: this.scannerInput.disabled,
+                        placeholder: this.scannerInput.placeholder
+                    };
+                    
+                    this.scannerInput.disabled = true;
+                    this.scannerInput.placeholder = `${productionReadiness.reason} - ${productionReadiness.details}`;
+                    
+                    console.log('🔄 Scanner state changed:', {
+                        from: oldState,
+                        to: {
+                            disabled: this.scannerInput.disabled,
+                            placeholder: this.scannerInput.placeholder
+                        }
+                    });
+                }
+                
+                // Update status indicator to show production issue
+                this.updateScannerStatusIndicator({
+                    canScan: false,
+                    message: productionReadiness.reason,
+                    type: 'production-safety'
+                });
+                
+                console.log('🔄 ===== SCANNER STATUS UPDATE ENDED (Production not ready) =====');
+                return;
+            }
+            
+            console.log('✅ Production requirements met, proceeding to scanning status check...');
+            console.log('🔍 Step 2: Getting scanning status...');
+            
+            const scanningStatus = await this.getScanningStatus();
+            console.log('🔍 Scanning status result:', scanningStatus);
+            
+            if (this.scannerInput) {
+                const oldState = {
+                    disabled: this.scannerInput.disabled,
+                    placeholder: this.scannerInput.placeholder
+                };
+                
+                if (scanningStatus.canScan) {
+                    console.log('✅ Scanning allowed - enabling scanner');
+                    // All checks passed - enable scanner with context-aware placeholder
+                    this.scannerInput.disabled = false;
+                    
+                    // Set placeholder based on scanning context (Requirements 8.4, 8.6)
+                    const context = scanningStatus.scanningContext;
+                    let placeholder;
+                    
+                    if (context?.isToday) {
+                        placeholder = `📅 Scan for TODAY: ${scanningStatus.currentEvent.eventName}`;
+                    } else if (context?.isPastEvent) {
+                        const daysAgo = context.daysFromEventDate;
+                        placeholder = `🔄 BACKFILL (${daysAgo}d ago): ${scanningStatus.currentEvent.eventName}`;
+                    } else {
+                        placeholder = `Scan badge for: ${scanningStatus.currentEvent.eventName}`;
+                    }
+                    
+                    this.scannerInput.placeholder = placeholder;
+                    this.focusInput();
+                    console.log('✅ Scanner enabled with context:', {
+                        event: scanningStatus.currentEvent.eventName,
+                        isToday: context?.isToday,
+                        isPastEvent: context?.isPastEvent,
+                        daysFromEvent: context?.daysFromEventDate
+                    });
+                } else {
+                    console.log('⚠️ No scannable events - checking development mode...');
+                    console.log('🔍 Development mode check:', {
+                        configExists: !!window.Config,
+                        isDevelopment: window.Config?.isDevelopment,
+                        environment: window.Config?.environment
+                    });
+                    
+                    // For development, bypass event checks
+                    if (window.Config && window.Config.isDevelopment) {
+                        console.log('🔧 Development mode detected - enabling scanner despite no events');
+                        this.scannerInput.disabled = false;
+                        this.scannerInput.placeholder = 'DEV MODE: Scan badge or enter volunteer ID...';
+                        this.focusInput();
+                        console.log('✅ Scanner enabled in development mode');
+                    } else {
+                        console.log('🏭 Production mode - keeping scanner disabled (no events)');
+                        // Production mode - keep disabled if no events
+                        this.scannerInput.disabled = true;
+                        this.scannerInput.placeholder = scanningStatus.message;
+                        console.log('❌ Scanner disabled - no scannable events in production');
+                    }
+                }
+                
+                console.log('🔄 Final scanner state change:', {
+                    from: oldState,
+                    to: {
+                        disabled: this.scannerInput.disabled,
+                        placeholder: this.scannerInput.placeholder
+                    }
+                });
+            } else {
+                console.log('❌ Scanner input element not found!');
+            }
+            
+            console.log('🔍 Step 3: Updating status indicator...');
+            // Update status indicator
+            this.updateScannerStatusIndicator(scanningStatus);
+            
+            console.log('🔄 ===== SCANNER STATUS UPDATE COMPLETED SUCCESSFULLY =====');
+            
+        } catch (error) {
+            console.error('❌ ===== SCANNER STATUS UPDATE FAILED =====');
+            console.error('❌ Error details:', error);
+            console.error('❌ Error stack:', error.stack);
+            
+            // In case of error, keep scanner disabled for safety
+            if (this.scannerInput) {
+                const oldState = {
+                    disabled: this.scannerInput.disabled,
+                    placeholder: this.scannerInput.placeholder
+                };
+                
+                this.scannerInput.disabled = true;
+                this.scannerInput.placeholder = 'System error - scanner disabled for safety';
+                
+                console.log('🔄 Error recovery - scanner state changed:', {
+                    from: oldState,
+                    to: {
+                        disabled: this.scannerInput.disabled,
+                        placeholder: this.scannerInput.placeholder
+                    }
+                });
+            }
+            
+            console.log('🔄 ===== SCANNER STATUS UPDATE ENDED (Error) =====');
+        }
+    }
+
+    /**
+     * Update scanner status indicator in the UI
+     */
+    updateScannerStatusIndicator(scanningStatus) {
+        const statusIndicator = document.querySelector('.scanner-indicator');
+        const statusText = document.querySelector('.scanner-status-text');
+        
+        if (statusIndicator && statusText) {
+            if (scanningStatus.canScan) {
+                statusIndicator.className = 'scanner-indicator ready';
+                statusText.textContent = `Ready - ${scanningStatus.currentEvent.eventName}`;
+            } else {
+                statusIndicator.className = 'scanner-indicator disabled';
+                statusText.textContent = 'Scanning Disabled';
+            }
+        }
+    }
+
+    /**
+     * Try to sync volunteers from Google Sheets when a volunteer is not found
+     */
+    async tryVolunteerSync(volunteerId) {
+        const result = {
+            syncAttempted: false,
+            volunteer: null,
+            syncResult: null
+        };
+
+        try {
+            // Check if Google Sheets service is available and configured
+            if (!window.GoogleSheetsService) {
+                console.log('Google Sheets service not available for volunteer sync');
+                return result;
+            }
+
+            const status = window.GoogleSheetsService.getStatus();
+            if (!status.hasCredentials || !status.isAuthenticated) {
+                console.log('Google Sheets not configured or authenticated for volunteer sync');
+                return result;
+            }
+
+            console.log(`Attempting to sync volunteers from Google Sheets to find ${volunteerId}...`);
+            result.syncAttempted = true;
+
+            // Sync volunteers from Google Sheets
+            result.syncResult = await window.GoogleSheetsService.syncVolunteersFromSheets();
+            console.log('Volunteer sync result:', result.syncResult);
+
+            // Try to find the volunteer again after sync
+            result.volunteer = await this.getVolunteerFromDirectory(volunteerId);
+            
+            if (result.volunteer) {
+                console.log(`Found volunteer ${result.volunteer.name} (${volunteerId}) after sync`);
+            } else {
+                console.log(`Volunteer ${volunteerId} still not found after sync`);
+            }
+
+            return result;
+
+        } catch (error) {
+            console.error('Error during volunteer sync attempt:', error);
+            result.syncAttempted = true; // Mark as attempted even if failed
+            return result;
+        }
+    }
+
+    /**
+     * Get scanning status with enhanced 7-day window feedback
+     * Provides detailed status messages based on event availability and scanning context
+     */
+    async getScanningStatus() {
+        console.log('📅 ===== GET SCANNING STATUS STARTED =====');
+        console.log('📅 Step 1: Getting current scannable event...');
+        
+        const currentEvent = await this.getCurrentEvent();
+        console.log('📅 Current event result:', currentEvent);
+        
+        if (!currentEvent) {
+            console.log('📅 No scannable event found, analyzing event situation...');
+            
+            // Get detailed event analysis for better user feedback
+            const allEvents = await window.StorageManager.getAllEvents();
+            const activeEvents = allEvents.filter(event => event.status === 'Active');
+            
+            console.log('📅 Event analysis:', {
+                totalEvents: allEvents.length,
+                activeEvents: activeEvents.length
+            });
+            
+            if (activeEvents.length === 0) {
+                const result = {
+                    canScan: false,
+                    message: 'No active events available. Please contact an administrator to create events.',
+                    type: 'no-events',
+                    details: 'No events have been created or all events are inactive.'
+                };
+                console.log('❌ No active events found:', result);
+                return result;
+            }
+            
+            // Analyze event timing to provide helpful feedback
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + 
+                            String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                            String(today.getDate()).padStart(2, '0');
+            
+            // Check for upcoming events
+            const upcomingEvents = activeEvents.filter(event => new Date(event.date) > new Date(todayStr));
+            upcomingEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (upcomingEvents.length > 0) {
+                const nextEvent = upcomingEvents[0];
+                const daysUntil = Math.ceil((new Date(nextEvent.date) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+                
+                const result = {
+                    canScan: false,
+                    message: `Next event "${nextEvent.eventName}" is in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}. Scanning will be available on the event date.`,
+                    type: 'future-event',
+                    nextEvent: nextEvent,
+                    details: `Scanning becomes available on ${nextEvent.date} for ${nextEvent.eventName}.`
+                };
+                console.log('⏳ Future event found:', result);
+                return result;
+            }
+            
+            // Check for past events outside the 7-day window
+            const pastEvents = activeEvents.filter(event => new Date(event.date) < new Date(todayStr));
+            pastEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (pastEvents.length > 0) {
+                const lastEvent = pastEvents[0];
+                const daysAgo = Math.floor((new Date(todayStr) - new Date(lastEvent.date)) / (1000 * 60 * 60 * 24));
+                
+                const result = {
+                    canScan: false,
+                    message: `Last event "${lastEvent.eventName}" was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago. Scanning window has expired.`,
+                    type: 'expired-event',
+                    lastEvent: lastEvent,
+                    details: `Scanning is only available for 7 days after an event. The last event was on ${lastEvent.date}.`
+                };
+                console.log('📅 Expired event found:', result);
+                return result;
+            }
+            
+            const result = {
+                canScan: false,
+                message: 'No scannable events available.',
+                type: 'no-scannable-events',
+                details: 'No events are currently within the 7-day scanning window.'
+            };
+            console.log('❌ No scannable events:', result);
+            return result;
+        }
+        
+        // Event found - determine scanning context and provide appropriate message
+        const scanningContext = currentEvent.scanningContext;
+        let message, type, details;
+        
+        if (scanningContext?.isToday) {
+            // Current day event (Requirement 8.1, 8.4)
+            message = `Scanning for today's event: ${currentEvent.eventName}`;
+            type = 'current-event';
+            details = `Recording attendance for ${currentEvent.eventName} on ${currentEvent.date}.`;
+        } else if (scanningContext?.isPastEvent) {
+            // Past event within 7-day window (Requirement 8.2, 8.4, 8.6)
+            const daysAgo = scanningContext.daysFromEventDate;
+            message = `Backfilling attendance for: ${currentEvent.eventName} (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)`;
+            type = 'backfill-event';
+            details = `Manual backfilling available for ${currentEvent.eventName} from ${currentEvent.date}. Scanning window expires in ${7 - daysAgo} day${7 - daysAgo !== 1 ? 's' : ''}.`;
+        } else {
+            // Fallback for events without context metadata
+            message = `Scanning available for: ${currentEvent.eventName}`;
+            type = 'active-event';
+            details = `Recording attendance for ${currentEvent.eventName}.`;
+        }
+        
+        const result = {
+            canScan: true,
+            message: message,
+            type: type,
+            currentEvent: currentEvent,
+            details: details,
+            scanningContext: scanningContext
+        };
+        
+        console.log('✅ Scannable event found:', result);
+        console.log('📅 ===== GET SCANNING STATUS COMPLETED =====');
+        return result;
     }
 
     /**
@@ -885,11 +1436,318 @@ class ScannerManager {
         if (this.scannerInput) {
             this.scannerInput.disabled = !enabled;
             if (enabled) {
+                this.scannerInput.placeholder = 'Scan badge or enter volunteer ID...';
                 this.focusInput();
             }
         }
     }
+
+    /**
+     * Force enable scanner (for debugging/manual override)
+     */
+    forceEnable() {
+        console.log('Scanner: Force enabling scanner input');
+        if (this.scannerInput) {
+            this.scannerInput.disabled = false;
+            this.scannerInput.placeholder = 'Scan badge or enter volunteer ID...';
+            this.focusInput();
+        }
+    }
+
+    /**
+     * Get scanning status for connectivity validator
+     * Returns detailed information about current scanning availability
+     */
+    async getScanningStatus() {
+        try {
+            const events = await window.StorageManager.getAllEvents();
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' + 
+                            String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                            String(today.getDate()).padStart(2, '0');
+            
+            // Check for today's event
+            const todayEvent = events.find(event => 
+                event.date === todayStr && event.status === 'Active'
+            );
+            
+            if (todayEvent) {
+                return {
+                    type: 'current-event',
+                    canScan: true,
+                    currentEvent: todayEvent,
+                    message: `Today's event: ${todayEvent.eventName}`
+                };
+            }
+            
+            // Check for events within 7-day window
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            const recentEvents = events
+                .filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate < today && 
+                           eventDate >= sevenDaysAgo && 
+                           event.status === 'Active';
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (recentEvents.length > 0) {
+                const mostRecentEvent = recentEvents[0];
+                const daysAgo = Math.floor((today - new Date(mostRecentEvent.date)) / (1000 * 60 * 60 * 24));
+                
+                return {
+                    type: 'backfill-event',
+                    canScan: true,
+                    currentEvent: mostRecentEvent,
+                    daysAgo: daysAgo,
+                    message: `Backfill mode: ${mostRecentEvent.eventName} (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)`
+                };
+            }
+            
+            // Check for future events
+            const futureEvents = events
+                .filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate > today && event.status === 'Active';
+                })
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (futureEvents.length > 0) {
+                const nextEvent = futureEvents[0];
+                const daysUntil = Math.ceil((new Date(nextEvent.date) - today) / (1000 * 60 * 60 * 24));
+                
+                return {
+                    type: 'future-event',
+                    canScan: false,
+                    nextEvent: nextEvent,
+                    daysUntil: daysUntil,
+                    message: `Next event in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}: ${nextEvent.eventName}`
+                };
+            }
+            
+            // Check for past events (outside 7-day window)
+            const pastEvents = events
+                .filter(event => {
+                    const eventDate = new Date(event.date);
+                    return eventDate < sevenDaysAgo && event.status === 'Active';
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (pastEvents.length > 0) {
+                const lastEvent = pastEvents[0];
+                const daysAgo = Math.floor((today - new Date(lastEvent.date)) / (1000 * 60 * 60 * 24));
+                
+                return {
+                    type: 'expired-event',
+                    canScan: false,
+                    lastEvent: lastEvent,
+                    daysAgo: daysAgo,
+                    message: `Last event was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago (outside 7-day window)`
+                };
+            }
+            
+            // No events found
+            return {
+                type: 'no-events',
+                canScan: false,
+                message: 'No events have been created'
+            };
+            
+        } catch (error) {
+            console.error('Error getting scanning status:', error);
+            return {
+                type: 'error',
+                canScan: false,
+                error: error.message,
+                message: 'Error checking event status'
+            };
+        }
+    }
 }
 
-// Initialize scanner manager
-window.ScannerManager = new ScannerManager();
+// Create alias for compatibility with different naming conventions
+window.VolunteerScanner = ScannerManager;
+
+// Initialize scanner manager ONLY after DOM and ALL production dependencies are ready
+function initializeScannerWhenReady() {
+    // Check if basic dependencies are available
+    if (document.readyState === 'complete' && 
+        window.StorageManager && 
+        window.StorageManager.db && 
+        document.getElementById('scannerInput')) {
+        
+        console.log('🔧 Basic dependencies ready, initializing scanner...');
+        window.ScannerManager = new ScannerManager();
+        window.scanner = window.ScannerManager;
+        
+        // Development mode detected - enhanced debugging available but no automatic bypassing
+        if (window.Config && window.Config.isDevelopment) {
+            console.log('🔧 Development mode detected - enhanced debugging enabled, use force enable button for testing');
+        }
+        
+        console.log('✅ Scanner initialized successfully');
+        return true;
+    }
+    return false;
+}
+
+// Check if production requirements are met for scanner enablement
+function checkProductionReadiness() {
+    console.log('🔍 PRODUCTION READINESS CHECK - Starting detailed analysis...');
+    
+    // 1. Storage must be ready
+    console.log('🔍 Step 1: Checking Storage System...');
+    console.log('  - window.StorageManager exists:', !!window.StorageManager);
+    console.log('  - window.StorageManager.db exists:', !!(window.StorageManager && window.StorageManager.db));
+    
+    if (!window.StorageManager || !window.StorageManager.db) {
+        const result = {
+            ready: false,
+            reason: 'Storage system not ready',
+            details: 'Local database not initialized'
+        };
+        console.log('❌ PRODUCTION CHECK FAILED - Storage:', result);
+        return result;
+    }
+    console.log('✅ Storage system ready');
+    
+    // 2. Google Sheets connection should be established (in production)
+    console.log('🔍 Step 2: Checking Google Sheets Service...');
+    console.log('  - window.GoogleSheetsService exists:', !!window.GoogleSheetsService);
+    
+    if (window.GoogleSheetsService) {
+        const status = window.GoogleSheetsService.getStatus();
+        console.log('  - Google Sheets status:', status);
+        console.log('  - hasCredentials:', status.hasCredentials);
+        console.log('  - isAuthenticated:', status.isAuthenticated);
+        console.log('  - spreadsheetId:', status.spreadsheetId);
+        
+        // Check if credentials are configured
+        if (!status.hasCredentials) {
+            const result = {
+                ready: false,
+                reason: 'Google Sheets not configured',
+                details: 'API credentials not set up - data sync unavailable'
+            };
+            console.log('❌ PRODUCTION CHECK FAILED - No credentials:', result);
+            return result;
+        }
+        console.log('✅ Google Sheets credentials configured');
+        
+        // Check development mode
+        console.log('🔍 Step 3: Checking Environment Mode...');
+        console.log('  - window.Config exists:', !!window.Config);
+        console.log('  - window.Config.isDevelopment:', window.Config?.isDevelopment);
+        
+        // In production, require authentication
+        if (!window.Config?.isDevelopment && !status.isAuthenticated) {
+            const result = {
+                ready: false,
+                reason: 'Google Sheets not authenticated',
+                details: 'Please authenticate with Google Sheets to prevent data loss'
+            };
+            console.log('❌ PRODUCTION CHECK FAILED - No authentication in production:', result);
+            return result;
+        }
+        
+        if (window.Config?.isDevelopment) {
+            console.log('✅ Development mode - authentication not required');
+        } else {
+            console.log('✅ Production mode - authentication verified');
+        }
+        
+    } else {
+        const result = {
+            ready: false,
+            reason: 'Google Sheets service not available',
+            details: 'Sync service not loaded - data may be lost'
+        };
+        console.log('❌ PRODUCTION CHECK FAILED - No Google Sheets service:', result);
+        return result;
+    }
+    
+    console.log('✅ Google Sheets system ready');
+    
+    const result = {
+        ready: true,
+        reason: 'All systems ready',
+        details: 'Storage and sync systems operational'
+    };
+    console.log('🎉 PRODUCTION READINESS CHECK PASSED:', result);
+    return result;
+}
+
+// Try to initialize immediately if everything is ready
+if (!initializeScannerWhenReady()) {
+    // If not ready, wait for DOM and try again
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('📱 DOM loaded, attempting scanner initialization...');
+            if (!initializeScannerWhenReady()) {
+                // Still not ready, retry with delays
+                let attempts = 0;
+                const retryInit = () => {
+                    attempts++;
+                    console.log(`📱 Scanner init attempt ${attempts}...`);
+                    
+                    if (initializeScannerWhenReady()) {
+                        console.log('✅ Scanner initialization successful after retries');
+                        return;
+                    }
+                    
+                    if (attempts < 20) { // Max 10 seconds of retries
+                        setTimeout(retryInit, 500);
+                    } else {
+                        console.warn('⚠️ Scanner initialization failed after maximum retries');
+                        // Create a minimal scanner for force enable functionality
+                        window.scanner = {
+                            forceEnable: function() {
+                                const input = document.getElementById('scannerInput');
+                                if (input) {
+                                    input.disabled = false;
+                                    input.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+                                    input.focus();
+                                    console.log('Scanner force enabled via fallback');
+                                }
+                            }
+                        };
+                    }
+                };
+                setTimeout(retryInit, 500);
+            }
+        });
+    } else {
+        // DOM already loaded, retry with delays
+        let attempts = 0;
+        const retryInit = () => {
+            attempts++;
+            console.log(`📱 Scanner init attempt ${attempts} (DOM ready)...`);
+            
+            if (initializeScannerWhenReady()) {
+                console.log('✅ Scanner initialization successful');
+                return;
+            }
+            
+            if (attempts < 20) { // Max 10 seconds of retries
+                setTimeout(retryInit, 500);
+            } else {
+                console.warn('⚠️ Scanner initialization failed after maximum retries');
+                // Create a minimal scanner for force enable functionality
+                window.scanner = {
+                    forceEnable: function() {
+                        const input = document.getElementById('scannerInput');
+                        if (input) {
+                            input.disabled = false;
+                            input.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+                            input.focus();
+                            console.log('Scanner force enabled via fallback');
+                        }
+                    }
+                };
+            }
+        };
+        setTimeout(retryInit, 100);
+    }
+}

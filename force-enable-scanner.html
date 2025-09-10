@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Enable Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 3rem auto;
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+        }
+        .fix-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1rem 0;
+        }
+        .big-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 1.5rem 2rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 1rem;
+            width: 100%;
+            max-width: 300px;
+        }
+        .big-button:hover {
+            background: #c82333;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="fix-card">
+        <h1>🚨 Force Enable Scanner</h1>
+        <p>Scanner stuck at "Checking events and scanning status"?</p>
+        <p>This will immediately enable the scanner input field.</p>
+        
+        <button class="big-button" onclick="forceEnable()">
+            🔧 Force Enable Now
+        </button>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div id="manualInstructions" style="display: none; text-align: left; background: #fff3cd; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+            <h4>📋 Manual Fix Instructions:</h4>
+            <ol>
+                <li><strong>Open Browser Console:</strong> Press F12 or Ctrl+Shift+I</li>
+                <li><strong>Go to Console tab</strong></li>
+                <li><strong>Copy and paste this code:</strong></li>
+            </ol>
+            <div style="background: #f8f9fa; padding: 0.5rem; border-radius: 4px; font-family: monospace; font-size: 0.8rem; margin: 0.5rem 0;">
+const input = document.getElementById('scannerInput');<br>
+if (input) {<br>
+&nbsp;&nbsp;input.disabled = false;<br>
+&nbsp;&nbsp;input.placeholder = 'Scan badge or enter volunteer ID...';<br>
+&nbsp;&nbsp;input.focus();<br>
+&nbsp;&nbsp;console.log('Scanner enabled!');<br>
+} else {<br>
+&nbsp;&nbsp;console.log('Scanner input not found');<br>
+}
+            </div>
+            <p><strong>4. Press Enter</strong> to run the code</p>
+        </div>
+        
+        <p><small>This bypasses all event checking and enables the scanner immediately.</small></p>
+    </div>
+
+    <script>
+        function forceEnable() {
+            showStatus('🔧 Attempting to enable scanner...', 'info');
+            
+            // Create a comprehensive script that will work in any context
+            const enableScript = `
+                (function() {
+                    console.log('🔧 Force enable scanner script running...');
+                    
+                    // Method 1: Direct DOM manipulation
+                    const scannerInput = document.getElementById('scannerInput');
+                    if (scannerInput) {
+                        scannerInput.disabled = false;
+                        scannerInput.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+                        scannerInput.focus();
+                        console.log('✅ Scanner enabled directly');
+                        return true;
+                    }
+                    
+                    // Method 2: Try to find scanner manager and force enable
+                    if (window.scanner && typeof window.scanner.forceEnable === 'function') {
+                        window.scanner.forceEnable();
+                        console.log('✅ Scanner enabled via manager');
+                        return true;
+                    }
+                    
+                    // Method 3: Try fallback enable
+                    if (window.scanner && typeof window.scanner.enableScannerWithFallback === 'function') {
+                        window.scanner.enableScannerWithFallback();
+                        console.log('✅ Scanner enabled via fallback');
+                        return true;
+                    }
+                    
+                    // Method 4: Find any input that looks like scanner input
+                    const inputs = document.querySelectorAll('input[type="text"]');
+                    for (const input of inputs) {
+                        if (input.placeholder && input.placeholder.toLowerCase().includes('scan')) {
+                            input.disabled = false;
+                            input.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+                            input.focus();
+                            console.log('✅ Scanner-like input enabled');
+                            return true;
+                        }
+                    }
+                    
+                    console.log('❌ Could not find scanner input');
+                    return false;
+                })();
+            `;
+            
+            try {
+                // Try to run in current window first
+                const result = eval(enableScript);
+                if (result) {
+                    showStatus('✅ Scanner enabled in current window!', 'success');
+                    return;
+                }
+                
+                // Try parent/opener window
+                if (window.opener) {
+                    try {
+                        const parentResult = window.opener.eval(enableScript);
+                        if (parentResult) {
+                            showStatus('✅ Scanner enabled in parent window!', 'success');
+                            return;
+                        }
+                    } catch (e) {
+                        console.log('Could not access parent window:', e);
+                    }
+                }
+                
+                // Try all frames
+                try {
+                    for (let i = 0; i < window.frames.length; i++) {
+                        try {
+                            const frameResult = window.frames[i].eval(enableScript);
+                            if (frameResult) {
+                                showStatus('✅ Scanner enabled in frame!', 'success');
+                                return;
+                            }
+                        } catch (e) {
+                            // Frame access denied, continue
+                        }
+                    }
+                } catch (e) {
+                    console.log('Could not access frames:', e);
+                }
+                
+                // Last resort: provide manual instructions
+                showStatus('⚠️ Automatic enable failed. Use manual method below:', 'error');
+                document.getElementById('manualInstructions').style.display = 'block';
+                
+            } catch (error) {
+                showStatus('❌ Error: ' + error.message, 'error');
+                document.getElementById('manualInstructions').style.display = 'block';
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        // Auto-enable after 3 seconds if opened from main app
+        window.addEventListener('load', () => {
+            if (window.opener) {
+                setTimeout(() => {
+                    if (confirm('Auto-enable scanner now?')) {
+                        forceEnable();
+                    }
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

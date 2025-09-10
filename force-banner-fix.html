@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Banner Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .fix-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            margin: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+    </style>
+</head>
+<body>
+    <div class="fix-container">
+        <h1>🔧 Force Banner & Layout Fix</h1>
+        <p>This will apply the fixes directly to the main app using JavaScript.</p>
+
+        <button class="btn btn-primary" onclick="openAndFix()">🚀 Open Main App & Apply Fixes</button>
+        <button class="btn btn-success" onclick="testDiagnostic()">🔍 Open Diagnostic Tool</button>
+        <button class="btn btn-warning" onclick="showInstructions()">📋 Manual Fix Instructions</button>
+
+        <div id="status" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; font-family: monospace;">
+            Ready to apply fixes...
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            document.getElementById('status').textContent += '\n' + new Date().toLocaleTimeString() + ': ' + message;
+        }
+
+        function openAndFix() {
+            log('🚀 Opening main app and applying fixes...');
+            
+            const mainWindow = window.open('index.html', '_blank');
+            
+            setTimeout(() => {
+                try {
+                    // Force banner positioning fix
+                    const style = mainWindow.document.createElement('style');
+                    style.textContent = `
+                        /* Force banner positioning */
+                        #googleSheetsSetupBanner {
+                            position: fixed !important;
+                            top: 80px !important;
+                            left: 0 !important;
+                            right: 0 !important;
+                            z-index: 10000 !important;
+                            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+                            color: #856404 !important;
+                            padding: 8px 0 !important;
+                            border-bottom: 1px solid #ffc107 !important;
+                        }
+                        
+                        /* Force scanner layout fix */
+                        .scanner-status-container {
+                            display: flex !important;
+                            flex-direction: row !important;
+                            align-items: center !important;
+                            gap: 1rem !important;
+                        }
+                        
+                        .scanner-header {
+                            display: flex !important;
+                            flex-direction: row !important;
+                            justify-content: space-between !important;
+                            align-items: center !important;
+                        }
+                        
+                        /* Adjust body padding for banner */
+                        body.has-google-sheets-banner {
+                            padding-top: 130px !important;
+                        }
+                    `;
+                    mainWindow.document.head.appendChild(style);
+                    
+                    log('✅ Applied CSS fixes to main app');
+                    log('💡 Check the main app window - fixes should now be visible');
+                    
+                } catch (e) {
+                    log('❌ Could not apply fixes: ' + e.message);
+                    log('💡 Try the manual fix instructions instead');
+                }
+            }, 2000);
+        }
+
+        function testDiagnostic() {
+            log('🔍 Opening diagnostic tool...');
+            window.open('test-banner-fix.html', '_blank');
+        }
+
+        function showInstructions() {
+            log('📋 Manual fix instructions:');
+            log('');
+            log('1. Open main app (index.html)');
+            log('2. Press F12 to open Developer Tools');
+            log('3. Go to Console tab');
+            log('4. Paste this code and press Enter:');
+            log('');
+            log('// Force create banner');
+            log('const banner = document.createElement("div");');
+            log('banner.id = "googleSheetsSetupBanner";');
+            log('banner.style.cssText = "position:fixed;top:80px;left:0;right:0;background:linear-gradient(135deg,#fff3cd 0%,#ffeaa7 100%);color:#856404;padding:8px 0;z-index:10000;border-bottom:1px solid #ffc107;";');
+            log('banner.innerHTML = `<div style="max-width:1200px;margin:0 auto;padding:0 1rem;display:flex;align-items:center;gap:12px;"><div style="font-size:24px;">📊</div><div style="font-weight:600;font-size:16px;flex:1;">Google Sheets Not Connected</div><button style="padding:8px 16px;border:none;background:#007bff;color:white;border-radius:6px;cursor:pointer;">🔧 Setup</button></div>`;');
+            log('document.body.appendChild(banner);');
+            log('document.body.style.paddingTop = "130px";');
+            log('');
+            log('5. This should create the banner in the correct position');
+        }
+    </script>
+</body>
+</html>

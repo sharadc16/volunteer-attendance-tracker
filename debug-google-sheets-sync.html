@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Google Sheets Sync</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Google Sheets Sync</h1>
+    
+    <div class="test-container">
+        <h2>Issue Analysis</h2>
+        <div class="status info">
+            <strong>Problem:</strong> Events synced from Google Sheets have undefined names, even though Google Sheets contains name data.
+            <br><strong>Root Cause:</strong> Likely a column mapping issue between Google Sheets structure and parsing code.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Diagnostic Actions</h2>
+        <button onclick="testGoogleSheetsConnection()">🔗 Test Google Sheets Connection</button>
+        <button onclick="readRawSheetsData()">📊 Read Raw Sheets Data</button>
+        <button onclick="analyzeColumnMapping()">🗂️ Analyze Column Mapping</button>
+        <button onclick="testEventParsing()">🔧 Test Event Parsing</button>
+        <button onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+
+    <div class="test-container">
+        <h2>Raw Data Preview</h2>
+        <div id="dataPreview">No data loaded yet</div>
+    </div>
+
+    <div class="test-container">
+        <h2>Diagnostic Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/environment-manager.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        let rawSheetsData = null;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            document.getElementById('log').textContent += logEntry + '\n';
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        function updateDataPreview(data) {
+            const previewDiv = document.getElementById('dataPreview');
+            
+            if (!data || data.length === 0) {
+                previewDiv.innerHTML = '<div class="status warning">No data to preview</div>';
+                return;
+            }
+            
+            let html = '<table class="data-table">';
+            
+            // Header row
+            html += '<thead><tr>';
+            const maxCols = Math.max(...data.map(row => row.length));
+            for (let i = 0; i < maxCols; i++) {
+                html += `<th>Column ${i}</th>`;
+            }
+            html += '</tr></thead>';
+            
+            // Data rows (show first 10)
+            html += '<tbody>';
+            const previewRows = data.slice(0, 10);
+            previewRows.forEach((row, rowIndex) => {
+                html += '<tr>';
+                for (let i = 0; i < maxCols; i++) {
+                    const cellValue = row[i] || '';
+                    const displayValue = cellValue.toString().substring(0, 50);
+                    html += `<td title="${cellValue}">${displayValue}</td>`;
+                }
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            
+            html += '</table>';
+            
+            if (data.length > 10) {
+                html += `<p><em>Showing first 10 rows of ${data.length} total rows</em></p>`;
+            }
+            
+            previewDiv.innerHTML = html;
+        }
+        
+        async function testGoogleSheetsConnection() {
+            log('🔗 Testing Google Sheets connection...');
+            
+            try {
+                if (!window.googleSheetsService) {
+                    window.googleSheetsService = new GoogleSheetsService();
+                }
+                
+                const service = window.googleSheetsService;
+                
+                // Check authentication
+                await service.ensureAuthenticated();
+                log('✅ Authentication successful');
+                
+                // Check spreadsheet ID
+                if (!service.spreadsheetId) {
+                    log('❌ No spreadsheet ID configured');
+                    return;
+                }
+                
+                log(`📊 Using spreadsheet ID: ${service.spreadsheetId}`);
+                
+                // Test basic connection
+                const testData = await service.readSheet('Events');
+                log(`✅ Successfully connected to Google Sheets`);
+                log(`📊 Retrieved ${testData.length} rows from Events sheet`);
+                
+            } catch (error) {
+                log(`❌ Google Sheets connection failed: ${error.message}`);
+            }
+        }
+        
+        async function readRawSheetsData() {
+            log('📊 Reading raw data from Google Sheets...');
+            
+            try {
+                if (!window.googleSheetsService) {
+                    window.googleSheetsService = new GoogleSheetsService();
+                }
+                
+                const service = window.googleSheetsService;
+                await service.ensureAuthenticated();
+                
+                // Read raw data from Events sheet
+                rawSheetsData = await service.readSheet('Events');
+                log(`📊 Retrieved ${rawSheetsData.length} rows of raw data`);
+                
+                if (rawSheetsData.length > 0) {
+                    log('📋 First few rows of raw data:');
+                    rawSheetsData.slice(0, 5).forEach((row, index) => {
+                        log(`  Row ${index}: [${row.map(cell => `"${cell}"`).join(', ')}]`);
+                    });
+                    
+                    // Update preview
+                    updateDataPreview(rawSheetsData);
+                    
+                    // Analyze header row
+                    if (rawSheetsData.length > 0) {
+                        const headerRow = rawSheetsData[0];
+                        log('📋 Header row analysis:');
+                        headerRow.forEach((header, index) => {
+                            log(`  Column ${index}: "${header}"`);
+                        });
+                    }
+                } else {
+                    log('⚠️ No data retrieved from Google Sheets');
+                }
+                
+            } catch (error) {
+                log(`❌ Error reading raw sheets data: ${error.message}`);
+            }
+        }
+        
+        async function analyzeColumnMapping() {
+            log('🗂️ Analyzing column mapping...');
+            
+            if (!rawSheetsData || rawSheetsData.length === 0) {
+                log('❌ No raw data available. Please read sheets data first.');
+                return;
+            }
+            
+            try {
+                const headerRow = rawSheetsData[0];
+                log('📊 Current column mapping assumption:');
+                log('  Column 0: Event ID');
+                log('  Column 1: Event Name');
+                log('  Column 2: Date');
+                log('  Column 3: Type');
+                log('  Column 4: Status');
+                
+                log('📊 Actual header row:');
+                headerRow.forEach((header, index) => {
+                    log(`  Column ${index}: "${header}"`);
+                });
+                
+                // Check if headers match expected structure
+                const expectedHeaders = ['Event ID', 'Event Name', 'Date', 'Type', 'Status'];
+                const headerMatches = [];
+                
+                expectedHeaders.forEach((expected, index) => {
+                    const actual = headerRow[index] || '';
+                    const matches = actual.toLowerCase().includes(expected.toLowerCase()) || 
+                                  expected.toLowerCase().includes(actual.toLowerCase());
+                    headerMatches.push({ expected, actual, matches, index });
+                    
+                    if (matches) {
+                        log(`  ✅ Column ${index}: "${actual}" matches expected "${expected}"`);
+                    } else {
+                        log(`  ❌ Column ${index}: "${actual}" does NOT match expected "${expected}"`);
+                    }
+                });
+                
+                // Look for name-like columns
+                log('🔍 Looking for name-like columns:');
+                headerRow.forEach((header, index) => {
+                    const headerLower = header.toLowerCase();
+                    if (headerLower.includes('name') || headerLower.includes('title') || headerLower.includes('event')) {
+                        log(`  📝 Potential name column at index ${index}: "${header}"`);
+                    }
+                });
+                
+                // Sample data analysis
+                if (rawSheetsData.length > 1) {
+                    log('📊 Sample data row analysis:');
+                    const sampleRow = rawSheetsData[1];
+                    sampleRow.forEach((cell, index) => {
+                        const header = headerRow[index] || `Column ${index}`;
+                        log(`  ${header}: "${cell}"`);
+                    });
+                }
+                
+            } catch (error) {
+                log(`❌ Error analyzing column mapping: ${error.message}`);
+            }
+        }
+        
+        async function testEventParsing() {
+            log('🔧 Testing event parsing with current logic...');
+            
+            if (!rawSheetsData || rawSheetsData.length === 0) {
+                log('❌ No raw data available. Please read sheets data first.');
+                return;
+            }
+            
+            try {
+                // Use the same parsing logic as StorageManager
+                const events = [];
+                
+                // Skip header row, process data rows
+                for (let i = 1; i < Math.min(rawSheetsData.length, 6); i++) { // Test first 5 data rows
+                    const row = rawSheetsData[i];
+                    
+                    log(`📊 Processing row ${i}: [${row.map(cell => `"${cell}"`).join(', ')}]`);
+                    
+                    // Current parsing logic
+                    if (row.length >= 3 && row[1] && row[2]) {
+                        const event = {
+                            eventId: row[0] || `SHEET_${Date.now()}_${i}`,
+                            eventName: row[1],
+                            date: row[2], // Simplified for testing
+                            type: row[3] || 'Special',
+                            status: row[4] || 'Active'
+                        };
+                        
+                        log(`  ✅ Parsed event: ID="${event.eventId}", Name="${event.eventName}", Date="${event.date}"`);
+                        
+                        // Validate the event
+                        if (event.eventName && event.date) {
+                            events.push(event);
+                            log(`  ✅ Event validated and added`);
+                        } else {
+                            log(`  ❌ Event validation failed - Name: "${event.eventName}", Date: "${event.date}"`);
+                        }
+                    } else {
+                        log(`  ❌ Row skipped - insufficient data or missing required fields`);
+                        log(`    Row length: ${row.length}, Row[1]: "${row[1]}", Row[2]: "${row[2]}"`);
+                    }
+                }
+                
+                log(`📊 Parsing results: ${events.length} valid events parsed from ${rawSheetsData.length - 1} data rows`);
+                
+                if (events.length > 0) {
+                    log('📋 Sample parsed events:');
+                    events.slice(0, 3).forEach((event, index) => {
+                        log(`  ${index + 1}. "${event.eventName}" - ${event.date} (${event.status})`);
+                    });
+                } else {
+                    log('⚠️ No events were successfully parsed');
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing event parsing: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', async () => {
+            log('🚀 Google Sheets sync debugger loaded');
+            
+            // Initialize services
+            if (!window.googleSheetsService) {
+                try {
+                    window.googleSheetsService = new GoogleSheetsService();
+                    log('✅ GoogleSheetsService initialized');
+                } catch (error) {
+                    log(`❌ Error initializing GoogleSheetsService: ${error.message}`);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

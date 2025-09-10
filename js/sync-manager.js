@@ -13,7 +13,15 @@ class SyncManager {
         this.isSyncing = false;
         this.lastSyncTime = null;
         this.syncQueue = [];
-        this.conflictResolutionStrategy = 'local-wins'; // 'local-wins', 'remote-wins', 'merge'
+        // Get conflict resolution strategy from config
+        const configStrategy = window.Config?.conflictResolution?.strategy || 'sheets-authority';
+        this.conflictResolutionStrategy = configStrategy === 'sheets-authority' ? 'remote-wins' : 
+                                        configStrategy === 'local-wins' ? 'local-wins' : 'merge';
+        
+        console.log(`🔄 Sync Manager: Using conflict resolution strategy '${this.conflictResolutionStrategy}' (${configStrategy})`);
+        if (window.Config?.features?.googleSheetsAuthority) {
+            console.log('📊 Google Sheets data is configured as authoritative source');
+        }
         
         // Sync statistics
         this.stats = {
@@ -35,6 +43,12 @@ class SyncManager {
         try {
             console.log('Initializing Sync Manager...');
             
+            // Check if Google Sheets sync is enabled
+            if (!window.Config?.features?.googleSheetsSync) {
+                console.log('🛑 Google Sheets sync is disabled in configuration - skipping sync manager initialization');
+                return;
+            }
+            
             // Wait for storage manager to be ready
             await this.waitForStorageManager();
             
@@ -44,8 +58,14 @@ class SyncManager {
             // Load sync queue from storage
             await this.loadSyncQueue();
             
-            // Start sync timer
-            this.startSyncTimer();
+            // Only start sync timer if we have credentials configured
+            if (this.hasCredentialsConfigured()) {
+                this.startSyncTimer();
+                console.log('✅ Sync timer started - credentials available');
+            } else {
+                console.log('⚠️ Sync timer not started - no credentials configured yet');
+                console.log('📋 Configure Google Sheets credentials to enable automatic sync');
+            }
             
             // Update sync status
             this.updateSyncStatus();
@@ -55,6 +75,37 @@ class SyncManager {
         } catch (error) {
             console.error('Failed to initialize Sync Manager:', error);
         }
+    }
+
+    /**
+     * Check if Google Sheets credentials are configured
+     */
+    hasCredentialsConfigured() {
+        const environment = window.Config?.environment || 'development';
+        const credentialsKey = `googleSheetsCredentials_${environment}`;
+        const stored = localStorage.getItem(credentialsKey);
+        
+        if (stored) {
+            try {
+                const credentials = JSON.parse(stored);
+                return !!(credentials.apiKey && credentials.clientId && credentials.spreadsheetId);
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // Check legacy credentials
+        const legacyStored = localStorage.getItem('googleSheetsCredentials');
+        if (legacyStored) {
+            try {
+                const credentials = JSON.parse(legacyStored);
+                return !!(credentials.apiKey && credentials.clientId && credentials.spreadsheetId);
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -218,6 +269,13 @@ class SyncManager {
     }
 
     /**
+     * Stop sync (alias for stopSyncTimer)
+     */
+    stopSync() {
+        this.stopSyncTimer();
+    }
+
+    /**
      * Sync pending data to cloud
      */
     async syncPendingData(immediate = false) {
@@ -356,7 +414,11 @@ class SyncManager {
         const status = sheetsService.getStatus();
 
         if (!status.hasCredentials) {
-            throw new Error('Google Sheets credentials not configured');
+            // Stop sync timer to prevent continuous failures
+            this.stopSync();
+            console.warn('🛑 Sync paused - Google Sheets credentials not configured');
+            console.log('📋 Use google-sheets-environment-setup.html to configure credentials');
+            throw new Error('Google Sheets credentials not configured - sync paused');
         }
 
         if (status.syncDisabled) {
@@ -369,8 +431,8 @@ class SyncManager {
                 throw new Error(`Google Sheets authentication was cancelled. Please wait ${status.cooldownRemaining} minutes before trying again.`);
             }
             
-            console.log('Authenticating with Google Sheets...');
-            await sheetsService.authenticate();
+            console.log('Ensuring Google Sheets authentication...');
+            await sheetsService.ensureAuthenticated();
         }
 
         // Process based on store type and operation
@@ -508,49 +570,68 @@ class SyncManager {
     }
 
     /**
-     * Handle conflict resolution
+     * Handle conflict resolution - Google Sheets data is authoritative
      */
     async resolveConflict(localData, remoteData, conflictType) {
         this.stats.conflictsResolved++;
         
-        console.log(`Resolving conflict: ${conflictType}`, { localData, remoteData });
+        console.log(`🔄 Resolving conflict: ${conflictType}`, { localData, remoteData });
+        console.log('📊 Google Sheets data is treated as authoritative source');
 
         switch (this.conflictResolutionStrategy) {
             case 'local-wins':
-                console.log('Conflict resolved: local data wins');
+                console.log('⚠️ Conflict resolved: local data wins (not recommended for Google Sheets sync)');
                 return localData;
                 
             case 'remote-wins':
-                console.log('Conflict resolved: remote data wins');
+                console.log('✅ Conflict resolved: Google Sheets data wins (authoritative source)');
                 return remoteData;
                 
             case 'merge':
-                // Implement merge logic based on timestamps and data type
-                const merged = this.mergeData(localData, remoteData);
-                console.log('Conflict resolved: data merged', merged);
+                // For Google Sheets sync, prioritize remote data but preserve local metadata
+                const merged = this.mergeDataWithSheetsAuthority(localData, remoteData);
+                console.log('🔀 Conflict resolved: data merged with Google Sheets authority', merged);
                 return merged;
                 
             default:
-                console.warn('Unknown conflict resolution strategy, defaulting to local wins');
-                return localData;
+                console.warn('⚠️ Unknown conflict resolution strategy, defaulting to Google Sheets authority');
+                return remoteData; // Default to remote (Google Sheets) data
         }
     }
 
     /**
-     * Merge conflicting data
+     * Merge conflicting data with Google Sheets authority
      */
-    mergeData(localData, remoteData) {
-        // Simple merge strategy: use most recent timestamp for each field
-        const merged = { ...localData };
+    mergeDataWithSheetsAuthority(localData, remoteData) {
+        // Google Sheets data takes precedence for core fields
+        const merged = { ...remoteData }; // Start with remote (Google Sheets) data
         
-        // If remote data has more recent timestamp, use remote values
-        if (remoteData.lastModified && localData.lastModified) {
-            if (new Date(remoteData.lastModified) > new Date(localData.lastModified)) {
-                Object.assign(merged, remoteData);
+        // Preserve local-only metadata that doesn't exist in sheets
+        const localOnlyFields = ['localId', 'syncStatus', 'lastLocalUpdate', 'deviceId'];
+        localOnlyFields.forEach(field => {
+            if (localData[field] !== undefined && remoteData[field] === undefined) {
+                merged[field] = localData[field];
             }
-        }
+        });
+        
+        // Add conflict resolution metadata
+        merged.lastConflictResolution = new Date().toISOString();
+        merged.conflictResolutionStrategy = 'sheets-authority';
+        merged.originalLocalData = { ...localData }; // Keep reference for debugging
+        
+        console.log('🔀 Merged data with Google Sheets authority:', {
+            preservedLocalFields: localOnlyFields.filter(field => merged[field] !== undefined),
+            authoritySource: 'Google Sheets'
+        });
         
         return merged;
+    }
+
+    /**
+     * Legacy merge method (kept for backward compatibility)
+     */
+    mergeData(localData, remoteData) {
+        return this.mergeDataWithSheetsAuthority(localData, remoteData);
     }
 
     /**
@@ -730,3 +811,14 @@ window.forcSync = () => window.SyncManager?.forcSync();
 window.getSyncStats = () => window.SyncManager?.getStats();
 window.clearSyncQueue = () => window.SyncManager?.clearSyncQueue();
 window.retryFailedSync = () => window.SyncManager?.retryFailedItems();
+window.testConflictResolution = () => {
+    const localData = { id: 'test', name: 'Local Event', date: '2025-01-01', lastModified: '2025-01-01T10:00:00Z' };
+    const sheetsData = { id: 'test', name: 'Google Sheets Event', date: '2025-01-02', lastModified: '2025-01-01T11:00:00Z' };
+    return window.SyncManager?.resolveConflict(localData, sheetsData, 'event');
+};
+window.setSyncStrategy = (strategy) => {
+    if (window.SyncManager) {
+        window.SyncManager.setConflictResolutionStrategy(strategy);
+        console.log(`✅ Conflict resolution strategy set to: ${strategy}`);
+    }
+};

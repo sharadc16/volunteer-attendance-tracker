@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Current Event Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #f5f5f5;
+        }
+        
+        .test-box {
+            background: white;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .current-event {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 0.5rem 0;
+        }
+        
+        .current-event.active.today {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+        
+        .current-event.active.backfill {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            color: #856404;
+            border: 2px solid #ffc107;
+        }
+        
+        .current-event.inactive {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #6c757d;
+            border: 2px solid #dee2e6;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.25rem;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Current Event Test</h1>
+    
+    <div class="test-box">
+        <h3>Current Event Display</h3>
+        <div id="currentEvent" class="current-event inactive">Loading...</div>
+        <br>
+        <button onclick="updateDisplay()">Update Display</button>
+        <button onclick="createTodayEvent()">Create Today's Event</button>
+        <button onclick="createYesterdayEvent()">Create Yesterday's Event</button>
+        <button onclick="clearEvents()">Clear All Events</button>
+    </div>
+    
+    <div class="test-box">
+        <h3>Test Log</h3>
+        <div id="testLog" class="log">Initializing...</div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        let logMessages = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logMessages.push(`[${timestamp}] ${message}`);
+            document.getElementById('testLog').textContent = logMessages.join('\n');
+            console.log(message);
+        }
+        
+        async function waitForStorage() {
+            log('Waiting for storage manager...');
+            let attempts = 0;
+            while (!window.StorageManager || !window.StorageManager.db) {
+                if (attempts > 100) {
+                    throw new Error('Storage initialization timeout');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            log('✅ Storage manager ready');
+        }
+        
+        async function updateDisplay() {
+            try {
+                log('🔄 Updating current event display...');
+                
+                if (!window.StorageManager || !window.StorageManager.db) {
+                    log('❌ Storage manager not ready');
+                    return;
+                }
+                
+                if (typeof window.StorageManager.getCurrentScannableEvent !== 'function') {
+                    log('❌ getCurrentScannableEvent method not found');
+                    return;
+                }
+                
+                const currentEvent = await window.StorageManager.getCurrentScannableEvent();
+                const currentEventEl = document.getElementById('currentEvent');
+                
+                if (currentEvent) {
+                    const context = currentEvent.scanningContext;
+                    log(`✅ Found scannable event: ${currentEvent.eventName}`);
+                    log(`   Context: isToday=${context?.isToday}, isPastEvent=${context?.isPastEvent}, days=${context?.daysFromEventDate}`);
+                    
+                    if (context?.isToday) {
+                        currentEventEl.textContent = `📅 Today: ${currentEvent.eventName}`;
+                        currentEventEl.className = 'current-event active today';
+                    } else if (context?.isPastEvent) {
+                        const daysAgo = context.daysFromEventDate;
+                        currentEventEl.textContent = `🔄 Backfill: ${currentEvent.eventName} (${daysAgo}d ago)`;
+                        currentEventEl.className = 'current-event active backfill';
+                    } else {
+                        currentEventEl.textContent = `📋 ${currentEvent.eventName}`;
+                        currentEventEl.className = 'current-event active';
+                    }
+                } else {
+                    log('❌ No scannable event found');
+                    currentEventEl.textContent = '❌ No scannable events';
+                    currentEventEl.className = 'current-event inactive';
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        async function createTodayEvent() {
+            try {
+                log('Creating today\'s event...');
+                
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + 
+                               String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(today.getDate()).padStart(2, '0');
+                
+                const event = {
+                    eventId: `TODAY_${Date.now()}`,
+                    eventName: 'Today\'s Test Event',
+                    date: todayStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(event);
+                log(`✅ Created: ${event.eventName} for ${todayStr}`);
+                
+                setTimeout(updateDisplay, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating event: ${error.message}`);
+            }
+        }
+        
+        async function createYesterdayEvent() {
+            try {
+                log('Creating yesterday\'s event...');
+                
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.getFullYear() + '-' + 
+                                   String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
+                                   String(yesterday.getDate()).padStart(2, '0');
+                
+                const event = {
+                    eventId: `YESTERDAY_${Date.now()}`,
+                    eventName: 'Yesterday\'s Test Event',
+                    date: yesterdayStr,
+                    type: 'Recurring',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(event);
+                log(`✅ Created: ${event.eventName} for ${yesterdayStr}`);
+                
+                setTimeout(updateDisplay, 500);
+                
+            } catch (error) {
+                log(`❌ Error creating event: ${error.message}`);
+            }
+        }
+        
+        async function clearEvents() {
+            try {
+                log('Clearing all events...');
+                
+                const allEvents = await window.StorageManager.getAllEvents();
+                for (const event of allEvents) {
+                    await window.StorageManager.deleteEvent(event.eventId);
+                }
+                
+                log(`✅ Cleared ${allEvents.length} events`);
+                setTimeout(updateDisplay, 500);
+                
+            } catch (error) {
+                log(`❌ Error clearing events: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await waitForStorage();
+                await updateDisplay();
+                log('🎉 Test page ready!');
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

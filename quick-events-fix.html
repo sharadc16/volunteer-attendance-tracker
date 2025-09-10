@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Events Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .fix-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            margin: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 16px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .status {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="fix-container">
+        <h1>🔧 Quick Events Fix</h1>
+        <p>This will create sample events to fix the "events not loading" issue.</p>
+
+        <div id="status" class="status info">
+            <strong>Status:</strong> Ready to fix events loading issue
+        </div>
+
+        <button class="btn btn-success" onclick="createSampleEvents()">📅 Create Sample Events</button>
+        <button class="btn btn-primary" onclick="checkEvents()">🔍 Check Current Events</button>
+        <button class="btn btn-primary" onclick="openMainApp()">🚀 Open Main App</button>
+
+        <div id="log" style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 14px; max-height: 300px; overflow-y: auto; margin-top: 20px;">
+            Ready to fix events...
+        </div>
+    </div>
+
+    <!-- Load essential scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEl = document.getElementById('log');
+            logEl.textContent += `\n[${timestamp}] ${message}`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+        
+        async function waitForStorage() {
+            log('Waiting for storage manager...');
+            let attempts = 0;
+            while (!window.StorageManager || !window.StorageManager.db) {
+                if (attempts > 100) {
+                    throw new Error('Storage initialization timeout');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            log('✅ Storage manager ready');
+        }
+        
+        async function createSampleEvents() {
+            try {
+                updateStatus('Creating sample events...', 'info');
+                await waitForStorage();
+                
+                const today = new Date();
+                const events = [
+                    {
+                        eventId: `TODAY_${Date.now()}`,
+                        eventName: 'Sunday Service',
+                        date: today.toISOString().split('T')[0],
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `YESTERDAY_${Date.now()}`,
+                        eventName: 'Saturday Evening Service',
+                        date: new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `NEXT_WEEK_${Date.now()}`,
+                        eventName: 'Next Sunday Service',
+                        date: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        type: 'Recurring',
+                        status: 'Active'
+                    }
+                ];
+                
+                for (const event of events) {
+                    await window.StorageManager.addEvent(event);
+                    log(`✅ Created event: ${event.eventName} (${event.date})`);
+                }
+                
+                updateStatus(`✅ Successfully created ${events.length} sample events!`, 'success');
+                log('🎉 Events created successfully! You can now check the Events page.');
+                
+            } catch (error) {
+                log(`❌ Failed to create events: ${error.message}`);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkEvents() {
+            try {
+                updateStatus('Checking events...', 'info');
+                await waitForStorage();
+                
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 Found ${events.length} events in database`);
+                
+                if (events.length === 0) {
+                    updateStatus('❌ No events found - this is the problem!', 'error');
+                    log('💡 Click "Create Sample Events" to fix this issue');
+                } else {
+                    updateStatus(`✅ Found ${events.length} events`, 'success');
+                    events.forEach((event, index) => {
+                        log(`${index + 1}. ${event.eventName} (${event.date}) - ${event.status}`);
+                    });
+                    
+                    // Check current scannable event
+                    const currentEvent = await window.StorageManager.getCurrentScannableEvent();
+                    if (currentEvent) {
+                        log(`🎯 Current scannable event: ${currentEvent.eventName}`);
+                    } else {
+                        log('⚠️ No current scannable event (may need today\'s event)');
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to check events: ${error.message}`);
+                updateStatus(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function openMainApp() {
+            window.open('index.html', '_blank');
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                log('🚀 Quick fix tool initializing...');
+                await waitForStorage();
+                
+                // Check current state
+                const events = await window.StorageManager.getAllEvents();
+                if (events.length === 0) {
+                    log('❌ No events found - this explains why events are not loading!');
+                    updateStatus('❌ No events in database - click "Create Sample Events" to fix', 'error');
+                } else {
+                    log(`✅ Found ${events.length} events`);
+                    updateStatus(`Found ${events.length} events - events should be loading`, 'success');
+                }
+                
+                log('🎉 Quick fix tool ready!');
+                
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`);
+                updateStatus(`❌ Initialization failed: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

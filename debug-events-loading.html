@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Events Loading Issue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-section h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .log-area {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        .data-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Events Loading Issue</h1>
+    <p>This page will help diagnose why events are not loading properly.</p>
+
+    <div class="debug-section">
+        <h2>📊 System Status</h2>
+        <div id="systemStatus">Checking system status...</div>
+        <button class="btn btn-primary" onclick="checkSystemStatus()">🔄 Refresh Status</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>🗄️ Database Status</h2>
+        <div id="databaseStatus">Checking database...</div>
+        <button class="btn btn-primary" onclick="checkDatabase()">🔄 Check Database</button>
+        <button class="btn btn-success" onclick="createTestEvent()">➕ Create Test Event</button>
+        <button class="btn btn-warning" onclick="clearAllData()">🗑️ Clear All Data</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>📅 Events Data</h2>
+        <div id="eventsData">Loading events...</div>
+        <button class="btn btn-primary" onclick="loadEvents()">🔄 Reload Events</button>
+        <button class="btn btn-success" onclick="createTodayEvent()">📅 Create Today's Event</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔄 Sync System Status</h2>
+        <div id="syncStatus">Checking sync system...</div>
+        <button class="btn btn-primary" onclick="checkSyncSystem()">🔄 Check Sync</button>
+        <button class="btn btn-warning" onclick="disableSync()">⏸️ Disable Sync</button>
+        <button class="btn btn-success" onclick="enableSync()">▶️ Enable Sync</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>🎯 Current Scannable Event</h2>
+        <div id="currentEvent">Checking current event...</div>
+        <button class="btn btn-primary" onclick="checkCurrentEvent()">🔄 Check Current Event</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>📝 Debug Log</h2>
+        <div id="debugLog" class="log-area">Debug log will appear here...</div>
+        <button class="btn btn-warning" onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+
+    <!-- Load essential scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        let logMessages = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logMessages.push(logEntry);
+            
+            const logArea = document.getElementById('debugLog');
+            logArea.textContent = logMessages.slice(-50).join('\n');
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logMessages = [];
+            document.getElementById('debugLog').textContent = 'Debug log cleared.';
+        }
+        
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        async function waitForStorage() {
+            log('Waiting for storage manager...');
+            let attempts = 0;
+            while (!window.StorageManager || !window.StorageManager.db) {
+                if (attempts > 100) {
+                    throw new Error('Storage initialization timeout');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            log('✅ Storage manager ready');
+        }
+        
+        async function checkSystemStatus() {
+            try {
+                log('🔍 Checking system status...');
+                
+                // Check if essential components are loaded
+                const components = {
+                    'Config': !!window.Config,
+                    'Utils': !!window.Utils,
+                    'StorageManager': !!window.StorageManager,
+                    'SyncManager': !!window.SyncManager,
+                    'GoogleSheetsService': !!window.GoogleSheetsService
+                };
+                
+                let statusHTML = '<h3>Component Status:</h3>';
+                for (const [name, loaded] of Object.entries(components)) {
+                    const status = loaded ? '✅' : '❌';
+                    const color = loaded ? 'success' : 'error';
+                    statusHTML += `<div class="status ${color}">${status} ${name}: ${loaded ? 'Loaded' : 'Not Loaded'}</div>`;
+                }
+                
+                // Check storage manager database
+                if (window.StorageManager) {
+                    const dbStatus = window.StorageManager.db ? '✅ Connected' : '❌ Not Connected';
+                    statusHTML += `<div class="status ${window.StorageManager.db ? 'success' : 'error'}">Database: ${dbStatus}</div>`;
+                }
+                
+                // Check sync system
+                if (window.SyncManager) {
+                    const syncStats = window.SyncManager.getStats();
+                    statusHTML += `<div class="status info">Sync Queue: ${syncStats.queueLength} items</div>`;
+                    statusHTML += `<div class="status info">Sync Status: ${syncStats.isOnline ? 'Online' : 'Offline'}</div>`;
+                }
+                
+                showStatus('systemStatus', statusHTML, 'info');
+                log('✅ System status check completed');
+                
+            } catch (error) {
+                log(`❌ System status check failed: ${error.message}`);
+                showStatus('systemStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkDatabase() {
+            try {
+                await waitForStorage();
+                log('🔍 Checking database status...');
+                
+                const volunteers = await window.StorageManager.getAllVolunteers();
+                const events = await window.StorageManager.getAllEvents();
+                const attendance = await window.StorageManager.getAllAttendance();
+                
+                let statusHTML = '<h3>Database Contents:</h3>';
+                statusHTML += `<div class="status info">📋 Volunteers: ${volunteers.length}</div>`;
+                statusHTML += `<div class="status info">📅 Events: ${events.length}</div>`;
+                statusHTML += `<div class="status info">✅ Attendance Records: ${attendance.length}</div>`;
+                
+                if (events.length === 0) {
+                    statusHTML += `<div class="status warning">⚠️ No events found - this is likely the issue!</div>`;
+                }
+                
+                showStatus('databaseStatus', statusHTML, 'info');
+                log(`✅ Database check completed: ${volunteers.length} volunteers, ${events.length} events, ${attendance.length} attendance records`);
+                
+            } catch (error) {
+                log(`❌ Database check failed: ${error.message}`);
+                showStatus('databaseStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadEvents() {
+            try {
+                await waitForStorage();
+                log('📅 Loading events data...');
+                
+                const events = await window.StorageManager.getAllEvents();
+                
+                if (events.length === 0) {
+                    showStatus('eventsData', '⚠️ No events found in database. This explains why events are not loading!', 'warning');
+                    log('❌ No events found in database');
+                    return;
+                }
+                
+                // Sort events by date
+                events.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                let eventsHTML = `<h3>Found ${events.length} Events:</h3>`;
+                eventsHTML += '<div class="data-display">';
+                
+                events.forEach((event, index) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const isToday = event.date === today;
+                    const isPast = event.date < today;
+                    const isFuture = event.date > today;
+                    
+                    let statusIcon = '📅';
+                    if (isToday) statusIcon = '🎯';
+                    else if (isPast) statusIcon = '📋';
+                    else if (isFuture) statusIcon = '⏳';
+                    
+                    eventsHTML += `${index + 1}. ${statusIcon} ${event.eventName} (${event.date}) - ${event.status}\\n`;
+                });
+                
+                eventsHTML += '</div>';
+                
+                showStatus('eventsData', eventsHTML, 'success');
+                log(`✅ Loaded ${events.length} events`);
+                
+            } catch (error) {
+                log(`❌ Failed to load events: ${error.message}`);
+                showStatus('eventsData', `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkCurrentEvent() {
+            try {
+                await waitForStorage();
+                log('🎯 Checking current scannable event...');
+                
+                const currentEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (currentEvent) {
+                    const context = currentEvent.scanningContext;
+                    let statusHTML = '<h3>Current Scannable Event:</h3>';
+                    statusHTML += `<div class="status success">✅ Event: ${currentEvent.eventName}</div>`;
+                    statusHTML += `<div class="status info">📅 Date: ${currentEvent.date}</div>`;
+                    statusHTML += `<div class="status info">🏷️ Type: ${currentEvent.type}</div>`;
+                    statusHTML += `<div class="status info">📊 Status: ${currentEvent.status}</div>`;
+                    
+                    if (context) {
+                        statusHTML += `<div class="status info">🎯 Context: ${context.displayMessage}</div>`;
+                        if (context.isPastEvent) {
+                            statusHTML += `<div class="status warning">🔄 Backfill Mode: ${context.daysFromEventDate} days ago</div>`;
+                        }
+                    }
+                    
+                    showStatus('currentEvent', statusHTML, 'success');
+                    log(`✅ Current event: ${currentEvent.eventName}`);
+                } else {
+                    showStatus('currentEvent', '❌ No scannable events available. This is why the scanner is disabled!', 'error');
+                    log('❌ No current scannable event found');
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to check current event: ${error.message}`);
+                showStatus('currentEvent', `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkSyncSystem() {
+            try {
+                log('🔄 Checking sync system...');
+                
+                if (!window.SyncManager) {
+                    showStatus('syncStatus', '❌ Sync Manager not loaded', 'error');
+                    return;
+                }
+                
+                const stats = window.SyncManager.getStats();
+                
+                let statusHTML = '<h3>Sync System Status:</h3>';
+                statusHTML += `<div class="status info">📊 Queue Length: ${stats.queueLength}</div>`;
+                statusHTML += `<div class="status info">🌐 Online: ${stats.isOnline ? 'Yes' : 'No'}</div>`;
+                statusHTML += `<div class="status info">🔄 Syncing: ${stats.isSyncing ? 'Yes' : 'No'}</div>`;
+                statusHTML += `<div class="status info">✅ Success Rate: ${stats.successRate}%</div>`;
+                statusHTML += `<div class="status info">📈 Total Syncs: ${stats.totalSyncs}</div>`;
+                
+                if (stats.lastSyncTime) {
+                    statusHTML += `<div class="status info">🕒 Last Sync: ${new Date(stats.lastSyncTime).toLocaleString()}</div>`;
+                }
+                
+                // Check Google Sheets credentials
+                if (window.GoogleSheetsService) {
+                    const gsStatus = window.GoogleSheetsService.getStatus();
+                    statusHTML += `<div class="status ${gsStatus.hasCredentials ? 'success' : 'warning'}">🔑 Google Sheets Credentials: ${gsStatus.hasCredentials ? 'Configured' : 'Not Configured'}</div>`;
+                    statusHTML += `<div class="status ${gsStatus.isAuthenticated ? 'success' : 'warning'}">🔐 Google Sheets Auth: ${gsStatus.isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>`;
+                    
+                    if (gsStatus.syncDisabled) {
+                        statusHTML += `<div class="status error">🛑 Google Sheets Sync: Disabled (${gsStatus.cancelCount} cancellations)</div>`;
+                    }
+                }
+                
+                showStatus('syncStatus', statusHTML, 'info');
+                log('✅ Sync system check completed');
+                
+            } catch (error) {
+                log(`❌ Sync system check failed: ${error.message}`);
+                showStatus('syncStatus', `Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function createTestEvent() {
+            try {
+                await waitForStorage();
+                log('➕ Creating test event...');
+                
+                const testEvent = {
+                    eventId: `TEST_${Date.now()}`,
+                    eventName: 'Test Event',
+                    date: new Date().toISOString().split('T')[0], // Today
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(testEvent);
+                log(`✅ Created test event: ${testEvent.eventName}`);
+                
+                // Refresh displays
+                setTimeout(() => {
+                    checkDatabase();
+                    loadEvents();
+                    checkCurrentEvent();
+                }, 500);
+                
+            } catch (error) {
+                log(`❌ Failed to create test event: ${error.message}`);
+            }
+        }
+        
+        async function createTodayEvent() {
+            try {
+                await waitForStorage();
+                log('📅 Creating today\'s event...');
+                
+                const todayEvent = {
+                    eventId: `TODAY_${Date.now()}`,
+                    eventName: 'Today\'s Service',
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'Recurring',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(todayEvent);
+                log(`✅ Created today's event: ${todayEvent.eventName}`);
+                
+                // Refresh displays
+                setTimeout(() => {
+                    checkDatabase();
+                    loadEvents();
+                    checkCurrentEvent();
+                }, 500);
+                
+            } catch (error) {
+                log(`❌ Failed to create today's event: ${error.message}`);
+            }
+        }
+        
+        async function clearAllData() {
+            if (!confirm('Are you sure you want to clear ALL data? This cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                await waitForStorage();
+                log('🗑️ Clearing all data...');
+                
+                const events = await window.StorageManager.getAllEvents();
+                const volunteers = await window.StorageManager.getAllVolunteers();
+                const attendance = await window.StorageManager.getAllAttendance();
+                
+                // Clear events
+                for (const event of events) {
+                    await window.StorageManager.deleteEvent(event.eventId);
+                }
+                
+                // Clear volunteers
+                for (const volunteer of volunteers) {
+                    await window.StorageManager.deleteVolunteer(volunteer.id);
+                }
+                
+                // Clear attendance
+                for (const record of attendance) {
+                    await window.StorageManager.deleteAttendanceRecord(record.id);
+                }
+                
+                log(`✅ Cleared all data: ${events.length} events, ${volunteers.length} volunteers, ${attendance.length} attendance records`);
+                
+                // Refresh displays
+                setTimeout(() => {
+                    checkDatabase();
+                    loadEvents();
+                    checkCurrentEvent();
+                }, 500);
+                
+            } catch (error) {
+                log(`❌ Failed to clear data: ${error.message}`);
+            }
+        }
+        
+        async function disableSync() {
+            try {
+                if (window.SyncManager) {
+                    window.SyncManager.stopSync();
+                    log('⏸️ Sync disabled');
+                    setTimeout(checkSyncSystem, 500);
+                }
+            } catch (error) {
+                log(`❌ Failed to disable sync: ${error.message}`);
+            }
+        }
+        
+        async function enableSync() {
+            try {
+                if (window.SyncManager) {
+                    window.SyncManager.startSyncTimer();
+                    log('▶️ Sync enabled');
+                    setTimeout(checkSyncSystem, 500);
+                }
+            } catch (error) {
+                log(`❌ Failed to enable sync: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                log('🚀 Debug page initializing...');
+                await waitForStorage();
+                
+                // Run initial checks
+                await checkSystemStatus();
+                await checkDatabase();
+                await loadEvents();
+                await checkCurrentEvent();
+                await checkSyncSystem();
+                
+                log('🎉 Debug page ready!');
+                
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html>

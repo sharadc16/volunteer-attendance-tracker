@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gurukul - Volunteer Attendance Tracker</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=1.1">
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
 </head>
 <body>
@@ -97,6 +97,9 @@
                                 >
                                 <button class="clear-input-btn" id="clearInputBtn" type="button" aria-label="Clear input">
                                     ✕
+                                </button>
+                                <button class="force-enable-btn" id="forceEnableBtn" type="button" aria-label="Force enable scanner" title="Force enable scanner if stuck">
+                                    🔧
                                 </button>
                             </div>
                             <div class="scan-feedback" id="scanFeedback" role="status" aria-live="polite"></div>
@@ -335,6 +338,108 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="settings-section">
+                        <div class="card">
+                            <h3>🔧 Troubleshooting</h3>
+                            
+                            <!-- Scanner Issues -->
+                            <div class="troubleshooting-item">
+                                <h4>📱 Scanner Input Disabled</h4>
+                                <p><strong>Problem:</strong> Scanner shows "System initializing..." or "Checking events and scanning status..."</p>
+                                <div class="troubleshooting-solutions">
+                                    <p><strong>Solutions:</strong></p>
+                                    <div class="solution-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="forceEnableScanner()">🚀 Force Enable Scanner</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.open('debug-scanner-initialization.html', '_blank')">🔍 Debug Scanner</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.open('smart-initialization-status.html', '_blank')">📊 Check Status</button>
+                                    </div>
+                                    <div class="manual-solution">
+                                        <p><strong>Manual Fix:</strong> Press <kbd>Ctrl+Shift+S</kbd> or open browser console (F12) and run:</p>
+                                        <code class="code-block">
+document.getElementById('scannerInput').disabled = false;<br>
+document.getElementById('scannerInput').placeholder = 'Scan badge or enter volunteer ID...';<br>
+document.getElementById('scannerInput').focus();
+                                        </code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Google Sheets Issues -->
+                            <div class="troubleshooting-item">
+                                <h4>📊 Google Sheets Sync Issues</h4>
+                                <p><strong>Problem:</strong> Constant authentication popups or sync failures</p>
+                                <div class="troubleshooting-solutions">
+                                    <p><strong>Solutions:</strong></p>
+                                    <div class="solution-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="window.open('google-sheets-environment-setup.html', '_blank')">⚙️ Configure Sheets</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.open('test-google-auth-persistence.html', '_blank')">🔐 Test Auth</button>
+                                        <button class="btn btn-sm btn-warning" onclick="disableGoogleSync()">🛑 Disable Sync</button>
+                                    </div>
+                                    <div class="manual-solution">
+                                        <p><strong>Quick Fix:</strong> Disable sync temporarily in console:</p>
+                                        <code class="code-block">
+window.Config.features.googleSheetsSync = false;<br>
+localStorage.removeItem('googleSheetsToken');
+                                        </code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Performance Issues -->
+                            <div class="troubleshooting-item">
+                                <h4>⚡ Performance Issues</h4>
+                                <p><strong>Problem:</strong> Slow loading, excessive database transactions, or console spam</p>
+                                <div class="troubleshooting-solutions">
+                                    <p><strong>Solutions:</strong></p>
+                                    <div class="solution-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="window.open('debug-transaction-load.html', '_blank')">📊 Monitor Transactions</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="clearAppCache()">🧹 Clear Cache</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.location.reload()">🔄 Refresh App</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Event Issues -->
+                            <div class="troubleshooting-item">
+                                <h4>📅 Event Issues</h4>
+                                <p><strong>Problem:</strong> Wrong event dates, Saturday events instead of Sunday, or missing events</p>
+                                <div class="troubleshooting-solutions">
+                                    <p><strong>Solutions:</strong></p>
+                                    <div class="solution-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="window.open('one-click-fix.html', '_blank')">🔧 Fix Sunday Events</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.open('verify-sunday-events.html', '_blank')">✅ Verify Events</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="createTestEvent()">➕ Create Test Event</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- General Diagnostics -->
+                            <div class="troubleshooting-item">
+                                <h4>🔍 General Diagnostics</h4>
+                                <p><strong>System Health Check and Comprehensive Diagnostics</strong></p>
+                                <div class="troubleshooting-solutions">
+                                    <div class="solution-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="runSystemDiagnostics()">🏥 System Health Check</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="window.open('immediate-fix.html', '_blank')">🚨 Emergency Fixes</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="showSystemInfo()">ℹ️ System Info</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Emergency Contacts -->
+                            <div class="troubleshooting-item">
+                                <h4>📞 Need More Help?</h4>
+                                <p>If these solutions don't work, try these resources:</p>
+                                <ul class="help-list">
+                                    <li>📋 Check the <strong>TESTING_GUIDE.md</strong> for detailed troubleshooting</li>
+                                    <li>🔍 Use browser developer tools (F12) to check for console errors</li>
+                                    <li>🔄 Try refreshing the page or clearing browser cache</li>
+                                    <li>📱 Test on a different browser or device</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -363,14 +468,34 @@
         </div>
     </div>
 
+    <!-- Google APIs -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    
     <!-- Scripts -->
+    <script src="js/environment-manager.js"></script>
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/google-sheets.js"></script>
     <script src="js/sync-manager.js"></script>
+    <script src="js/connectivity-validator.js"></script>
     <script src="js/scanner.js"></script>
     <script src="js/app.js"></script>
     <script src="create-sunday-events.js"></script>
+    <!-- Comprehensive fix for all functionality -->
+    <script src="comprehensive-fix.js"></script>
+    <!-- Fix for events display issue -->
+    <script src="fix-events-display-main.js"></script>
+    <!-- Fix for scanner connectivity issue -->
+    <script src="force-enable-scanner-fix.js"></script>
+    <!-- Fix for volunteers loading issue -->
+    <script src="fix-volunteers-loading.js"></script>
+    <!-- Add fix button to volunteers view -->
+    <script src="add-volunteers-fix-button.js"></script>
+    <!-- Disable frequent event syncing -->
+    <script src="disable-frequent-event-sync.js"></script>
+    <!-- Optimize volunteer syncing -->
+    <script src="optimize-volunteer-sync.js"></script>
 </body>
 </html>

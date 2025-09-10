@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Volunteers Loading</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        button { margin: 5px; padding: 10px 15px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Volunteers Loading Issue</h1>
+    
+    <div class="debug-section">
+        <h2>1. Check StorageManager Status</h2>
+        <button onclick="checkStorageManager()">Check StorageManager</button>
+        <div id="storageStatus"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>2. Test Volunteer Data Retrieval</h2>
+        <button onclick="testGetAllVolunteers()">Get All Volunteers</button>
+        <div id="volunteerData"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>3. Test App Instance</h2>
+        <button onclick="checkAppInstance()">Check App Instance</button>
+        <div id="appStatus"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>4. Manual Volunteer View Update</h2>
+        <button onclick="manualUpdateVolunteersView()">Manual Update</button>
+        <div id="manualUpdateResult"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>5. Check Console Errors</h2>
+        <button onclick="checkConsoleErrors()">Check Console</button>
+        <div id="consoleErrors"></div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/environment-manager.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/connectivity-validator.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        let consoleErrors = [];
+        
+        // Capture console errors
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            consoleErrors.push({
+                timestamp: new Date().toISOString(),
+                message: args.join(' ')
+            });
+            originalConsoleError.apply(console, args);
+        };
+
+        function checkStorageManager() {
+            const statusDiv = document.getElementById('storageStatus');
+            
+            try {
+                if (typeof window.StorageManager === 'undefined') {
+                    statusDiv.innerHTML = '<div class="error">❌ StorageManager is not defined</div>';
+                    return;
+                }
+                
+                if (!window.StorageManager.db) {
+                    statusDiv.innerHTML = '<div class="error">❌ StorageManager.db is not initialized</div>';
+                    return;
+                }
+                
+                statusDiv.innerHTML = '<div class="success">✅ StorageManager is available and initialized</div>';
+                
+                // Test database connection
+                window.StorageManager.db.exec("SELECT 1", (err, result) => {
+                    if (err) {
+                        statusDiv.innerHTML += '<div class="error">❌ Database connection failed: ' + err.message + '</div>';
+                    } else {
+                        statusDiv.innerHTML += '<div class="success">✅ Database connection working</div>';
+                    }
+                });
+                
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Error checking StorageManager: ' + error.message + '</div>';
+            }
+        }
+
+        async function testGetAllVolunteers() {
+            const dataDiv = document.getElementById('volunteerData');
+            
+            try {
+                if (!window.StorageManager) {
+                    dataDiv.innerHTML = '<div class="error">❌ StorageManager not available</div>';
+                    return;
+                }
+                
+                dataDiv.innerHTML = '<div class="info">🔄 Loading volunteers...</div>';
+                
+                const volunteers = await window.StorageManager.getAllVolunteers();
+                
+                if (volunteers && volunteers.length > 0) {
+                    dataDiv.innerHTML = `
+                        <div class="success">✅ Found ${volunteers.length} volunteers</div>
+                        <pre>${JSON.stringify(volunteers.slice(0, 3), null, 2)}</pre>
+                        ${volunteers.length > 3 ? '<div>... and ' + (volunteers.length - 3) + ' more</div>' : ''}
+                    `;
+                } else {
+                    dataDiv.innerHTML = '<div class="info">ℹ️ No volunteers found in database</div>';
+                }
+                
+            } catch (error) {
+                dataDiv.innerHTML = '<div class="error">❌ Error getting volunteers: ' + error.message + '</div>';
+                console.error('Error in testGetAllVolunteers:', error);
+            }
+        }
+
+        function checkAppInstance() {
+            const statusDiv = document.getElementById('appStatus');
+            
+            try {
+                if (typeof window.app === 'undefined') {
+                    statusDiv.innerHTML = '<div class="error">❌ App instance not found</div>';
+                    return;
+                }
+                
+                statusDiv.innerHTML = `
+                    <div class="success">✅ App instance found</div>
+                    <div>Current view: ${window.app.currentView || 'unknown'}</div>
+                    <div>Initialized: ${window.app.isInitialized || false}</div>
+                `;
+                
+                // Check if updateVolunteersView method exists
+                if (typeof window.app.updateVolunteersView === 'function') {
+                    statusDiv.innerHTML += '<div class="success">✅ updateVolunteersView method exists</div>';
+                } else {
+                    statusDiv.innerHTML += '<div class="error">❌ updateVolunteersView method not found</div>';
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Error checking app: ' + error.message + '</div>';
+            }
+        }
+
+        async function manualUpdateVolunteersView() {
+            const resultDiv = document.getElementById('manualUpdateResult');
+            
+            try {
+                if (!window.app || typeof window.app.updateVolunteersView !== 'function') {
+                    resultDiv.innerHTML = '<div class="error">❌ App or updateVolunteersView not available</div>';
+                    return;
+                }
+                
+                resultDiv.innerHTML = '<div class="info">🔄 Manually updating volunteers view...</div>';
+                
+                await window.app.updateVolunteersView();
+                
+                resultDiv.innerHTML = '<div class="success">✅ Manual update completed</div>';
+                
+                // Check if the volunteers grid was updated
+                const volunteersGrid = document.getElementById('volunteersGrid');
+                if (volunteersGrid) {
+                    const content = volunteersGrid.innerHTML;
+                    if (content.includes('Loading volunteers...')) {
+                        resultDiv.innerHTML += '<div class="error">❌ Grid still shows "Loading volunteers..."</div>';
+                    } else {
+                        resultDiv.innerHTML += '<div class="success">✅ Grid content was updated</div>';
+                    }
+                } else {
+                    resultDiv.innerHTML += '<div class="error">❌ volunteersGrid element not found</div>';
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="error">❌ Error in manual update: ' + error.message + '</div>';
+                console.error('Error in manualUpdateVolunteersView:', error);
+            }
+        }
+
+        function checkConsoleErrors() {
+            const errorsDiv = document.getElementById('consoleErrors');
+            
+            if (consoleErrors.length === 0) {
+                errorsDiv.innerHTML = '<div class="success">✅ No console errors captured</div>';
+            } else {
+                errorsDiv.innerHTML = `
+                    <div class="error">❌ Found ${consoleErrors.length} console errors:</div>
+                    <pre>${JSON.stringify(consoleErrors, null, 2)}</pre>
+                `;
+            }
+        }
+
+        // Auto-run basic checks when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkStorageManager();
+                checkAppInstance();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Event Names</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Fix Event Names</h1>
+    
+    <div class="test-container">
+        <h2>Issue</h2>
+        <div class="status warning">
+            Events in storage have <code>undefined</code> names, preventing them from displaying properly in the Event Management page.
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Fix Actions</h2>
+        <button onclick="analyzeEvents()">🔍 Analyze Events</button>
+        <button onclick="fixEventNames()">🔧 Fix Event Names</button>
+        <button onclick="testEventsDisplay()">📅 Test Events Display</button>
+        <button onclick="clearLog()">🧹 Clear Log</button>
+    </div>
+
+    <div class="test-container">
+        <h2>Fix Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/environment-manager.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            document.getElementById('log').textContent += logEntry + '\n';
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        async function analyzeEvents() {
+            log('🔍 Analyzing events in storage...');
+            
+            try {
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 Found ${events.length} events total`);
+                
+                let undefinedNames = 0;
+                let validNames = 0;
+                let emptyNames = 0;
+                
+                const sampleEvents = [];
+                
+                events.forEach((event, index) => {
+                    if (event.eventName === undefined || event.eventName === null) {
+                        undefinedNames++;
+                    } else if (event.eventName === '') {
+                        emptyNames++;
+                    } else {
+                        validNames++;
+                    }
+                    
+                    if (index < 5) {
+                        sampleEvents.push({
+                            eventId: event.eventId,
+                            eventName: event.eventName,
+                            date: event.date,
+                            type: event.type,
+                            status: event.status
+                        });
+                    }
+                });
+                
+                log(`📊 Analysis results:`);
+                log(`  - Valid names: ${validNames}`);
+                log(`  - Undefined names: ${undefinedNames}`);
+                log(`  - Empty names: ${emptyNames}`);
+                
+                log(`📋 Sample events:`);
+                sampleEvents.forEach((event, index) => {
+                    log(`  ${index + 1}. ID: ${event.eventId}, Name: "${event.eventName}", Date: ${event.date}`);
+                });
+                
+                if (undefinedNames > 0 || emptyNames > 0) {
+                    log(`⚠️ Found ${undefinedNames + emptyNames} events with missing names`);
+                } else {
+                    log(`✅ All events have valid names`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error analyzing events: ${error.message}`);
+            }
+        }
+        
+        async function fixEventNames() {
+            log('🔧 Fixing event names...');
+            
+            try {
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 Processing ${events.length} events`);
+                
+                let fixedCount = 0;
+                const fixedEvents = [];
+                
+                for (const event of events) {
+                    let needsUpdate = false;
+                    const originalName = event.eventName;
+                    
+                    // Fix undefined or null names
+                    if (event.eventName === undefined || event.eventName === null) {
+                        // Try to generate a name from other properties
+                        if (event.type && event.date) {
+                            event.eventName = `${event.type} Event - ${event.date}`;
+                            needsUpdate = true;
+                        } else if (event.date) {
+                            event.eventName = `Event - ${event.date}`;
+                            needsUpdate = true;
+                        } else {
+                            event.eventName = `Event ${event.eventId || 'Unknown'}`;
+                            needsUpdate = true;
+                        }
+                    }
+                    
+                    // Fix empty names
+                    if (event.eventName === '') {
+                        event.eventName = `Event - ${event.date || 'Unknown Date'}`;
+                        needsUpdate = true;
+                    }
+                    
+                    if (needsUpdate) {
+                        try {
+                            await window.StorageManager.updateEvent(event.eventId, event);
+                            fixedCount++;
+                            fixedEvents.push({
+                                eventId: event.eventId,
+                                oldName: originalName,
+                                newName: event.eventName,
+                                date: event.date
+                            });
+                            
+                            if (fixedCount <= 5) {
+                                log(`  ✅ Fixed: "${originalName}" → "${event.eventName}"`);
+                            }
+                        } catch (updateError) {
+                            log(`  ❌ Failed to update event ${event.eventId}: ${updateError.message}`);
+                        }
+                    }
+                }
+                
+                if (fixedCount > 0) {
+                    log(`✅ Fixed ${fixedCount} event names`);
+                    if (fixedCount > 5) {
+                        log(`  ... and ${fixedCount - 5} more events`);
+                    }
+                } else {
+                    log(`✅ No events needed fixing`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error fixing event names: ${error.message}`);
+            }
+        }
+        
+        async function testEventsDisplay() {
+            log('📅 Testing events display after fix...');
+            
+            try {
+                const events = await window.StorageManager.getAllEvents();
+                log(`📊 Retrieved ${events.length} events`);
+                
+                // Test first few events
+                const testEvents = events.slice(0, 5);
+                log(`📋 Testing display of first 5 events:`);
+                
+                testEvents.forEach((event, index) => {
+                    const displayName = event.eventName || 'UNDEFINED';
+                    const displayDate = event.date || 'UNKNOWN DATE';
+                    const displayStatus = event.status || 'UNKNOWN STATUS';
+                    
+                    log(`  ${index + 1}. "${displayName}" - ${displayDate} (${displayStatus})`);
+                });
+                
+                // Check if any still have undefined names
+                const stillUndefined = events.filter(e => 
+                    e.eventName === undefined || 
+                    e.eventName === null || 
+                    e.eventName === ''
+                ).length;
+                
+                if (stillUndefined === 0) {
+                    log(`✅ All events now have valid names`);
+                } else {
+                    log(`⚠️ ${stillUndefined} events still have invalid names`);
+                }
+                
+                // Try to trigger the main app's events display
+                if (window.opener && window.opener.app && window.opener.app.updateEventsView) {
+                    log(`🔄 Triggering main app events refresh...`);
+                    try {
+                        await window.opener.app.updateEventsView();
+                        log(`✅ Main app events view refreshed`);
+                    } catch (refreshError) {
+                        log(`❌ Failed to refresh main app: ${refreshError.message}`);
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing events display: ${error.message}`);
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', async () => {
+            log('🚀 Event names fix tool loaded');
+            
+            // Initialize StorageManager if needed
+            if (!window.StorageManager) {
+                try {
+                    window.StorageManager = new StorageManager();
+                    await window.StorageManager.init();
+                    log('✅ StorageManager initialized');
+                } catch (error) {
+                    log(`❌ Error initializing StorageManager: ${error.message}`);
+                }
+            } else {
+                log('✅ StorageManager already available');
+            }
+            
+            // Auto-analyze on load
+            setTimeout(analyzeEvents, 1000);
+        });
+    </script>
+</body>
+</html>

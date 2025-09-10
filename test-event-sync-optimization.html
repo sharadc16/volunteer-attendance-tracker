@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Event Sync Optimization</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-buttons { margin: 10px 0; }
+        .test-buttons button { margin: 5px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .config-display { background: #f8f9fa; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Event Sync Optimization</h1>
+        
+        <div class="test-section">
+            <h2>1. Current Configuration</h2>
+            <div class="test-buttons">
+                <button onclick="showCurrentConfig()">Show Config</button>
+                <button onclick="toggleEventSync()">Toggle Event Sync</button>
+                <button onclick="setCustomInterval()">Set Custom Interval</button>
+            </div>
+            <div id="configDisplay" class="config-display">
+                Loading configuration...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Manual Event Sync</h2>
+            <div class="test-buttons">
+                <button onclick="testManualEventSync()">Test Manual Event Sync</button>
+                <button onclick="testForceEventSync()">Test Force Event Sync</button>
+            </div>
+            <div id="manualSyncStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Automatic Sync Testing</h2>
+            <div class="test-buttons">
+                <button onclick="testPeriodicSync()">Test Periodic Sync (Should Block)</button>
+                <button onclick="testHighPrioritySync()">Test High Priority Sync</button>
+                <button onclick="simulateLocalEventChange()">Simulate Local Event Change</button>
+            </div>
+            <div id="automaticSyncStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Sync Frequency Test</h2>
+            <div class="test-buttons">
+                <button onclick="runFrequencyTest()">Run Frequency Test (10 attempts)</button>
+                <button onclick="resetSyncTimer()">Reset Sync Timer</button>
+            </div>
+            <div id="frequencyTestResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. Console Log Monitor</h2>
+            <div class="test-buttons">
+                <button onclick="clearLog()">Clear Log</button>
+                <button onclick="toggleLogMonitoring()">Toggle Log Monitoring</button>
+            </div>
+            <div id="consoleLog" class="log">
+                Console messages will appear here...
+            </div>
+        </div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/environment-manager.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/connectivity-validator.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/app.js"></script>
+    <script src="disable-frequent-event-sync.js"></script>
+
+    <script>
+        let logMonitoring = true;
+        let consoleMessages = [];
+        
+        // Capture console messages
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+        
+        function captureConsoleMessage(level, args) {
+            const message = args.join(' ');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            consoleMessages.push({
+                timestamp,
+                level,
+                message
+            });
+            
+            // Keep only last 50 messages
+            if (consoleMessages.length > 50) {
+                consoleMessages = consoleMessages.slice(-50);
+            }
+            
+            if (logMonitoring) {
+                updateConsoleLog();
+            }
+        }
+        
+        console.log = function(...args) {
+            captureConsoleMessage('log', args);
+            originalConsoleLog.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            captureConsoleMessage('warn', args);
+            originalConsoleWarn.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            captureConsoleMessage('error', args);
+            originalConsoleError.apply(console, args);
+        };
+        
+        function updateConsoleLog() {
+            const logDiv = document.getElementById('consoleLog');
+            if (logDiv && logMonitoring) {
+                const relevantMessages = consoleMessages.filter(msg => 
+                    msg.message.includes('Event sync') || 
+                    msg.message.includes('event sync') ||
+                    msg.message.includes('syncEvents') ||
+                    msg.message.includes('🔄') ||
+                    msg.message.includes('🛑') ||
+                    msg.message.includes('✅')
+                );
+                
+                const html = relevantMessages.slice(-20).map(msg => 
+                    `<div class="${msg.level}">[${msg.timestamp}] ${msg.message}</div>`
+                ).join('');
+                
+                logDiv.innerHTML = html || 'No relevant messages captured yet...';
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+        
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+        }
+        
+        function showCurrentConfig() {
+            const configDiv = document.getElementById('configDisplay');
+            
+            if (typeof window.getEventSyncConfig === 'function') {
+                const config = window.getEventSyncConfig();
+                const timeSinceLastSync = Math.floor(config.timeSinceLastSync / 1000);
+                
+                configDiv.innerHTML = `
+                    <h4>Event Sync Configuration</h4>
+                    <ul>
+                        <li><strong>Periodic Sync Disabled:</strong> ${config.disablePeriodicEventSync}</li>
+                        <li><strong>Allowed Triggers:</strong> ${config.allowedEventSyncTriggers.join(', ')}</li>
+                        <li><strong>Min Interval:</strong> ${config.minEventSyncInterval / 1000} seconds</li>
+                        <li><strong>Last Sync:</strong> ${timeSinceLastSync} seconds ago</li>
+                    </ul>
+                `;
+            } else {
+                configDiv.innerHTML = '<div class="status error">Event sync configuration not available</div>';
+            }
+        }
+        
+        function toggleEventSync() {
+            if (typeof window.setEventSyncEnabled === 'function') {
+                const config = window.getEventSyncConfig();
+                const newState = config.disablePeriodicEventSync; // Toggle
+                window.setEventSyncEnabled(newState);
+                
+                setTimeout(showCurrentConfig, 100);
+                showStatus('configDisplay', `Event sync ${newState ? 'enabled' : 'disabled'}`, 'success');
+            } else {
+                showStatus('configDisplay', 'Event sync toggle not available', 'error');
+            }
+        }
+        
+        function setCustomInterval() {
+            const seconds = prompt('Enter minimum sync interval in seconds:', '300');
+            if (seconds && !isNaN(seconds)) {
+                if (typeof window.setEventSyncInterval === 'function') {
+                    window.setEventSyncInterval(parseInt(seconds));
+                    setTimeout(showCurrentConfig, 100);
+                    showStatus('configDisplay', `Interval set to ${seconds} seconds`, 'success');
+                } else {
+                    showStatus('configDisplay', 'Interval setting not available', 'error');
+                }
+            }
+        }
+        
+        async function testManualEventSync() {
+            showStatus('manualSyncStatus', 'Testing manual event sync...', 'info');
+            
+            try {
+                if (typeof window.forceEventSync === 'function') {
+                    await window.forceEventSync();
+                    showStatus('manualSyncStatus', 'Manual event sync completed successfully', 'success');
+                } else {
+                    showStatus('manualSyncStatus', 'Manual event sync function not available', 'error');
+                }
+            } catch (error) {
+                showStatus('manualSyncStatus', `Manual event sync failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testForceEventSync() {
+            showStatus('manualSyncStatus', 'Testing force event sync via StorageManager...', 'info');
+            
+            try {
+                if (window.StorageManager && window.StorageManager.syncEventsFromGoogleSheets) {
+                    await window.StorageManager.syncEventsFromGoogleSheets('manual-force-sync');
+                    showStatus('manualSyncStatus', 'Force event sync completed successfully', 'success');
+                } else {
+                    showStatus('manualSyncStatus', 'StorageManager event sync not available', 'error');
+                }
+            } catch (error) {
+                showStatus('manualSyncStatus', `Force event sync failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPeriodicSync() {
+            showStatus('automaticSyncStatus', 'Testing periodic sync (should be blocked)...', 'info');
+            
+            try {
+                if (window.SyncManager && window.SyncManager.queueForSync) {
+                    const result = await window.SyncManager.queueForSync('update', 'events', { test: true }, 'normal');
+                    
+                    if (result === 'blocked') {
+                        showStatus('automaticSyncStatus', '✅ Periodic sync correctly blocked', 'success');
+                    } else {
+                        showStatus('automaticSyncStatus', '⚠️ Periodic sync was not blocked', 'error');
+                    }
+                } else {
+                    showStatus('automaticSyncStatus', 'SyncManager not available', 'error');
+                }
+            } catch (error) {
+                showStatus('automaticSyncStatus', `Periodic sync test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testHighPrioritySync() {
+            showStatus('automaticSyncStatus', 'Testing high priority sync (should be allowed)...', 'info');
+            
+            try {
+                if (window.SyncManager && window.SyncManager.queueForSync) {
+                    const result = await window.SyncManager.queueForSync('update', 'events', { test: true }, 'high');
+                    
+                    if (result && result !== 'blocked') {
+                        showStatus('automaticSyncStatus', '✅ High priority sync correctly allowed', 'success');
+                    } else {
+                        showStatus('automaticSyncStatus', '⚠️ High priority sync was blocked', 'error');
+                    }
+                } else {
+                    showStatus('automaticSyncStatus', 'SyncManager not available', 'error');
+                }
+            } catch (error) {
+                showStatus('automaticSyncStatus', `High priority sync test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function simulateLocalEventChange() {
+            showStatus('automaticSyncStatus', 'Simulating local event change...', 'info');
+            
+            // This would normally be triggered by actual event creation/modification
+            if (window.StorageManager && window.StorageManager.syncEventsFromGoogleSheets) {
+                window.StorageManager.syncEventsFromGoogleSheets('local-event-modified')
+                    .then(() => {
+                        showStatus('automaticSyncStatus', '✅ Local event change sync completed', 'success');
+                    })
+                    .catch(error => {
+                        showStatus('automaticSyncStatus', `Local event change sync failed: ${error.message}`, 'error');
+                    });
+            } else {
+                showStatus('automaticSyncStatus', 'StorageManager not available', 'error');
+            }
+        }
+        
+        async function runFrequencyTest() {
+            showStatus('frequencyTestResults', 'Running frequency test (10 attempts)...', 'info');
+            
+            const results = [];
+            const startTime = Date.now();
+            
+            for (let i = 0; i < 10; i++) {
+                try {
+                    const attemptStart = Date.now();
+                    
+                    if (window.SyncManager && window.SyncManager.queueForSync) {
+                        const result = await window.SyncManager.queueForSync('update', 'events', { test: i }, 'normal');
+                        results.push({
+                            attempt: i + 1,
+                            result: result,
+                            blocked: result === 'blocked',
+                            time: Date.now() - attemptStart
+                        });
+                    }
+                    
+                    // Small delay between attempts
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    results.push({
+                        attempt: i + 1,
+                        result: 'error',
+                        error: error.message,
+                        blocked: false,
+                        time: 0
+                    });
+                }
+            }
+            
+            const totalTime = Date.now() - startTime;
+            const blockedCount = results.filter(r => r.blocked).length;
+            const allowedCount = results.filter(r => !r.blocked && r.result !== 'error').length;
+            const errorCount = results.filter(r => r.result === 'error').length;
+            
+            const resultHtml = `
+                <div class="status info">
+                    <strong>Frequency Test Results:</strong><br>
+                    Total attempts: 10<br>
+                    Blocked: ${blockedCount}<br>
+                    Allowed: ${allowedCount}<br>
+                    Errors: ${errorCount}<br>
+                    Total time: ${totalTime}ms<br>
+                    <br>
+                    <strong>Expected:</strong> Most attempts should be blocked due to frequency limits.
+                </div>
+                <details>
+                    <summary>Detailed Results</summary>
+                    <pre>${JSON.stringify(results, null, 2)}</pre>
+                </details>
+            `;
+            
+            document.getElementById('frequencyTestResults').innerHTML = resultHtml;
+        }
+        
+        function resetSyncTimer() {
+            if (typeof window.getEventSyncConfig === 'function') {
+                const config = window.getEventSyncConfig();
+                config.lastEventSyncTime = 0;
+                showStatus('frequencyTestResults', 'Sync timer reset - next sync will be allowed', 'success');
+            } else {
+                showStatus('frequencyTestResults', 'Cannot reset sync timer - config not available', 'error');
+            }
+        }
+        
+        function clearLog() {
+            consoleMessages = [];
+            updateConsoleLog();
+        }
+        
+        function toggleLogMonitoring() {
+            logMonitoring = !logMonitoring;
+            const button = event.target;
+            button.textContent = logMonitoring ? 'Disable Log Monitoring' : 'Enable Log Monitoring';
+            
+            if (logMonitoring) {
+                updateConsoleLog();
+            } else {
+                document.getElementById('consoleLog').innerHTML = 'Log monitoring disabled';
+            }
+        }
+        
+        // Auto-update config display
+        setInterval(showCurrentConfig, 5000);
+        
+        // Initial setup
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                showCurrentConfig();
+                updateConsoleLog();
+            }, 1000);
+        });
+        
+        console.log('🧪 Event sync optimization test page loaded');
+    </script>
+</body>
+</html>

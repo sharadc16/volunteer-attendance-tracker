@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Auth Persistence</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .token-info {
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            margin: 0.5rem 0;
+        }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.25rem;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 Google Auth Persistence Test</h1>
+        <p>This page tests the enhanced Google authentication persistence with refresh tokens.</p>
+
+        <div class="status-card">
+            <h3>📊 Current Authentication Status</h3>
+            <div id="authStatus">Loading...</div>
+            <button class="test-button" onclick="checkAuthStatus()">Refresh Status</button>
+        </div>
+
+        <div class="status-card">
+            <h3>🔑 Token Information</h3>
+            <div id="tokenInfo">No token data available</div>
+            <button class="test-button" onclick="showTokenInfo()">Show Token Details</button>
+            <button class="test-button" onclick="clearTokens()">Clear All Tokens</button>
+        </div>
+
+        <div class="status-card">
+            <h3>🧪 Authentication Tests</h3>
+            <button class="test-button" onclick="testAuthentication()">Test Authentication</button>
+            <button class="test-button" onclick="testTokenRefresh()">Test Token Refresh</button>
+            <button class="test-button" onclick="testPersistence()">Test Persistence</button>
+            <button class="test-button" onclick="simulateExpiry()">Simulate Token Expiry</button>
+        </div>
+
+        <div class="status-card">
+            <h3>📝 Test Log</h3>
+            <div id="testLog" class="log"></div>
+            <button class="test-button" onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        let testLog = document.getElementById('testLog');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'success': '#28a745',
+                'warning': '#ffc107', 
+                'error': '#dc3545',
+                'info': '#17a2b8'
+            };
+            const color = colors[type] || '#6c757d';
+            testLog.innerHTML += `<div style="color: ${color}; margin: 0.25rem 0;">[${timestamp}] ${message}</div>`;
+            testLog.scrollTop = testLog.scrollHeight;
+            console.log(message);
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        function formatDuration(milliseconds) {
+            if (!milliseconds || milliseconds < 0) return 'Expired';
+            
+            const minutes = Math.floor(milliseconds / (1000 * 60));
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            return `${minutes}m`;
+        }
+
+        async function checkAuthStatus() {
+            log('🔍 Checking authentication status...');
+            
+            try {
+                if (!window.GoogleSheetsService) {
+                    log('❌ Google Sheets service not available', 'error');
+                    return;
+                }
+
+                const service = window.GoogleSheetsService;
+                const status = service.getStatus();
+                
+                let statusHtml = `
+                    <div class="token-info">
+                        <strong>Service Status:</strong><br>
+                        • Initialized: ${status.isInitialized ? '✅' : '❌'}<br>
+                        • Authenticated: ${status.isAuthenticated ? '✅' : '❌'}<br>
+                        • Has Credentials: ${status.hasCredentials ? '✅' : '❌'}<br>
+                        • Sync Disabled: ${status.syncDisabled ? '❌' : '✅'}<br>
+                        • Cancel Count: ${status.cancelCount}<br>
+                        • In Cooldown: ${status.inCooldown ? '❌' : '✅'}
+                    </div>
+                `;
+
+                document.getElementById('authStatus').innerHTML = statusHtml;
+                
+                log(`✅ Status check complete: ${status.isAuthenticated ? 'Authenticated' : 'Not authenticated'}`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error checking auth status: ${error.message}`, 'error');
+            }
+        }
+
+        async function showTokenInfo() {
+            log('🔑 Retrieving token information...');
+            
+            try {
+                const tokenStored = localStorage.getItem('googleSheetsToken');
+                if (!tokenStored) {
+                    document.getElementById('tokenInfo').innerHTML = '<div class="token-info">No stored token found</div>';
+                    log('ℹ️ No stored token found', 'info');
+                    return;
+                }
+
+                const tokenData = JSON.parse(tokenStored);
+                const now = Date.now();
+                
+                const accessTokenValid = tokenData.expires_at && now < tokenData.expires_at;
+                const refreshTokenValid = tokenData.refresh_expires_at && now < tokenData.refresh_expires_at;
+                
+                const timeUntilAccessExpiry = tokenData.expires_at - now;
+                const timeUntilRefreshExpiry = tokenData.refresh_expires_at - now;
+
+                let tokenHtml = `
+                    <div class="token-info">
+                        <strong>Access Token:</strong><br>
+                        • Present: ${tokenData.access_token ? '✅' : '❌'}<br>
+                        • Valid: ${accessTokenValid ? '✅' : '❌'}<br>
+                        • Expires: ${formatTime(tokenData.expires_at)}<br>
+                        • Time Until Expiry: ${formatDuration(timeUntilAccessExpiry)}<br>
+                        • Original Duration: ${tokenData.expires_in ? Math.round(tokenData.expires_in / 60) + ' minutes' : 'N/A'}<br>
+                        <br>
+                        <strong>Refresh Token:</strong><br>
+                        • Present: ${tokenData.refresh_token ? '✅' : '❌'}<br>
+                        • Valid: ${refreshTokenValid ? '✅' : '❌'}<br>
+                        • Expires: ${formatTime(tokenData.refresh_expires_at)}<br>
+                        • Time Until Expiry: ${formatDuration(timeUntilRefreshExpiry)}<br>
+                        <br>
+                        <strong>Metadata:</strong><br>
+                        • Received: ${formatTime(tokenData.received_at)}<br>
+                        • Token Length: ${tokenData.access_token ? tokenData.access_token.length : 0} chars
+                    </div>
+                `;
+
+                document.getElementById('tokenInfo').innerHTML = tokenHtml;
+                
+                log(`✅ Token info displayed: Access ${accessTokenValid ? 'valid' : 'expired'}, Refresh ${refreshTokenValid ? 'valid' : 'expired'}`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error showing token info: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAuthentication() {
+            log('🧪 Testing authentication process...');
+            
+            try {
+                if (!window.GoogleSheetsService) {
+                    log('❌ Google Sheets service not available', 'error');
+                    return;
+                }
+
+                const service = window.GoogleSheetsService;
+                
+                log('🔐 Attempting authentication...');
+                await service.authenticate();
+                
+                log('✅ Authentication test completed successfully', 'success');
+                
+                // Refresh status and token info
+                await checkAuthStatus();
+                await showTokenInfo();
+                
+            } catch (error) {
+                log(`❌ Authentication test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testTokenRefresh() {
+            log('🔄 Testing token refresh...');
+            
+            try {
+                const tokenStored = localStorage.getItem('googleSheetsToken');
+                if (!tokenStored) {
+                    log('❌ No stored token to refresh', 'error');
+                    return;
+                }
+
+                const tokenData = JSON.parse(tokenStored);
+                if (!tokenData.refresh_token) {
+                    log('❌ No refresh token available', 'error');
+                    return;
+                }
+
+                if (!window.GoogleSheetsService) {
+                    log('❌ Google Sheets service not available', 'error');
+                    return;
+                }
+
+                const service = window.GoogleSheetsService;
+                
+                log('🔄 Attempting token refresh...');
+                await service.refreshAccessToken(tokenData.refresh_token);
+                
+                log('✅ Token refresh test completed successfully', 'success');
+                
+                // Refresh token info
+                await showTokenInfo();
+                
+            } catch (error) {
+                log(`❌ Token refresh test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPersistence() {
+            log('💾 Testing authentication persistence...');
+            
+            try {
+                // Simulate page reload by reinitializing the service
+                log('🔄 Simulating page reload...');
+                
+                if (window.GoogleSheetsService) {
+                    await window.GoogleSheetsService.loadStoredCredentials();
+                    log('✅ Credentials reloaded from storage', 'success');
+                    
+                    const status = window.GoogleSheetsService.getStatus();
+                    if (status.isAuthenticated) {
+                        log('✅ Authentication persisted successfully', 'success');
+                    } else {
+                        log('⚠️ Authentication did not persist', 'warning');
+                    }
+                } else {
+                    log('❌ Google Sheets service not available', 'error');
+                }
+                
+                // Refresh status
+                await checkAuthStatus();
+                
+            } catch (error) {
+                log(`❌ Persistence test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulateExpiry() {
+            log('⏰ Simulating token expiry...');
+            
+            try {
+                const tokenStored = localStorage.getItem('googleSheetsToken');
+                if (!tokenStored) {
+                    log('❌ No stored token to expire', 'error');
+                    return;
+                }
+
+                const tokenData = JSON.parse(tokenStored);
+                
+                // Set access token to expire in 1 minute (for testing)
+                tokenData.expires_at = Date.now() + (1 * 60 * 1000);
+                
+                localStorage.setItem('googleSheetsToken', JSON.stringify(tokenData));
+                
+                log('✅ Token expiry simulated (expires in 1 minute)', 'success');
+                log('🔄 Try using the service in 1 minute to test auto-refresh', 'info');
+                
+                // Refresh token info
+                await showTokenInfo();
+                
+            } catch (error) {
+                log(`❌ Expiry simulation failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearTokens() {
+            log('🧹 Clearing all stored tokens...');
+            
+            localStorage.removeItem('googleSheetsToken');
+            localStorage.removeItem('googleSheetsCredentials');
+            
+            if (window.GoogleSheetsService) {
+                window.GoogleSheetsService.isAuthenticated = false;
+                window.GoogleSheetsService.accessToken = null;
+            }
+            
+            log('✅ All tokens cleared', 'success');
+            
+            // Refresh displays
+            checkAuthStatus();
+            showTokenInfo();
+        }
+
+        function clearLog() {
+            testLog.innerHTML = '';
+            log('📝 Test log cleared');
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            log('🔧 Google Auth Persistence Test loaded');
+            checkAuthStatus();
+            showTokenInfo();
+        });
+    </script>
+</body>
+</html>

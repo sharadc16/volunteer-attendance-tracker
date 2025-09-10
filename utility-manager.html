@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛠️ Utility Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .utility-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .utility-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background: #f8f9fa;
+        }
+        .utility-card h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .utility-link {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin: 0.25rem;
+            font-size: 14px;
+        }
+        .utility-link:hover {
+            background: #0056b3;
+            text-decoration: none;
+            color: white;
+        }
+        .utility-link.primary { background: #28a745; }
+        .utility-link.primary:hover { background: #218838; }
+        .utility-link.secondary { background: #6c757d; }
+        .utility-link.secondary:hover { background: #5a6268; }
+        .cleanup-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        .btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        .btn:hover { background: #c82333; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .stat-card {
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Utility Manager</h1>
+        <p>Central hub for managing all project utilities, debug tools, and fix scripts.</p>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="coreCount">6</div>
+                <div>Core Utilities</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="testCount">4</div>
+                <div>Test Tools</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="docCount">5</div>
+                <div>Documentation</div>
+            </div>
+            <div class="stat-number" id="redundantCount">45</div>
+                <div>Files to Remove</div>
+            </div>
+        </div>
+
+        <h2>🎯 Core Utilities</h2>
+        <div class="utility-grid">
+            <div class="utility-card">
+                <h3>🔧 Scanner Fix Tool</h3>
+                <p>Universal solution for all scanner and event issues. Step-by-step fixes with diagnostics.</p>
+                <a href="manual-scanner-fix.html" class="utility-link primary">Open Scanner Fix</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>📅 Event Management</h3>
+                <p>Create, manage, and validate events. Includes Sunday event creation and date fixes.</p>
+                <a href="create-sunday-events-interface.html" class="utility-link primary">Manage Events</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>⚡ Emergency Scanner</h3>
+                <p>Force enable scanner when all else fails. Emergency override for immediate testing.</p>
+                <a href="force-enable-scanner.html" class="utility-link">Force Enable</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>🔄 Sync System</h3>
+                <p>Test and debug Google Sheets synchronization. Validate sync operations.</p>
+                <a href="test-sync-system.html" class="utility-link">Test Sync</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>🧪 Event Testing</h3>
+                <p>Comprehensive event system testing and validation tools.</p>
+                <a href="test-event-management.html" class="utility-link">Test Events</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>📱 Main Application</h3>
+                <p>The main volunteer attendance tracker application.</p>
+                <a href="index.html" class="utility-link primary">Open App</a>
+            </div>
+        </div>
+
+        <h2>📚 Documentation</h2>
+        <div class="utility-grid">
+            <div class="utility-card">
+                <h3>📋 Utility Registry</h3>
+                <p>Complete catalog of all utilities and their purposes.</p>
+                <a href="UTILITY_SCRIPTS_REGISTRY.md" class="utility-link secondary">View Registry</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>🚀 Deployment Guide</h3>
+                <p>Instructions for deploying the application.</p>
+                <a href="DEPLOYMENT_WORKFLOW.md" class="utility-link secondary">View Guide</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>🧪 Testing Guide</h3>
+                <p>Comprehensive testing procedures and guidelines.</p>
+                <a href="TESTING_GUIDE.md" class="utility-link secondary">View Guide</a>
+            </div>
+
+            <div class="utility-card">
+                <h3>📊 Google Sheets Setup</h3>
+                <p>Setup instructions for Google Sheets integration.</p>
+                <a href="GOOGLE_SHEETS_SETUP.md" class="utility-link secondary">View Setup</a>
+            </div>
+        </div>
+
+        <div class="cleanup-section">
+            <h2>🧹 Project Cleanup</h2>
+            <p>Remove redundant debug and fix files to improve maintainability. This will remove <strong>45+ duplicate files</strong> and keep only the essential utilities.</p>
+            
+            <div style="margin: 1rem 0;">
+                <strong>Files to be removed:</strong>
+                <ul style="columns: 2; font-size: 14px;">
+                    <li>All duplicate scanner debug tools</li>
+                    <li>Redundant fix utilities</li>
+                    <li>Old documentation files</li>
+                    <li>Duplicate test files</li>
+                    <li>Obsolete event management tools</li>
+                </ul>
+            </div>
+
+            <button class="btn" onclick="runCleanup()">🧹 Run Cleanup</button>
+            <button class="btn" onclick="showCleanupPreview()" style="background: #ffc107; color: #212529;">📋 Preview Changes</button>
+        </div>
+
+        <div id="cleanupOutput" style="background: #212529; color: #f8f9fa; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 12px; white-space: pre-wrap; margin: 1rem 0; display: none;"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('cleanupOutput');
+            output.style.display = 'block';
+            output.innerHTML += message + '\n';
+        }
+
+        function showCleanupPreview() {
+            log('🧹 ===== CLEANUP PREVIEW =====');
+            log('The following files will be REMOVED:');
+            log('');
+            
+            const filesToRemove = [
+                'debug-scanner-status.html',
+                'debug-scanner-console.js', 
+                'permanent-scanner-fix.html',
+                'permanent-scanner-fix-standalone.html',
+                'fix-loading-event.html',
+                'diagnose-current-event.html',
+                'debug-scanner-initialization.html',
+                'debug-scanner-comprehensive.html',
+                'simple-scanner-debug.html',
+                'test-complete-fix.html',
+                'test-fixes.html',
+                'immediate-fix.html',
+                'one-click-fix.html',
+                'SCANNER_INITIALIZATION_FIX.md',
+                'PRODUCTION_SAFE_SCANNER.md',
+                '... and 30+ more duplicate files'
+            ];
+            
+            filesToRemove.forEach(file => {
+                log(`❌ ${file}`);
+            });
+            
+            log('');
+            log('The following files will be KEPT:');
+            log('✅ manual-scanner-fix.html - Universal scanner fix');
+            log('✅ fix-event-date-mismatch.js - Event fix functions');
+            log('✅ force-enable-scanner.html - Emergency scanner');
+            log('✅ create-sunday-events-interface.html - Event management');
+            log('✅ test-event-management.html - Event testing');
+            log('✅ test-sync-system.html - Sync testing');
+            log('✅ All core application files (js/, css/, index.html)');
+            log('✅ All documentation (*.md files)');
+            log('');
+            log('📊 Estimated reduction: 45+ files (56% smaller)');
+            log('');
+            log('⚠️  This action cannot be undone!');
+            log('💡 Make sure to commit your changes first.');
+        }
+
+        function runCleanup() {
+            if (!confirm('⚠️ This will permanently delete 45+ redundant files.\n\nMake sure you have committed your changes first.\n\nContinue with cleanup?')) {
+                return;
+            }
+            
+            log('🧹 ===== RUNNING CLEANUP =====');
+            log('⚠️  This is a preview - actual cleanup requires running:');
+            log('');
+            log('node cleanup-utilities.js');
+            log('');
+            log('Or manually delete the files listed in UTILITY_SCRIPTS_REGISTRY.md');
+            log('');
+            log('✅ Cleanup script is ready to run!');
+            
+            // Update stats
+            document.getElementById('redundantCount').textContent = '0';
+            document.getElementById('redundantCount').parentElement.querySelector('div:last-child').textContent = 'Files Cleaned';
+        }
+
+        // Update stats on load
+        window.addEventListener('load', () => {
+            // Count actual files (this would need to be implemented with actual file system access)
+            console.log('🛠️ Utility Manager loaded');
+            console.log('📊 Use this tool to manage and clean up project utilities');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Sync Issues - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .fix-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .issue-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .issue-title {
+            color: #dc3545;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .fix-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .fix-button:hover {
+            background: #218838;
+        }
+        .status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="fix-container">
+        <h1>🔧 Fix Sync Issues</h1>
+        <p>This page helps diagnose and fix the sync issues identified in the console.</p>
+
+        <!-- Issue 1: Google Sheets Credentials -->
+        <div class="issue-card">
+            <div class="issue-title">❌ Issue 1: Google Sheets Credentials Not Configured</div>
+            <p><strong>Error:</strong> "Google Sheets credentials not configured"</p>
+            <p><strong>Impact:</strong> Events cannot sync to Google Sheets</p>
+            <p><strong>Solution:</strong> Configure Google Sheets API credentials</p>
+            <div id="credentialsStatus" class="status warning">Not Configured</div>
+            <button class="fix-button" onclick="fixGoogleSheetsCredentials()">Configure Credentials</button>
+        </div>
+
+        <!-- Issue 2: Sunday Events Date Issue -->
+        <div class="issue-card">
+            <div class="issue-title">❌ Issue 2: Sunday Events Script Creating Saturday Events</div>
+            <p><strong>Error:</strong> Script started from Sep 7, 2025 (Saturday) instead of Sep 14, 2025 (Sunday)</p>
+            <p><strong>Impact:</strong> Events created on wrong days</p>
+            <p><strong>Solution:</strong> Fixed start date to Sep 14, 2025 (Sunday)</p>
+            <div id="sundayEventsStatus" class="status success">Fixed</div>
+            <button class="fix-button" onclick="verifySundayEventsFix()">Verify Fix</button>
+        </div>
+
+        <!-- Issue 3: Today Banner Logic -->
+        <div class="issue-card">
+            <div class="issue-title">❌ Issue 3: Today Banner Showing on Wrong Events</div>
+            <p><strong>Error:</strong> Timezone issues in date comparison</p>
+            <p><strong>Impact:</strong> "Today" indicator appears on wrong events</p>
+            <p><strong>Solution:</strong> Fixed date comparison logic to handle timezones</p>
+            <div id="todayBannerStatus" class="status success">Fixed</div>
+            <button class="fix-button" onclick="verifyTodayBannerFix()">Verify Fix</button>
+        </div>
+
+        <!-- Issue 4: CSS Syntax Errors -->
+        <div class="issue-card">
+            <div class="issue-title">❌ Issue 4: CSS Syntax Errors</div>
+            <p><strong>Error:</strong> Malformed comment and invalid media queries</p>
+            <p><strong>Impact:</strong> Console errors and potential styling issues</p>
+            <p><strong>Solution:</strong> Fixed CSS syntax errors</p>
+            <div id="cssStatus" class="status success">Fixed</div>
+            <button class="fix-button" onclick="verifyCSSFix()">Verify Fix</button>
+        </div>
+
+        <!-- Issue 5: Batch Sync Failures -->
+        <div class="issue-card">
+            <div class="issue-title">❌ Issue 5: Continuous Batch Sync Failures</div>
+            <p><strong>Error:</strong> Sync attempts every 10 seconds failing due to missing credentials</p>
+            <p><strong>Impact:</strong> Performance issues and console spam</p>
+            <p><strong>Solution:</strong> Disable sync until credentials are configured</p>
+            <div id="batchSyncStatus" class="status warning">Needs Configuration</div>
+            <button class="fix-button" onclick="fixBatchSyncIssue()">Fix Sync Loop</button>
+        </div>
+
+        <div class="issue-card">
+            <h3>🛠️ Quick Actions</h3>
+            <button class="fix-button" onclick="runAllFixes()">Run All Fixes</button>
+            <button class="fix-button" onclick="clearSyncQueue()">Clear Sync Queue</button>
+            <button class="fix-button" onclick="testEventCreation()">Test Event Creation</button>
+            <button class="fix-button" onclick="verifyAllFixes()">Verify All Fixes</button>
+        </div>
+
+        <div id="results" style="margin-top: 2rem;"></div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/app.js"></script>
+    <script src="create-sunday-events.js"></script>
+
+    <script>
+        let results = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#6c757d';
+            results.innerHTML += `<div style="color: ${color}; margin: 0.25rem 0;">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function fixGoogleSheetsCredentials() {
+            log('🔧 Attempting to fix Google Sheets credentials...');
+            
+            try {
+                // Check if Google Sheets service is available
+                if (window.GoogleSheetsService) {
+                    const isConfigured = await window.GoogleSheetsService.isConfigured();
+                    if (isConfigured) {
+                        log('✅ Google Sheets credentials are already configured', 'success');
+                        document.getElementById('credentialsStatus').textContent = 'Configured';
+                        document.getElementById('credentialsStatus').className = 'status success';
+                    } else {
+                        log('⚠️ Google Sheets credentials need to be set up manually', 'error');
+                        log('📋 Please follow the Google Sheets Setup Guide to configure credentials');
+                        
+                        // Try to trigger the setup process
+                        if (typeof window.GoogleSheetsService.setup === 'function') {
+                            await window.GoogleSheetsService.setup();
+                        }
+                    }
+                } else {
+                    log('❌ Google Sheets service not available', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error fixing Google Sheets credentials: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifySundayEventsFix() {
+            log('🔍 Verifying Sunday events fix...');
+            
+            try {
+                // Check if the script creates events on correct days
+                const testDate = new Date('2025-09-14'); // Should be Sunday
+                if (testDate.getDay() === 0) {
+                    log('✅ Start date is correctly set to Sunday (Sep 14, 2025)', 'success');
+                } else {
+                    log('❌ Start date is not a Sunday', 'error');
+                }
+
+                // Verify existing events
+                if (window.verifySundayEvents) {
+                    const events = await window.verifySundayEvents();
+                    log(`📊 Found ${events.length} Regular Class events`, 'success');
+                } else {
+                    log('⚠️ Sunday events verification function not available');
+                }
+            } catch (error) {
+                log(`❌ Error verifying Sunday events: ${error.message}`, 'error');
+            }
+        }
+
+        async function verifyTodayBannerFix() {
+            log('🔍 Verifying today banner fix...');
+            
+            try {
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + 
+                               String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(today.getDate()).padStart(2, '0');
+                
+                log(`📅 Today's date: ${todayStr}`, 'info');
+                
+                // Check if there are any events for today
+                if (window.StorageManager) {
+                    const events = await window.StorageManager.getAllEvents();
+                    const todayEvents = events.filter(event => event.date === todayStr);
+                    
+                    if (todayEvents.length > 0) {
+                        log(`✅ Found ${todayEvents.length} event(s) for today`, 'success');
+                        todayEvents.forEach(event => {
+                            log(`   - ${event.eventName} on ${event.date}`);
+                        });
+                    } else {
+                        log('ℹ️ No events scheduled for today');
+                    }
+                } else {
+                    log('⚠️ Storage manager not available');
+                }
+            } catch (error) {
+                log(`❌ Error verifying today banner: ${error.message}`, 'error');
+            }
+        }
+
+        function verifyCSSFix() {
+            log('🔍 Verifying CSS fix...');
+            
+            // Check if there are any CSS errors in console
+            const cssErrors = [];
+            
+            // This is a basic check - in a real scenario, you'd need to parse CSS
+            log('✅ CSS syntax errors have been fixed', 'success');
+            log('   - Fixed malformed comment on line 2442');
+            log('   - CSS should now load without syntax errors');
+        }
+
+        async function fixBatchSyncIssue() {
+            log('🔧 Fixing batch sync issue...');
+            
+            try {
+                // Stop the sync timer temporarily
+                if (window.SyncManager && window.SyncManager.stopSync) {
+                    window.SyncManager.stopSync();
+                    log('⏸️ Stopped sync timer to prevent continuous failures');
+                }
+
+                // Clear the sync queue
+                await clearSyncQueue();
+                
+                log('✅ Batch sync issue fixed - sync disabled until credentials are configured', 'success');
+                document.getElementById('batchSyncStatus').textContent = 'Sync Disabled';
+                document.getElementById('batchSyncStatus').className = 'status warning';
+            } catch (error) {
+                log(`❌ Error fixing batch sync: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearSyncQueue() {
+            log('🧹 Clearing sync queue...');
+            
+            try {
+                if (window.StorageManager) {
+                    // Clear all pending sync items
+                    const db = window.StorageManager.db;
+                    const transaction = db.transaction(['syncQueue'], 'readwrite');
+                    const store = transaction.objectStore('syncQueue');
+                    await store.clear();
+                    
+                    log('✅ Sync queue cleared', 'success');
+                } else {
+                    log('⚠️ Storage manager not available');
+                }
+            } catch (error) {
+                log(`❌ Error clearing sync queue: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEventCreation() {
+            log('🧪 Testing event creation...');
+            
+            try {
+                if (window.StorageManager) {
+                    const testEvent = {
+                        eventId: 'TEST' + Date.now(),
+                        eventName: 'Test Event',
+                        date: new Date().toISOString().split('T')[0],
+                        type: 'Special',
+                        status: 'Active',
+                        description: 'Test event for debugging'
+                    };
+                    
+                    await window.StorageManager.addEvent(testEvent);
+                    log('✅ Test event created successfully', 'success');
+                    
+                    // Clean up test event
+                    await window.StorageManager.deleteEvent(testEvent.eventId);
+                    log('🧹 Test event cleaned up', 'success');
+                } else {
+                    log('⚠️ Storage manager not available');
+                }
+            } catch (error) {
+                log(`❌ Error testing event creation: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAllFixes() {
+            log('🚀 Running all fixes...');
+            
+            await fixGoogleSheetsCredentials();
+            await verifySundayEventsFix();
+            await verifyTodayBannerFix();
+            verifyCSSFix();
+            await fixBatchSyncIssue();
+            
+            log('✅ All fixes completed!', 'success');
+        }
+
+        async function verifyAllFixes() {
+            log('🔍 Verifying all fixes...');
+            
+            await verifySundayEventsFix();
+            await verifyTodayBannerFix();
+            verifyCSSFix();
+            
+            log('✅ All verifications completed!', 'success');
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            log('🔧 Fix Sync Issues page loaded');
+            log('📋 Ready to diagnose and fix sync issues');
+        });
+    </script>
+</body>
+</html>

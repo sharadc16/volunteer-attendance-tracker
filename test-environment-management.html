@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Management Test - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .test-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .test-item h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .test-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .btn-test {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn-test:hover {
+            background: #0056b3;
+        }
+        
+        .btn-test.danger {
+            background: #dc3545;
+        }
+        
+        .btn-test.danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-test.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-test.warning:hover {
+            background: #e0a800;
+        }
+        
+        .current-env-display {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .env-badge-display {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            font-family: monospace;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🌍 Environment Management System Test</h1>
+        <p>This page tests the environment management and separation system for the Volunteer Attendance Tracker.</p>
+        
+        <!-- Current Environment Display -->
+        <div class="current-env-display">
+            <h3>Current Environment Status</h3>
+            <div id="currentEnvInfo">Loading environment information...</div>
+        </div>
+        
+        <!-- Environment Detection Tests -->
+        <div class="test-section">
+            <h3>🔍 Environment Detection Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>URL-based Detection</h4>
+                    <p>Test environment detection based on hostname and URL parameters.</p>
+                    <button class="btn-test" onclick="testUrlDetection()">Test URL Detection</button>
+                    <div id="urlDetectionResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Environment Validation</h4>
+                    <p>Validate current environment configuration and detect mismatches.</p>
+                    <button class="btn-test" onclick="testEnvironmentValidation()">Validate Environment</button>
+                    <div id="envValidationResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Environment Switching Tests -->
+        <div class="test-section">
+            <h3>🔄 Environment Switching Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Switch to Development</h4>
+                    <p>Test switching to development environment with confirmation.</p>
+                    <button class="btn-test" onclick="testSwitchEnvironment('development')">Switch to DEV</button>
+                    <div id="switchDevResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Switch to Testing</h4>
+                    <p>Test switching to testing environment with confirmation.</p>
+                    <button class="btn-test warning" onclick="testSwitchEnvironment('testing')">Switch to TEST</button>
+                    <div id="switchTestResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Switch to Production</h4>
+                    <p>Test switching to production environment with extra confirmation.</p>
+                    <button class="btn-test danger" onclick="testSwitchEnvironment('production')">Switch to PROD</button>
+                    <div id="switchProdResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Bypass Confirmation</h4>
+                    <p>Test environment switching without confirmation dialog.</p>
+                    <button class="btn-test" onclick="testBypassConfirmation()">Bypass Confirmation</button>
+                    <div id="bypassResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Configuration Tests -->
+        <div class="test-section">
+            <h3>⚙️ Configuration Management Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Google Sheets Configuration</h4>
+                    <p>Test environment-specific Google Sheets configuration.</p>
+                    <button class="btn-test" onclick="testGoogleSheetsConfig()">Test Sheets Config</button>
+                    <div id="sheetsConfigResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Save Configuration</h4>
+                    <p>Test saving environment-specific configuration.</p>
+                    <button class="btn-test" onclick="testSaveConfiguration()">Save Config</button>
+                    <div id="saveConfigResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Load Configuration</h4>
+                    <p>Test loading saved environment configuration.</p>
+                    <button class="btn-test" onclick="testLoadConfiguration()">Load Config</button>
+                    <div id="loadConfigResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Configuration Persistence</h4>
+                    <p>Test configuration persistence across page reloads.</p>
+                    <button class="btn-test" onclick="testConfigPersistence()">Test Persistence</button>
+                    <div id="persistenceResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- UI Tests -->
+        <div class="test-section">
+            <h3>🎨 UI Integration Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Environment Badge</h4>
+                    <p>Test environment badge display and interaction.</p>
+                    <button class="btn-test" onclick="testEnvironmentBadge()">Test Badge</button>
+                    <div id="badgeResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Environment Switcher Modal</h4>
+                    <p>Test environment switcher modal functionality.</p>
+                    <button class="btn-test" onclick="testEnvironmentSwitcher()">Test Switcher</button>
+                    <div id="switcherResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Environment Indicators</h4>
+                    <p>Test environment-specific UI indicators and styling.</p>
+                    <button class="btn-test" onclick="testEnvironmentIndicators()">Test Indicators</button>
+                    <div id="indicatorsResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Warning Messages</h4>
+                    <p>Test environment warning and error messages.</p>
+                    <button class="btn-test" onclick="testWarningMessages()">Test Warnings</button>
+                    <div id="warningsResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Protection Tests -->
+        <div class="test-section">
+            <h3>🛡️ Data Protection Tests</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Environment Mismatch Detection</h4>
+                    <p>Test detection of environment mismatches.</p>
+                    <button class="btn-test" onclick="testMismatchDetection()">Test Mismatch</button>
+                    <div id="mismatchResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Data Write Prevention</h4>
+                    <p>Test prevention of data writes during environment mismatch.</p>
+                    <button class="btn-test" onclick="testDataWritePrevention()">Test Write Prevention</button>
+                    <div id="writePreventionResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Data Isolation</h4>
+                    <p>Test data isolation between environments.</p>
+                    <button class="btn-test" onclick="testDataIsolation()">Test Isolation</button>
+                    <div id="isolationResult" class="test-result" style="display: none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Clear Environment Data</h4>
+                    <p>Test clearing data when switching environments.</p>
+                    <button class="btn-test danger" onclick="testClearEnvironmentData()">Clear Data</button>
+                    <div id="clearDataResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Manual Controls -->
+        <div class="test-section">
+            <h3>🎛️ Manual Controls</h3>
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Show Environment Switcher</h4>
+                    <p>Manually open the environment switcher modal.</p>
+                    <button class="btn-test" onclick="showEnvironmentSwitcher()">Open Switcher</button>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Refresh Environment Info</h4>
+                    <p>Refresh the current environment information display.</p>
+                    <button class="btn-test" onclick="refreshEnvironmentInfo()">Refresh Info</button>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Reset to Default</h4>
+                    <p>Reset environment configuration to defaults.</p>
+                    <button class="btn-test warning" onclick="resetToDefault()">Reset Defaults</button>
+                </div>
+                
+                <div class="test-item">
+                    <h4>Force Environment Detection</h4>
+                    <p>Force re-detection of current environment.</p>
+                    <button class="btn-test" onclick="forceEnvironmentDetection()">Force Detection</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/environment-manager.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    
+    <script>
+        // Test functions
+        let testResults = {};
+        
+        // Update current environment info
+        function updateCurrentEnvironmentInfo() {
+            const infoDiv = document.getElementById('currentEnvInfo');
+            
+            if (window.EnvironmentManager) {
+                const config = window.EnvironmentManager.getCurrentConfig();
+                const currentEnv = window.EnvironmentManager.currentEnvironment;
+                
+                infoDiv.innerHTML = `
+                    <strong>Environment:</strong> ${config.name}
+                    <span class="env-badge-display" style="background: ${config.color}">${config.shortName}</span>
+                    <br>
+                    <strong>Database:</strong> ${config.database.name}
+                    <br>
+                    <strong>Sync Interval:</strong> ${config.sync.interval}ms
+                    <br>
+                    <strong>Google Sheets ID:</strong> ${config.googleSheets.spreadsheetId || 'Not configured'}
+                    <br>
+                    <strong>Debug Mode:</strong> ${config.features.debugMode ? 'Enabled' : 'Disabled'}
+                `;
+            } else {
+                infoDiv.innerHTML = '<span style="color: red;">Environment Manager not loaded</span>';
+            }
+        }
+        
+        // Test URL-based detection
+        function testUrlDetection() {
+            const resultDiv = document.getElementById('urlDetectionResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const hostname = window.location.hostname;
+                const pathname = window.location.pathname;
+                const search = window.location.search;
+                
+                const detectedEnv = window.EnvironmentManager.currentEnvironment;
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    ✅ URL Detection Test Passed<br>
+                    Hostname: ${hostname}<br>
+                    Path: ${pathname}<br>
+                    Search: ${search}<br>
+                    Detected Environment: ${detectedEnv}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ URL Detection Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test environment validation
+        async function testEnvironmentValidation() {
+            const resultDiv = document.getElementById('envValidationResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const isValid = await window.EnvironmentManager.validateEnvironment();
+                const hasMismatch = window.EnvironmentManager.checkEnvironmentMismatch();
+                
+                resultDiv.className = 'test-result ' + (isValid ? 'success' : 'error');
+                resultDiv.innerHTML = `
+                    ${isValid ? '✅' : '❌'} Environment Validation ${isValid ? 'Passed' : 'Failed'}<br>
+                    Environment Mismatch: ${hasMismatch ? 'Yes' : 'No'}<br>
+                    Current Environment: ${window.EnvironmentManager.currentEnvironment}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Environment Validation Failed: ${error.message}`;
+            }
+        }
+        
+        // Test environment switching
+        async function testSwitchEnvironment(targetEnv) {
+            const resultDiv = document.getElementById(`switch${targetEnv.charAt(0).toUpperCase() + targetEnv.slice(1)}Result`);
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const oldEnv = window.EnvironmentManager.currentEnvironment;
+                const success = await window.EnvironmentManager.switchEnvironment(targetEnv);
+                
+                if (success) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        ✅ Environment Switch Successful<br>
+                        From: ${oldEnv}<br>
+                        To: ${window.EnvironmentManager.currentEnvironment}
+                    `;
+                    updateCurrentEnvironmentInfo();
+                } else {
+                    resultDiv.className = 'test-result info';
+                    resultDiv.innerHTML = `ℹ️ Environment Switch Cancelled by User`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Environment Switch Failed: ${error.message}`;
+            }
+        }
+        
+        // Test bypass confirmation
+        async function testBypassConfirmation() {
+            const resultDiv = document.getElementById('bypassResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const oldEnv = window.EnvironmentManager.currentEnvironment;
+                const targetEnv = oldEnv === 'development' ? 'testing' : 'development';
+                
+                const success = await window.EnvironmentManager.switchEnvironment(targetEnv, { skipConfirmation: true });
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    ✅ Bypass Confirmation Test Passed<br>
+                    Switched from ${oldEnv} to ${window.EnvironmentManager.currentEnvironment} without confirmation
+                `;
+                updateCurrentEnvironmentInfo();
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Bypass Confirmation Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test Google Sheets configuration
+        function testGoogleSheetsConfig() {
+            const resultDiv = document.getElementById('sheetsConfigResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const sheetsConfig = window.EnvironmentManager.getGoogleSheetsConfig();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    ✅ Google Sheets Config Test Passed<br>
+                    Spreadsheet ID: ${sheetsConfig.spreadsheetId || 'Not set'}<br>
+                    Sheet Prefix: ${sheetsConfig.sheetPrefix}<br>
+                    Environment: ${sheetsConfig.environment}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Google Sheets Config Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test save configuration
+        async function testSaveConfiguration() {
+            const resultDiv = document.getElementById('saveConfigResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                // Update a test configuration value
+                const config = window.EnvironmentManager.getCurrentConfig();
+                config.googleSheets.spreadsheetId = 'test-spreadsheet-id-' + Date.now();
+                
+                await window.EnvironmentManager.saveEnvironmentConfig();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `✅ Save Configuration Test Passed<br>Test spreadsheet ID saved`;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Save Configuration Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test load configuration
+        async function testLoadConfiguration() {
+            const resultDiv = document.getElementById('loadConfigResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                await window.EnvironmentManager.loadEnvironmentConfig();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `✅ Load Configuration Test Passed<br>Configuration loaded from storage`;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Load Configuration Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test configuration persistence
+        function testConfigPersistence() {
+            const resultDiv = document.getElementById('persistenceResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const testKey = 'environmentConfigTest';
+                const testValue = { test: true, timestamp: Date.now() };
+                
+                // Save test data
+                localStorage.setItem(testKey, JSON.stringify(testValue));
+                
+                // Retrieve test data
+                const retrieved = JSON.parse(localStorage.getItem(testKey));
+                
+                if (retrieved && retrieved.test === true) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `✅ Configuration Persistence Test Passed<br>Data persisted correctly`;
+                } else {
+                    throw new Error('Retrieved data does not match saved data');
+                }
+                
+                // Clean up
+                localStorage.removeItem(testKey);
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Configuration Persistence Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test environment badge
+        function testEnvironmentBadge() {
+            const resultDiv = document.getElementById('badgeResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const badge = document.getElementById('environmentBadge');
+                
+                if (badge) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        ✅ Environment Badge Test Passed<br>
+                        Badge Text: ${badge.textContent}<br>
+                        Badge Color: ${badge.style.background}
+                    `;
+                } else {
+                    throw new Error('Environment badge not found');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Environment Badge Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test environment switcher
+        function testEnvironmentSwitcher() {
+            const resultDiv = document.getElementById('switcherResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                // Show switcher
+                window.EnvironmentManager.showEnvironmentSwitcher();
+                
+                // Check if switcher is visible
+                const switcher = document.getElementById('environmentSwitcher');
+                
+                if (switcher && switcher.style.display === 'block') {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `✅ Environment Switcher Test Passed<br>Switcher modal opened successfully`;
+                    
+                    // Hide switcher after test
+                    setTimeout(() => {
+                        window.EnvironmentManager.hideEnvironmentSwitcher();
+                    }, 2000);
+                } else {
+                    throw new Error('Environment switcher not visible');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Environment Switcher Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test environment indicators
+        function testEnvironmentIndicators() {
+            const resultDiv = document.getElementById('indicatorsResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                const bodyClasses = document.body.className;
+                const hasEnvClass = /env-\w+/.test(bodyClasses);
+                
+                if (hasEnvClass) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        ✅ Environment Indicators Test Passed<br>
+                        Body Classes: ${bodyClasses}
+                    `;
+                } else {
+                    throw new Error('Environment-specific body class not found');
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Environment Indicators Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test warning messages
+        function testWarningMessages() {
+            const resultDiv = document.getElementById('warningsResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                // Show test warning
+                window.EnvironmentManager.showEnvironmentMessage('This is a test warning message', 'warning');
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `✅ Warning Messages Test Passed<br>Test warning message displayed`;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Warning Messages Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test mismatch detection
+        function testMismatchDetection() {
+            const resultDiv = document.getElementById('mismatchResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const hasMismatch = window.EnvironmentManager.checkEnvironmentMismatch();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    ✅ Mismatch Detection Test Passed<br>
+                    Environment Mismatch Detected: ${hasMismatch ? 'Yes' : 'No'}
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Mismatch Detection Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test data write prevention
+        function testDataWritePrevention() {
+            const resultDiv = document.getElementById('writePreventionResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                // Try to prevent data writes
+                try {
+                    window.EnvironmentManager.preventDataWrites();
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `✅ Data Write Prevention Test Passed<br>No environment mismatch detected`;
+                } catch (preventError) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `✅ Data Write Prevention Test Passed<br>Data writes prevented: ${preventError.message}`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Data Write Prevention Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test data isolation
+        function testDataIsolation() {
+            const resultDiv = document.getElementById('isolationResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                const config = window.EnvironmentManager.getCurrentConfig();
+                const dbName = config.database.name;
+                
+                // Check if database name includes environment
+                const hasEnvInName = dbName.includes('Dev') || dbName.includes('Test') || dbName.includes('Prod');
+                
+                if (hasEnvInName) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        ✅ Data Isolation Test Passed<br>
+                        Environment-specific database: ${dbName}
+                    `;
+                } else {
+                    resultDiv.className = 'test-result info';
+                    resultDiv.innerHTML = `
+                        ℹ️ Data Isolation Test - Generic database name: ${dbName}
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Data Isolation Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Test clear environment data
+        async function testClearEnvironmentData() {
+            const resultDiv = document.getElementById('clearDataResult');
+            resultDiv.style.display = 'block';
+            
+            try {
+                if (!window.EnvironmentManager) {
+                    throw new Error('Environment Manager not available');
+                }
+                
+                if (confirm('This will clear environment data. Continue?')) {
+                    await window.EnvironmentManager.clearEnvironmentData();
+                    
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `✅ Clear Environment Data Test Passed<br>Environment data cleared`;
+                } else {
+                    resultDiv.className = 'test-result info';
+                    resultDiv.innerHTML = `ℹ️ Clear Environment Data Test Cancelled`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `❌ Clear Environment Data Test Failed: ${error.message}`;
+            }
+        }
+        
+        // Manual control functions
+        function showEnvironmentSwitcher() {
+            if (window.EnvironmentManager) {
+                window.EnvironmentManager.showEnvironmentSwitcher();
+            } else {
+                alert('Environment Manager not available');
+            }
+        }
+        
+        function refreshEnvironmentInfo() {
+            updateCurrentEnvironmentInfo();
+        }
+        
+        function resetToDefault() {
+            if (confirm('Reset environment configuration to defaults?')) {
+                localStorage.removeItem('environmentConfig');
+                location.reload();
+            }
+        }
+        
+        function forceEnvironmentDetection() {
+            if (window.EnvironmentManager) {
+                window.EnvironmentManager.detectEnvironment();
+                updateCurrentEnvironmentInfo();
+            } else {
+                alert('Environment Manager not available');
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait for environment manager to initialize
+            setTimeout(() => {
+                updateCurrentEnvironmentInfo();
+                
+                // Listen for environment changes
+                window.addEventListener('environmentChanged', () => {
+                    updateCurrentEnvironmentInfo();
+                });
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

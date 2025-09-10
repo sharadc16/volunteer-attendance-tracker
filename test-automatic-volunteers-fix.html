@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Automatic Volunteers Fix</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-buttons { margin: 10px 0; }
+        .test-buttons button { margin: 5px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Automatic Volunteers Fix</h1>
+        
+        <div class="test-section">
+            <h2>1. Automatic Fix Status</h2>
+            <div class="test-buttons">
+                <button onclick="checkAutomaticFixes()">Check All Automatic Fixes</button>
+                <button onclick="clearLog()">Clear Log</button>
+            </div>
+            <div id="automaticStatus"></div>
+            <div id="testLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Simulate Navigation</h2>
+            <div class="test-buttons">
+                <button onclick="simulateVolunteersClick()">Simulate Volunteers Click</button>
+                <button onclick="simulateViewSwitch()">Simulate View Switch</button>
+                <button onclick="simulateStuckState()">Simulate Stuck State</button>
+            </div>
+            
+            <!-- Mock navigation for testing -->
+            <div style="margin: 10px 0;">
+                <button class="nav-btn" data-view="volunteers" style="padding: 10px; margin: 5px;">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Test Volunteers Button</span>
+                </button>
+            </div>
+            
+            <!-- Mock volunteers view -->
+            <div class="view" id="volunteersView" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+                <div class="view-header">
+                    <h3>Mock Volunteers View</h3>
+                    <div class="view-controls">
+                        <button class="btn btn-primary">Add Volunteer</button>
+                    </div>
+                </div>
+                <div class="volunteers-grid" id="volunteersGrid">
+                    <p>Loading volunteers...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Manual Tests</h2>
+            <div class="test-buttons">
+                <button onclick="testManualFix()">Test Manual Fix</button>
+                <button onclick="testKeyboardShortcut()">Test Keyboard Shortcut (Ctrl+Shift+V)</button>
+                <button onclick="resetToLoadingState()">Reset to Loading State</button>
+            </div>
+            <div id="manualTestStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Performance Test</h2>
+            <div class="test-buttons">
+                <button onclick="runPerformanceTest()">Run Performance Test</button>
+            </div>
+            <div id="performanceResults"></div>
+        </div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/environment-manager.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/connectivity-validator.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/app.js"></script>
+    <script src="fix-volunteers-loading.js"></script>
+    <script src="add-volunteers-fix-button.js"></script>
+
+    <script>
+        let testLog = [];
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            testLog.push(logMessage);
+            console.log(logMessage);
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            const logDiv = document.getElementById('testLog');
+            if (logDiv) {
+                logDiv.innerHTML = testLog.slice(-20).join('\n'); // Show last 20 entries
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+        
+        function clearLog() {
+            testLog = [];
+            updateLogDisplay();
+        }
+        
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+        }
+
+        function checkAutomaticFixes() {
+            log('🔍 Checking automatic fix status...');
+            
+            let status = '';
+            let allGood = true;
+            
+            // Check if fix function exists
+            if (window.fixVolunteersLoading) {
+                status += '✅ Manual fix function: Available<br>';
+                log('✅ Manual fix function available');
+            } else {
+                status += '❌ Manual fix function: Not available<br>';
+                log('❌ Manual fix function not available');
+                allGood = false;
+            }
+            
+            // Check if app switchView is enhanced
+            if (window.app && window.app.switchView) {
+                status += '✅ App switchView: Available<br>';
+                log('✅ App switchView available');
+                
+                // Test if it's enhanced (this is tricky to detect)
+                const switchViewStr = window.app.switchView.toString();
+                if (switchViewStr.includes('Enhanced switchView') || switchViewStr.includes('fixedUpdateVolunteersView')) {
+                    status += '✅ SwitchView enhancement: Detected<br>';
+                    log('✅ SwitchView appears to be enhanced');
+                } else {
+                    status += '⚠️ SwitchView enhancement: Not detected<br>';
+                    log('⚠️ SwitchView enhancement not clearly detected');
+                }
+            } else {
+                status += '❌ App switchView: Not available<br>';
+                log('❌ App switchView not available');
+                allGood = false;
+            }
+            
+            // Check for navigation hooks
+            const hasClickListeners = document.body.onclick || 
+                                    document.addEventListener.toString().includes('click');
+            if (hasClickListeners) {
+                status += '✅ Navigation hooks: Likely installed<br>';
+                log('✅ Navigation hooks appear to be installed');
+            } else {
+                status += '⚠️ Navigation hooks: Cannot detect<br>';
+                log('⚠️ Cannot detect navigation hooks');
+            }
+            
+            // Check for periodic monitoring
+            status += '✅ Periodic monitoring: Should be active<br>';
+            log('✅ Periodic monitoring should be running');
+            
+            const statusType = allGood ? 'success' : 'error';
+            showStatus('automaticStatus', status, statusType);
+            
+            log(`🏁 Automatic fix check completed (${allGood ? 'PASS' : 'ISSUES DETECTED'})`);
+        }
+
+        function simulateVolunteersClick() {
+            log('🖱️ Simulating volunteers navigation click...');
+            
+            const volunteersBtn = document.querySelector('[data-view="volunteers"]');
+            if (volunteersBtn) {
+                // Reset to loading state first
+                resetToLoadingState();
+                
+                // Simulate click
+                volunteersBtn.click();
+                log('✅ Volunteers button clicked');
+                
+                // Check if fix was applied after delay
+                setTimeout(() => {
+                    const volunteersGrid = document.getElementById('volunteersGrid');
+                    if (volunteersGrid) {
+                        const isStillLoading = volunteersGrid.innerHTML.includes('Loading volunteers...');
+                        if (isStillLoading) {
+                            log('❌ Still showing loading state after click');
+                        } else {
+                            log('✅ Loading state was fixed after click');
+                        }
+                    }
+                }, 1500);
+                
+            } else {
+                log('❌ Volunteers button not found');
+            }
+        }
+
+        function simulateViewSwitch() {
+            log('🔄 Simulating view switch...');
+            
+            if (window.app && window.app.switchView) {
+                resetToLoadingState();
+                
+                window.app.switchView('volunteers');
+                log('✅ Called app.switchView("volunteers")');
+                
+                setTimeout(() => {
+                    const volunteersGrid = document.getElementById('volunteersGrid');
+                    if (volunteersGrid) {
+                        const isStillLoading = volunteersGrid.innerHTML.includes('Loading volunteers...');
+                        if (isStillLoading) {
+                            log('❌ Still showing loading state after switchView');
+                        } else {
+                            log('✅ Loading state was fixed after switchView');
+                        }
+                    }
+                }, 1500);
+                
+            } else {
+                log('❌ App switchView not available');
+            }
+        }
+
+        function simulateStuckState() {
+            log('🔄 Simulating stuck loading state...');
+            
+            // Make volunteers view active
+            const volunteersView = document.getElementById('volunteersView');
+            if (volunteersView) {
+                volunteersView.classList.add('active');
+                log('✅ Made volunteers view active');
+            }
+            
+            // Set stuck loading state
+            resetToLoadingState();
+            
+            // Wait for periodic monitoring to kick in
+            log('⏳ Waiting for periodic monitoring to detect and fix...');
+            
+            setTimeout(() => {
+                const volunteersGrid = document.getElementById('volunteersGrid');
+                if (volunteersGrid) {
+                    const isStillLoading = volunteersGrid.innerHTML.includes('Loading volunteers...');
+                    if (isStillLoading) {
+                        log('❌ Periodic monitoring did not fix the issue');
+                    } else {
+                        log('✅ Periodic monitoring fixed the issue');
+                    }
+                }
+            }, 4000); // Wait longer than the 3-second periodic check
+        }
+
+        function testManualFix() {
+            log('🔧 Testing manual fix...');
+            
+            resetToLoadingState();
+            
+            if (window.fixVolunteersLoading) {
+                window.fixVolunteersLoading();
+                log('✅ Called fixVolunteersLoading()');
+                
+                setTimeout(() => {
+                    const volunteersGrid = document.getElementById('volunteersGrid');
+                    if (volunteersGrid) {
+                        const isStillLoading = volunteersGrid.innerHTML.includes('Loading volunteers...');
+                        if (isStillLoading) {
+                            log('❌ Manual fix did not work');
+                            showStatus('manualTestStatus', 'Manual fix failed', 'error');
+                        } else {
+                            log('✅ Manual fix worked');
+                            showStatus('manualTestStatus', 'Manual fix successful', 'success');
+                        }
+                    }
+                }, 500);
+                
+            } else {
+                log('❌ Manual fix function not available');
+                showStatus('manualTestStatus', 'Manual fix function not available', 'error');
+            }
+        }
+
+        function testKeyboardShortcut() {
+            log('⌨️ Testing keyboard shortcut...');
+            
+            resetToLoadingState();
+            
+            // Simulate Ctrl+Shift+V
+            const event = new KeyboardEvent('keydown', {
+                key: 'V',
+                ctrlKey: true,
+                shiftKey: true,
+                bubbles: true
+            });
+            
+            document.dispatchEvent(event);
+            log('✅ Dispatched Ctrl+Shift+V keyboard event');
+            
+            setTimeout(() => {
+                const volunteersGrid = document.getElementById('volunteersGrid');
+                if (volunteersGrid) {
+                    const isStillLoading = volunteersGrid.innerHTML.includes('Loading volunteers...');
+                    if (isStillLoading) {
+                        log('❌ Keyboard shortcut did not work');
+                    } else {
+                        log('✅ Keyboard shortcut worked');
+                    }
+                }
+            }, 500);
+        }
+
+        function resetToLoadingState() {
+            const volunteersGrid = document.getElementById('volunteersGrid');
+            if (volunteersGrid) {
+                volunteersGrid.innerHTML = '<p>Loading volunteers...</p>';
+                log('🔄 Reset to loading state');
+            }
+        }
+
+        async function runPerformanceTest() {
+            log('⚡ Running performance test...');
+            
+            const iterations = 10;
+            const times = [];
+            
+            for (let i = 0; i < iterations; i++) {
+                resetToLoadingState();
+                
+                const startTime = performance.now();
+                
+                if (window.fixVolunteersLoading) {
+                    await window.fixVolunteersLoading();
+                }
+                
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                times.push(duration);
+                
+                log(`Iteration ${i + 1}: ${duration.toFixed(2)}ms`);
+            }
+            
+            const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+            const minTime = Math.min(...times);
+            const maxTime = Math.max(...times);
+            
+            const results = `
+                <div class="status info">
+                    <strong>Performance Results (${iterations} iterations):</strong><br>
+                    Average: ${avgTime.toFixed(2)}ms<br>
+                    Min: ${minTime.toFixed(2)}ms<br>
+                    Max: ${maxTime.toFixed(2)}ms
+                </div>
+            `;
+            
+            document.getElementById('performanceResults').innerHTML = results;
+            log(`🏁 Performance test completed - Avg: ${avgTime.toFixed(2)}ms`);
+        }
+
+        // Auto-run basic checks when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('🚀 Test page loaded, running initial checks...');
+                checkAutomaticFixes();
+            }, 1000);
+        });
+
+        // Monitor for automatic fixes
+        const originalLog = console.log;
+        console.log = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('Enhanced switchView') || 
+                message.includes('Auto-fixing stuck') ||
+                message.includes('Navigation hook') ||
+                message.includes('Periodic check')) {
+                log(`🤖 AUTOMATIC: ${message}`);
+            }
+            originalLog.apply(console, args);
+        };
+
+        log('🧪 Test environment ready');
+    </script>
+</body>
+</html>

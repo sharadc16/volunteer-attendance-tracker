@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Quick Fix - Loading Event</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #f8f9fa;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.5rem;
+            font-size: 16px;
+        }
+        .btn:hover { background: #218838; }
+        .btn-secondary { background: #007bff; }
+        .btn-secondary:hover { background: #0056b3; }
+        .output {
+            background: #212529;
+            color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 1rem 0;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .status-success { background: #d4edda; border-left: 4px solid #28a745; }
+        .status-error { background: #f8d7da; border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Quick Fix - Loading Event</h1>
+        <p>Based on diagnosis: Missing today's event (E20250909) and date mismatch in E20250908</p>
+
+        <div id="status"></div>
+
+        <div style="margin: 2rem 0;">
+            <button class="btn" onclick="runQuickFix()">🚀 Run Quick Fix</button>
+            <button class="btn btn-secondary" onclick="openMainApp()">🏠 Open Main App</button>
+        </div>
+
+        <div id="output" class="output" style="display: none;"></div>
+
+        <div style="margin-top: 2rem; font-size: 14px; color: #6c757d;">
+            <p><strong>What this fix does:</strong></p>
+            <ul style="text-align: left;">
+                <li>Creates today's event (E20250909)</li>
+                <li>Fixes date mismatch in E20250908</li>
+                <li>Updates current event display</li>
+                <li>Enables scanner for today</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Include app scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+    <script src="js/sync-manager.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            output.style.display = 'block';
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : 
+                         type === 'warning' ? '#ffc107' : 
+                         type === 'success' ? '#28a745' : '#f8f9fa';
+            
+            output.innerHTML += `<span style="color: #6c757d">[${timestamp}]</span> <span style="color: ${color}">${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            const className = type === 'error' ? 'status-error' : 'status-success';
+            statusDiv.innerHTML = `<div class="status ${className}"><strong>${message}</strong></div>`;
+        }
+
+        async function runQuickFix() {
+            log('⚡ Starting quick fix for loading event...', 'info');
+            
+            try {
+                // Step 1: Initialize storage
+                log('📦 Initializing storage...', 'info');
+                const storage = window.StorageManager || window.storage;
+                if (!storage) {
+                    throw new Error('Storage system not available');
+                }
+                
+                if (typeof storage.init === 'function') {
+                    await storage.init();
+                }
+                log('✅ Storage initialized', 'success');
+
+                // Step 2: Fix E20250908 date mismatch
+                log('🔧 Fixing E20250908 date mismatch...', 'info');
+                try {
+                    const event908 = await storage.getEvent('E20250908');
+                    if (event908 && event908.date === '2025-09-09') {
+                        const fixedEvent = { ...event908, date: '2025-09-08' };
+                        await storage.updateEvent(fixedEvent);
+                        log('✅ Fixed E20250908 date: 2025-09-09 → 2025-09-08', 'success');
+                    }
+                } catch (e) {
+                    log('⚠️ Could not fix E20250908: ' + e.message, 'warning');
+                }
+
+                // Step 3: Create today's event (E20250909)
+                log('📅 Creating today\'s event (E20250909)...', 'info');
+                
+                const todayEvent = {
+                    eventId: 'E20250909',
+                    eventName: 'Tuesday, Sep 9',
+                    date: '2025-09-09',
+                    type: 'Regular',
+                    status: 'Active',
+                    description: 'Event for Tuesday, September 9, 2025'
+                };
+
+                try {
+                    const existing = await storage.getEvent('E20250909');
+                    if (existing) {
+                        log('✅ Today\'s event already exists', 'success');
+                    } else {
+                        await storage.addEvent(todayEvent);
+                        log('✅ Created today\'s event: ' + todayEvent.eventName, 'success');
+                    }
+                } catch (e) {
+                    await storage.addEvent(todayEvent);
+                    log('✅ Created today\'s event: ' + todayEvent.eventName, 'success');
+                }
+
+                // Step 4: Update current event display (if elements exist)
+                log('🔄 Updating current event display...', 'info');
+                
+                // Try to update the display
+                const currentEventElement = document.getElementById('currentEvent');
+                if (currentEventElement) {
+                    currentEventElement.textContent = todayEvent.eventName;
+                    log('✅ Updated current event display', 'success');
+                } else {
+                    log('⚠️ Current event element not found (may be in main app)', 'warning');
+                }
+
+                // Step 5: Enable scanner (if elements exist)
+                log('📱 Enabling scanner...', 'info');
+                
+                const scannerInput = document.getElementById('scannerInput');
+                if (scannerInput) {
+                    scannerInput.disabled = false;
+                    scannerInput.placeholder = 'Scan volunteer ID';
+                    log('✅ Scanner enabled', 'success');
+                } else {
+                    log('⚠️ Scanner input not found (may be in main app)', 'warning');
+                }
+
+                // Step 6: Update scanner status (if scanner object exists)
+                if (window.scanner && typeof window.scanner.updateScannerStatus === 'function') {
+                    await window.scanner.updateScannerStatus();
+                    log('✅ Scanner status updated', 'success');
+                }
+
+                log('🎉 Quick fix completed successfully!', 'success');
+                showStatus('✅ Fix completed! Today\'s event created and scanner should be working.', 'success');
+
+            } catch (error) {
+                log(`❌ Quick fix failed: ${error.message}`, 'error');
+                showStatus('❌ Fix failed. Check console for details.', 'error');
+            }
+        }
+
+        function openMainApp() {
+            window.open('index.html', '_blank');
+        }
+
+        // Auto-run fix on load
+        window.addEventListener('load', () => {
+            log('⚡ Quick fix tool loaded', 'info');
+            
+            setTimeout(() => {
+                log('💡 Ready to fix the loading event issue', 'info');
+                log('📋 Diagnosis showed: Missing E20250909 event and E20250908 date mismatch', 'info');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

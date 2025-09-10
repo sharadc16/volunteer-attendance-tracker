@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Banner Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .test-result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Banner & Layout Diagnostic Tool</h1>
+        <p>This will help diagnose why the banner and layout fixes aren't working.</p>
+
+        <button class="btn btn-primary" onclick="testBannerExists()">1. Check if Banner Exists</button>
+        <button class="btn btn-primary" onclick="testBannerCSS()">2. Check Banner CSS</button>
+        <button class="btn btn-success" onclick="createTestBanner()">3. Create Test Banner</button>
+        <button class="btn btn-warning" onclick="testScannerLayout()">4. Test Scanner Layout</button>
+
+        <div id="testResults" class="test-result">
+            Click the buttons above to run diagnostics...
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const results = document.getElementById('testResults');
+            results.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        function clearLog() {
+            document.getElementById('testResults').textContent = '';
+        }
+
+        function testBannerExists() {
+            clearLog();
+            log('🔍 Testing if Google Sheets banner exists...');
+            
+            const banner = document.getElementById('googleSheetsSetupBanner');
+            if (banner) {
+                log('✅ Banner element found!');
+                log('   Position: ' + getComputedStyle(banner).position);
+                log('   Top: ' + getComputedStyle(banner).top);
+                log('   Z-index: ' + getComputedStyle(banner).zIndex);
+                log('   Display: ' + getComputedStyle(banner).display);
+                log('   Visibility: ' + getComputedStyle(banner).visibility);
+            } else {
+                log('❌ Banner element NOT found');
+                log('💡 This means the JavaScript isn\'t creating the banner');
+            }
+        }
+
+        function testBannerCSS() {
+            clearLog();
+            log('🎨 Testing banner CSS rules...');
+            
+            // Check if CSS rules exist
+            const sheets = document.styleSheets;
+            let found = false;
+            
+            for (let sheet of sheets) {
+                try {
+                    const rules = sheet.cssRules || sheet.rules;
+                    for (let rule of rules) {
+                        if (rule.selectorText && rule.selectorText.includes('googleSheetsSetupBanner')) {
+                            found = true;
+                            log('✅ Found CSS rule: ' + rule.selectorText);
+                            log('   Top: ' + rule.style.top);
+                            log('   Z-index: ' + rule.style.zIndex);
+                            log('   Position: ' + rule.style.position);
+                        }
+                    }
+                } catch (e) {
+                    log('⚠️ Could not read stylesheet: ' + e.message);
+                }
+            }
+            
+            if (!found) {
+                log('❌ No CSS rules found for googleSheetsSetupBanner');
+                log('💡 CSS file might not be loading or rules are missing');
+            }
+        }
+
+        function createTestBanner() {
+            clearLog();
+            log('🧪 Creating test banner...');
+            
+            // Remove existing test banner
+            const existing = document.getElementById('testBanner');
+            if (existing) existing.remove();
+            
+            // Create test banner
+            const banner = document.createElement('div');
+            banner.id = 'testBanner';
+            banner.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 0;
+                right: 0;
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                color: #856404;
+                padding: 8px 0;
+                z-index: 10000;
+                border-bottom: 1px solid #ffc107;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            `;
+            
+            banner.innerHTML = `
+                <div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem; display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 24px;">📊</div>
+                    <div style="font-weight: 600; font-size: 16px; flex: 1;">TEST: Google Sheets Not Connected</div>
+                    <button onclick="this.parentElement.parentElement.remove()" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 6px; cursor: pointer;">
+                        🔧 Test Setup
+                    </button>
+                    <button onclick="this.parentElement.parentElement.remove()" style="padding: 8px 12px; border: none; background: transparent; color: #856404; border-radius: 6px; cursor: pointer;">
+                        ✕
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(banner);
+            log('✅ Test banner created!');
+            log('💡 If you can see the test banner, CSS positioning works');
+            log('💡 If not, there might be a z-index or positioning conflict');
+        }
+
+        function testScannerLayout() {
+            clearLog();
+            log('📱 Testing scanner layout in main app...');
+            
+            // Open main app in new window and test
+            const mainWindow = window.open('index.html', '_blank');
+            
+            setTimeout(() => {
+                try {
+                    const scannerContainer = mainWindow.document.querySelector('.scanner-status-container');
+                    if (scannerContainer) {
+                        const styles = mainWindow.getComputedStyle(scannerContainer);
+                        log('✅ Scanner container found');
+                        log('   Display: ' + styles.display);
+                        log('   Flex-direction: ' + styles.flexDirection);
+                        log('   Align-items: ' + styles.alignItems);
+                        
+                        if (styles.flexDirection === 'column') {
+                            log('❌ ISSUE: Scanner container is using flex-direction: column');
+                            log('💡 This causes vertical stacking instead of horizontal layout');
+                        } else {
+                            log('✅ Scanner container layout looks correct');
+                        }
+                    } else {
+                        log('❌ Scanner container not found in main app');
+                    }
+                } catch (e) {
+                    log('⚠️ Could not access main app window: ' + e.message);
+                    log('💡 Open the main app manually and check browser console');
+                }
+            }, 2000);
+            
+            log('🔄 Opened main app - checking in 2 seconds...');
+        }
+
+        // Auto-run basic tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Banner diagnostic tool loaded');
+            log('💡 Click the buttons above to run specific tests');
+        });
+    </script>
+</body>
+</html>

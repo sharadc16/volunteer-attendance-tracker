@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test 7-Day Scanning Window - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+        }
+        
+        .test-section h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .test-result {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .test-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .test-result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .test-controls {
+            margin: 1rem 0;
+        }
+        
+        .test-controls button {
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #007bff;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-controls button:hover {
+            background: #0056b3;
+        }
+        
+        .current-event-demo {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .scanner-input-demo {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ced4da;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>7-Day Scanning Window Test</h1>
+        <p>This page tests the enhanced 7-day scanning window implementation for manual backfilling.</p>
+        
+        <div class="test-section">
+            <h3>Test Scenarios</h3>
+            <div class="test-controls">
+                <button onclick="testTodayEvent()">Test Today's Event</button>
+                <button onclick="testBackfillEvent()">Test Backfill Event (3 days ago)</button>
+                <button onclick="testExpiredEvent()">Test Expired Event (10 days ago)</button>
+                <button onclick="testNoEvents()">Test No Events</button>
+                <button onclick="testFutureEvent()">Test Future Event</button>
+                <button onclick="clearTests()">Clear All Tests</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Current Event Display Demo</h3>
+            <div class="current-event-demo">
+                <p>Current Event Status:</p>
+                <div id="currentEventDemo" class="current-event inactive">No event loaded</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Scanner Input Demo</h3>
+            <div class="scanner-input-demo-container">
+                <input type="text" id="scannerInputDemo" class="scanner-input-demo" placeholder="Scanner input will update based on event context">
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="testResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Event Database Status</h3>
+            <div id="eventStatus"></div>
+            <div class="test-controls">
+                <button onclick="checkEventDatabase()">Check Event Database</button>
+                <button onclick="createTestEvents()">Create Test Events</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include required scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/scanner.js"></script>
+
+    <script>
+        let testResults = [];
+        
+        // Initialize storage when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for storage to initialize
+                await waitForStorage();
+                addTestResult('info', 'Storage initialized successfully');
+                await checkEventDatabase();
+            } catch (error) {
+                addTestResult('error', `Failed to initialize storage: ${error.message}`);
+            }
+        });
+        
+        async function waitForStorage() {
+            let attempts = 0;
+            while (!window.StorageManager || !window.StorageManager.db) {
+                if (attempts > 50) {
+                    throw new Error('Storage initialization timeout');
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+        }
+        
+        function addTestResult(type, message) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function updateCurrentEventDemo(eventData, scanningStatus) {
+            const demoEl = document.getElementById('currentEventDemo');
+            const scannerDemo = document.getElementById('scannerInputDemo');
+            
+            if (eventData) {
+                const context = eventData.scanningContext;
+                
+                if (context?.isToday) {
+                    demoEl.textContent = `📅 Today: ${eventData.eventName}`;
+                    demoEl.className = 'current-event active today';
+                    scannerDemo.placeholder = `📅 Scan for TODAY: ${eventData.eventName}`;
+                } else if (context?.isPastEvent) {
+                    const daysAgo = context.daysFromEventDate;
+                    demoEl.textContent = `🔄 Backfill: ${eventData.eventName} (${daysAgo}d ago)`;
+                    demoEl.className = 'current-event active backfill';
+                    scannerDemo.placeholder = `🔄 BACKFILL (${daysAgo}d ago): ${eventData.eventName}`;
+                } else {
+                    demoEl.textContent = `📋 ${eventData.eventName}`;
+                    demoEl.className = 'current-event active';
+                    scannerDemo.placeholder = `Scan badge for: ${eventData.eventName}`;
+                }
+            } else if (scanningStatus) {
+                switch (scanningStatus.type) {
+                    case 'no-events':
+                        demoEl.textContent = '❌ No events created';
+                        demoEl.className = 'current-event inactive no-events';
+                        scannerDemo.placeholder = 'No events available - scanner disabled';
+                        break;
+                    case 'future-event':
+                        const nextEvent = scanningStatus.nextEvent;
+                        const daysUntil = Math.ceil((new Date(nextEvent.date) - new Date()) / (1000 * 60 * 60 * 24));
+                        demoEl.textContent = `⏳ Next: ${nextEvent.eventName} (${daysUntil}d)`;
+                        demoEl.className = 'current-event inactive future';
+                        scannerDemo.placeholder = `Next event in ${daysUntil} days - scanner disabled`;
+                        break;
+                    case 'expired-event':
+                        const lastEvent = scanningStatus.lastEvent;
+                        const daysAgo = Math.floor((new Date() - new Date(lastEvent.date)) / (1000 * 60 * 60 * 24));
+                        demoEl.textContent = `⏰ Expired: ${lastEvent.eventName} (${daysAgo}d ago)`;
+                        demoEl.className = 'current-event inactive expired';
+                        scannerDemo.placeholder = `Last event ${daysAgo} days ago - scanning window expired`;
+                        break;
+                    default:
+                        demoEl.textContent = '❌ No scannable events';
+                        demoEl.className = 'current-event inactive';
+                        scannerDemo.placeholder = 'No scannable events available';
+                }
+            } else {
+                demoEl.textContent = 'No event data';
+                demoEl.className = 'current-event error';
+                scannerDemo.placeholder = 'Error loading event data';
+            }
+        }
+        
+        async function testTodayEvent() {
+            try {
+                addTestResult('info', 'Testing today\'s event scenario...');
+                
+                // Create an event for today
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' + 
+                               String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(today.getDate()).padStart(2, '0');
+                
+                const todayEvent = {
+                    eventId: `TEST_TODAY_${Date.now()}`,
+                    eventName: 'Today\'s Test Event',
+                    date: todayStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(todayEvent);
+                addTestResult('success', `Created today's event: ${todayEvent.eventName}`);
+                
+                // Test the scanning logic
+                const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (scannableEvent && scannableEvent.scanningContext?.isToday) {
+                    addTestResult('success', `✅ Today's event correctly identified: ${scannableEvent.eventName}`);
+                    addTestResult('info', `Context: ${scannableEvent.scanningContext.displayMessage}`);
+                    updateCurrentEventDemo(scannableEvent);
+                } else {
+                    addTestResult('error', '❌ Today\'s event not properly identified');
+                }
+                
+            } catch (error) {
+                addTestResult('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        async function testBackfillEvent() {
+            try {
+                addTestResult('info', 'Testing backfill event scenario (3 days ago)...');
+                
+                // Create an event 3 days ago
+                const threeDaysAgo = new Date();
+                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                const dateStr = threeDaysAgo.getFullYear() + '-' + 
+                               String(threeDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(threeDaysAgo.getDate()).padStart(2, '0');
+                
+                const backfillEvent = {
+                    eventId: `TEST_BACKFILL_${Date.now()}`,
+                    eventName: 'Backfill Test Event',
+                    date: dateStr,
+                    type: 'Recurring',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(backfillEvent);
+                addTestResult('success', `Created backfill event: ${backfillEvent.eventName} (${dateStr})`);
+                
+                // Test the scanning logic
+                const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (scannableEvent && scannableEvent.scanningContext?.isPastEvent) {
+                    addTestResult('success', `✅ Backfill event correctly identified: ${scannableEvent.eventName}`);
+                    addTestResult('info', `Context: ${scannableEvent.scanningContext.displayMessage}`);
+                    addTestResult('info', `Days from event: ${scannableEvent.scanningContext.daysFromEventDate}`);
+                    updateCurrentEventDemo(scannableEvent);
+                } else {
+                    addTestResult('error', '❌ Backfill event not properly identified');
+                }
+                
+            } catch (error) {
+                addTestResult('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        async function testExpiredEvent() {
+            try {
+                addTestResult('info', 'Testing expired event scenario (10 days ago)...');
+                
+                // Clear any existing events first
+                await clearAllTestEvents();
+                
+                // Create an event 10 days ago (outside 7-day window)
+                const tenDaysAgo = new Date();
+                tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+                const dateStr = tenDaysAgo.getFullYear() + '-' + 
+                               String(tenDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(tenDaysAgo.getDate()).padStart(2, '0');
+                
+                const expiredEvent = {
+                    eventId: `TEST_EXPIRED_${Date.now()}`,
+                    eventName: 'Expired Test Event',
+                    date: dateStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(expiredEvent);
+                addTestResult('success', `Created expired event: ${expiredEvent.eventName} (${dateStr})`);
+                
+                // Test the scanning logic
+                const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (!scannableEvent) {
+                    addTestResult('success', '✅ Expired event correctly excluded from scanning');
+                    
+                    // Test scanner status for better feedback
+                    if (window.scanner) {
+                        const scanningStatus = await window.scanner.getScanningStatus();
+                        addTestResult('info', `Scanner status: ${scanningStatus.message}`);
+                        updateCurrentEventDemo(null, scanningStatus);
+                    }
+                } else {
+                    addTestResult('error', '❌ Expired event should not be scannable');
+                }
+                
+            } catch (error) {
+                addTestResult('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        async function testNoEvents() {
+            try {
+                addTestResult('info', 'Testing no events scenario...');
+                
+                // Clear all events
+                await clearAllTestEvents();
+                
+                // Test the scanning logic
+                const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (!scannableEvent) {
+                    addTestResult('success', '✅ No events correctly handled');
+                    
+                    // Test scanner status
+                    if (window.scanner) {
+                        const scanningStatus = await window.scanner.getScanningStatus();
+                        addTestResult('info', `Scanner status: ${scanningStatus.message}`);
+                        updateCurrentEventDemo(null, scanningStatus);
+                    }
+                } else {
+                    addTestResult('error', '❌ Should return null when no events exist');
+                }
+                
+            } catch (error) {
+                addTestResult('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        async function testFutureEvent() {
+            try {
+                addTestResult('info', 'Testing future event scenario...');
+                
+                // Clear existing events
+                await clearAllTestEvents();
+                
+                // Create an event 5 days in the future
+                const fiveDaysFromNow = new Date();
+                fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
+                const dateStr = fiveDaysFromNow.getFullYear() + '-' + 
+                               String(fiveDaysFromNow.getMonth() + 1).padStart(2, '0') + '-' + 
+                               String(fiveDaysFromNow.getDate()).padStart(2, '0');
+                
+                const futureEvent = {
+                    eventId: `TEST_FUTURE_${Date.now()}`,
+                    eventName: 'Future Test Event',
+                    date: dateStr,
+                    type: 'Special',
+                    status: 'Active'
+                };
+                
+                await window.StorageManager.addEvent(futureEvent);
+                addTestResult('success', `Created future event: ${futureEvent.eventName} (${dateStr})`);
+                
+                // Test the scanning logic
+                const scannableEvent = await window.StorageManager.getCurrentScannableEvent();
+                
+                if (!scannableEvent) {
+                    addTestResult('success', '✅ Future event correctly excluded from scanning');
+                    
+                    // Test scanner status
+                    if (window.scanner) {
+                        const scanningStatus = await window.scanner.getScanningStatus();
+                        addTestResult('info', `Scanner status: ${scanningStatus.message}`);
+                        updateCurrentEventDemo(null, scanningStatus);
+                    }
+                } else {
+                    addTestResult('error', '❌ Future event should not be scannable');
+                }
+                
+            } catch (error) {
+                addTestResult('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        async function clearAllTestEvents() {
+            try {
+                const allEvents = await window.StorageManager.getAllEvents();
+                const testEvents = allEvents.filter(event => event.eventId.startsWith('TEST_'));
+                
+                for (const event of testEvents) {
+                    await window.StorageManager.deleteEvent(event.eventId);
+                }
+                
+                addTestResult('info', `Cleared ${testEvents.length} test events`);
+            } catch (error) {
+                addTestResult('error', `Failed to clear test events: ${error.message}`);
+            }
+        }
+        
+        async function checkEventDatabase() {
+            try {
+                const allEvents = await window.StorageManager.getAllEvents();
+                const activeEvents = allEvents.filter(event => event.status === 'Active');
+                
+                const statusDiv = document.getElementById('eventStatus');
+                statusDiv.innerHTML = `
+                    <p><strong>Total Events:</strong> ${allEvents.length}</p>
+                    <p><strong>Active Events:</strong> ${activeEvents.length}</p>
+                    <div style="margin-top: 1rem;">
+                        <strong>Event List:</strong>
+                        ${allEvents.length > 0 ? 
+                            '<ul>' + allEvents.map(event => 
+                                `<li>${event.eventName} (${event.date}) - ${event.status}</li>`
+                            ).join('') + '</ul>' 
+                            : '<p>No events found</p>'
+                        }
+                    </div>
+                `;
+                
+                addTestResult('info', `Database check: ${allEvents.length} total, ${activeEvents.length} active events`);
+            } catch (error) {
+                addTestResult('error', `Database check failed: ${error.message}`);
+            }
+        }
+        
+        async function createTestEvents() {
+            try {
+                await clearAllTestEvents();
+                
+                const today = new Date();
+                const events = [
+                    {
+                        eventId: `TEST_TODAY_${Date.now()}`,
+                        eventName: 'Today\'s Event',
+                        date: formatDate(today),
+                        type: 'Special',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `TEST_YESTERDAY_${Date.now()}`,
+                        eventName: 'Yesterday\'s Event',
+                        date: formatDate(new Date(today.getTime() - 24 * 60 * 60 * 1000)),
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `TEST_3DAYS_${Date.now()}`,
+                        eventName: '3 Days Ago Event',
+                        date: formatDate(new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000)),
+                        type: 'Recurring',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `TEST_10DAYS_${Date.now()}`,
+                        eventName: '10 Days Ago Event (Expired)',
+                        date: formatDate(new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000)),
+                        type: 'Special',
+                        status: 'Active'
+                    },
+                    {
+                        eventId: `TEST_FUTURE_${Date.now()}`,
+                        eventName: 'Future Event',
+                        date: formatDate(new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000)),
+                        type: 'Special',
+                        status: 'Active'
+                    }
+                ];
+                
+                for (const event of events) {
+                    await window.StorageManager.addEvent(event);
+                }
+                
+                addTestResult('success', `Created ${events.length} test events`);
+                await checkEventDatabase();
+                
+            } catch (error) {
+                addTestResult('error', `Failed to create test events: ${error.message}`);
+            }
+        }
+        
+        function formatDate(date) {
+            return date.getFullYear() + '-' + 
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(date.getDate()).padStart(2, '0');
+        }
+        
+        function clearTests() {
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('currentEventDemo').textContent = 'No event loaded';
+            document.getElementById('currentEventDemo').className = 'current-event inactive';
+            document.getElementById('scannerInputDemo').placeholder = 'Scanner input will update based on event context';
+            testResults = [];
+        }
+        
+        // Initialize scanner for testing
+        window.addEventListener('DOMContentLoaded', () => {
+            // Create a mock scanner for testing
+            window.scanner = new ScannerManager();
+        });
+    </script>
+</body>
+</html>
