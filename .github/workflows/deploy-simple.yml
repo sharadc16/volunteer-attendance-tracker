@@ -2,7 +2,7 @@ name: Deploy Multi-Environment
 
 on:
   push:
-    branches: [main, dev]  # Deploy from both branches - dev first, then main
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -10,11 +10,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-${{ github.ref_name }}"
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -24,67 +25,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare build
+      - name: Prepare production build
         run: |
           mkdir -p build
           
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            echo "🔧 DEV BRANCH - Creating development environment"
-            
-            # Create dev subdirectory structure
-            mkdir -p build/dev
-            
-            # Copy all files to dev subdirectory (excluding build directory)
-            find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/dev/ \;
-            
-            # Force development environment in dev path
-            cat > build/dev/js/env-override.js << 'EOF'
-          window.FORCE_DEV_MODE = true;
-          console.log('🔧 DEV environment active - deployed from dev branch');
-          EOF
-            
-            # Update dev index.html
-            sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/dev/index.html
-            sed -i 's|<title>|<title>[DEV] |' build/dev/index.html
-            
-            # Create root index that redirects to dev (for dev branch deployments)
-            cat > build/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Development Environment</title>
-            <meta http-equiv="refresh" content="0; url=./dev/">
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-              .dev-badge { background: #ff6b35; color: white; padding: 10px 20px; border-radius: 5px; display: inline-block; margin: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="dev-badge">DEVELOPMENT ENVIRONMENT</div>
-            <h1>Redirecting to Development Environment...</h1>
-            <p><a href="./dev/">Click here if not redirected automatically</a></p>
-            <p><small>This is the development deployment. Production is at the main branch.</small></p>
-          </body>
-          </html>
-          EOF
-            
-            echo "✅ Dev environment created at /dev/"
-            
-          else
-            echo "🔧 MAIN BRANCH - Creating production environment"
-            
-            # Production: copy everything to root (excluding build directory)
-            find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/ \;
-            
-            # Clean up development files for production
-            rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md build/env-override.js
-            
-            echo "✅ Production environment created at root"
-          fi
+          # Production: copy everything to root (excluding build directory)
+          find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/ \;
           
-          echo "Build structure:"
-          find build -type f -name "*.html" | head -10
+          # Clean up development files for production
+          rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md
+          
+          echo "✅ Production environment created"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -97,3 +48,75 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-development:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare development build
+        run: |
+          mkdir -p build
+          
+          # Copy all files including test files for development
+          find . -maxdepth 1 -not -name '.' -not -name 'build' -not -name '.git' -not -name '.github' -exec cp -r {} build/ \;
+          
+          # Add development environment indicator
+          cat > build/js/env-override.js << 'EOF'
+          window.FORCE_DEV_MODE = true;
+          console.log('🔧 DEV environment active - deployed from dev branch');
+          
+          // Add development banner
+          document.addEventListener('DOMContentLoaded', function() {
+            const banner = document.createElement('div');
+            banner.style.cssText = `
+              position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+              background: #ff6b35; color: white; text-align: center; padding: 8px;
+              font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            `;
+            banner.innerHTML = '🔧 DEVELOPMENT ENVIRONMENT - Latest features and testing';
+            document.body.insertBefore(banner, document.body.firstChild);
+            
+            // Adjust body padding to account for banner
+            document.body.style.paddingTop = '40px';
+          });
+          EOF
+          
+          # Update index.html for dev
+          sed -i 's|<head>|<head><script src="js/env-override.js"></script>|' build/index.html
+          sed -i 's|<title>|<title>[DEV] |' build/index.html
+          
+          echo "✅ Development environment created with all test files"
+
+      - name: Deploy to Netlify (Development)
+        uses: nwtgck/actions-netlify@v2.0
+        with:
+          publish-dir: './build'
+          production-branch: never  # Never deploy as production
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from dev branch - ${{ github.sha }}"
+          alias: dev-${{ github.sha }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        if: env.NETLIFY_AUTH_TOKEN != ''
+
+      - name: Comment deployment URL
+        uses: actions/github-script@v6
+        if: env.NETLIFY_AUTH_TOKEN != ''
+        with:
+          script: |
+            const deployUrl = `https://dev-${context.sha}--your-site-name.netlify.app`;
+            
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `🔧 **Development deployment ready!**\n\n📱 **Test URL:** ${deployUrl}\n\n*This is a temporary development deployment for testing. Production remains at the main GitHub Pages URL.*`
+            });
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
