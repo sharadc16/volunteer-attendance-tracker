@@ -1835,7 +1835,7 @@ window.forceEnableScanner = function () {
             scannerInput.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
             scannerInput.focus();
             console.log('✅ Scanner force enabled from settings');
-            alert('✅ Scanner has been force enabled!');
+            // Removed annoying popup - success logged to console instead
         } else {
             console.error('❌ Scanner input not found');
             alert('❌ Scanner input not found. Try refreshing the page.');
@@ -1920,7 +1920,7 @@ window.createTestEvent = function () {
 
         window.StorageManager.addEvent(event).then(() => {
             console.log('✅ Test event created');
-            alert('✅ Test event created for today! Scanner should now work.');
+            // Removed annoying popup - success logged to console instead
 
             // Refresh events view if we're on it
             if (window.app && window.app.currentView === 'events') {

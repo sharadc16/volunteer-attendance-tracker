@@ -1,23 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Token Storage Test</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        .btn { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn:hover { background: #0056b3; }
-        .success { color: green; }
-        .error { color: red; }
-        .info { color: blue; }
-        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .info {
+            color: blue;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
 </head>
+
 <body>
     <h1>🔍 Token Storage Test</h1>
-    
+
     <div class="section">
         <h3>Test localStorage Token Storage</h3>
         <button class="btn" onclick="testTokenStorage()">Test Token Storage</button>
@@ -48,47 +86,47 @@
 
         function testTokenStorage() {
             document.getElementById('results').innerHTML = '';
-            
+
             log('🧪 Testing localStorage functionality...');
-            
+
             try {
                 // Test basic localStorage
                 const testKey = 'test_storage_key';
                 const testValue = 'test_value_' + Date.now();
-                
+
                 localStorage.setItem(testKey, testValue);
                 const retrieved = localStorage.getItem(testKey);
-                
+
                 if (retrieved === testValue) {
                     log('✅ localStorage is working correctly');
                 } else {
                     log('❌ localStorage test failed - values don\'t match');
                     return;
                 }
-                
+
                 localStorage.removeItem(testKey);
                 log('🧹 Test data cleaned up');
-                
+
                 // Test JSON storage
                 const testObject = {
                     access_token: 'test_token_' + Date.now(),
                     expires_at: Date.now() + 3600000,
                     refresh_token: 'refresh_test_' + Date.now()
                 };
-                
+
                 localStorage.setItem('test_json_storage', JSON.stringify(testObject));
                 const retrievedJson = JSON.parse(localStorage.getItem('test_json_storage'));
-                
+
                 if (retrievedJson.access_token === testObject.access_token) {
                     log('✅ JSON storage is working correctly');
                 } else {
                     log('❌ JSON storage test failed');
                     return;
                 }
-                
+
                 localStorage.removeItem('test_json_storage');
                 log('✅ All localStorage tests passed');
-                
+
             } catch (error) {
                 log('❌ localStorage test failed: ' + error.message);
             }
@@ -96,15 +134,15 @@
 
         function checkStoredToken() {
             document.getElementById('results').innerHTML = '';
-            
+
             log('🔍 Checking for stored Google Sheets token...');
-            
+
             const token = localStorage.getItem('googleSheetsToken');
-            
+
             if (token) {
                 log('✅ Found stored token');
                 log('📄 Token length: ' + token.length + ' characters');
-                
+
                 try {
                     const tokenData = JSON.parse(token);
                     log('📊 Token data structure:');
@@ -112,12 +150,12 @@
                     log('- Has refresh token: ' + !!tokenData.refresh_token);
                     log('- Expires at: ' + (tokenData.expires_at ? new Date(tokenData.expires_at).toLocaleString() : 'Not set'));
                     log('- Is valid: ' + (tokenData.expires_at ? (Date.now() < tokenData.expires_at) : 'Unknown'));
-                    
+
                     if (tokenData.expires_at) {
                         const minutesUntilExpiry = Math.round((tokenData.expires_at - Date.now()) / 1000 / 60);
                         log('⏰ Minutes until expiry: ' + minutesUntilExpiry);
                     }
-                    
+
                 } catch (error) {
                     log('❌ Invalid JSON in stored token: ' + error.message);
                 }
@@ -133,9 +171,9 @@
 
         function saveTestToken() {
             document.getElementById('manualResults').innerHTML = '';
-            
+
             logManual('💾 Saving test token...');
-            
+
             const testToken = {
                 access_token: 'test_access_token_' + Date.now(),
                 refresh_token: 'test_refresh_token_' + Date.now(),
@@ -143,11 +181,11 @@
                 expires_in: 3600,
                 received_at: Date.now()
             };
-            
+
             try {
                 localStorage.setItem('googleSheetsToken', JSON.stringify(testToken));
                 logManual('✅ Test token saved successfully');
-                
+
                 // Verify it was saved
                 const saved = localStorage.getItem('googleSheetsToken');
                 if (saved) {
@@ -155,7 +193,7 @@
                 } else {
                     logManual('❌ Token not found after saving');
                 }
-                
+
             } catch (error) {
                 logManual('❌ Failed to save test token: ' + error.message);
             }
@@ -163,11 +201,11 @@
 
         function loadTestToken() {
             document.getElementById('manualResults').innerHTML = '';
-            
+
             logManual('📄 Loading test token...');
-            
+
             const token = localStorage.getItem('googleSheetsToken');
-            
+
             if (token) {
                 try {
                     const tokenData = JSON.parse(token);
@@ -190,4 +228,5 @@
         });
     </script>
 </body>
+
 </html>

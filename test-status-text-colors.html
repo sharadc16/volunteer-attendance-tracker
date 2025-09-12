@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Text Color Fix Test</title>
+    <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
+    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
+    <style>
+        body {
+            padding: 2rem;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .test-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .issue-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+        }
+        .fix-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            background: #d4edda;
+        }
+        .issue-section h3 {
+            color: #721c24;
+            margin: 0 0 0.5rem 0;
+        }
+        .fix-section h3 {
+            color: #155724;
+            margin: 0 0 0.5rem 0;
+        }
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .color-test {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .color-sample {
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .before-sample {
+            background: #e9ecef;
+            color: white; /* This simulates the invisible white text issue */
+        }
+        .after-sample {
+            background: #e9ecef;
+            color: #495057; /* This shows the fixed visible text */
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎨 Status Text Color Fix</h1>
+        
+        <div class="issue-section">
+            <h3>❌ Problem: Invisible White Text</h3>
+            <p>The <code>.status-text</code> class in <code>css/styles.css</code> was using <code>color: white</code>, making text invisible against light backgrounds.</p>
+            <div class="color-test">
+                <div class="color-sample before-sample">
+                    <strong>Before (Invisible)</strong><br>
+                    This text is white on light background
+                </div>
+                <div class="color-sample after-sample">
+                    <strong>After (Visible)</strong><br>
+                    This text has proper contrast
+                </div>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h3>✅ Solution: Proper Contrast Colors</h3>
+            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                <li>Override <code>color: white</code> with <code>color: inherit</code></li>
+                <li>Set specific colors for each status state</li>
+                <li>Ensure proper contrast ratios for accessibility</li>
+                <li>Apply fixes in both CSS and JavaScript</li>
+            </ul>
+        </div>
+
+        <div class="demo-section">
+            <h3>🧪 Live Test - All Status Text Should Be Visible</h3>
+            
+            <div class="scanner-header">
+                <h2>📱 Scan Volunteer Badge</h2>
+                <div class="scanner-status-container">
+                    <div class="scanner-status ready" id="testScannerReady" title="📱 Scanner Status: Ready">
+                        <span class="scanner-indicator ready"></span>
+                        <span class="scanner-text">Ready</span>
+                    </div>
+                    <div class="scanner-status warning" id="testScannerWarning" title="📱 Scanner Status: Warning">
+                        <span class="scanner-indicator warning"></span>
+                        <span class="scanner-text">Warning</span>
+                    </div>
+                    <div class="scanner-status error" id="testScannerError" title="📱 Scanner Status: Error">
+                        <span class="scanner-indicator error"></span>
+                        <span class="scanner-text">Error</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <div class="scanner-status-container">
+                    <div class="sync-status-compact online" id="testSyncOnline" title="☁️ Sync Status: Online">
+                        <span class="sync-status-indicator online"></span>
+                        <span class="sync-status-text">Online</span>
+                    </div>
+                    <div class="sync-status-compact syncing" id="testSyncSyncing" title="☁️ Sync Status: Syncing">
+                        <span class="sync-status-indicator syncing"></span>
+                        <span class="sync-status-text">Syncing</span>
+                    </div>
+                    <div class="sync-status-compact offline" id="testSyncOffline" title="☁️ Sync Status: Offline">
+                        <span class="sync-status-indicator offline"></span>
+                        <span class="sync-status-text">Offline</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <div class="scanner-status-container">
+                    <div class="status-indicator success" id="testSystemSuccess" title="ℹ️ System Status: Success">
+                        <span class="status-light success"></span>
+                        <span class="status-text">Success</span>
+                    </div>
+                    <div class="status-indicator warning" id="testSystemWarning" title="ℹ️ System Status: Warning">
+                        <span class="status-light warning"></span>
+                        <span class="status-text">Warning</span>
+                    </div>
+                    <div class="status-indicator error" id="testSystemError" title="ℹ️ System Status: Error">
+                        <span class="status-light error"></span>
+                        <span class="status-text">Error</span>
+                    </div>
+                    <div class="status-indicator unknown" id="testSystemUnknown" title="ℹ️ System Status: Unknown">
+                        <span class="status-light unknown"></span>
+                        <span class="status-text">Unknown</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 2rem 0;">
+            <button class="btn" onclick="testTextVisibility()">
+                👁️ Test Text Visibility
+            </button>
+            <button class="btn" onclick="showColorValues()">
+                🎨 Show Color Values
+            </button>
+        </div>
+
+        <div style="margin-top: 2rem; padding: 1rem; background: #e8f4fd; border-radius: 6px; font-size: 0.9rem; color: #0c5460;">
+            <strong>Color Scheme Applied:</strong>
+            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                <li><strong>Ready/Success:</strong> Dark green (#155724) on light green background</li>
+                <li><strong>Warning/Syncing:</strong> Dark yellow (#856404) on light yellow background</li>
+                <li><strong>Error/Offline:</strong> Dark red (#721c24) on light red background</li>
+                <li><strong>Unknown/Disabled:</strong> Dark gray (#495057) on light gray background</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="js/status-unification-fix.js"></script>
+    <script>
+        function testTextVisibility() {
+            const statusElements = document.querySelectorAll('.scanner-text, .sync-status-text, .status-text');
+            let report = 'Text Visibility Test Results:\n\n';
+            
+            statusElements.forEach((element, index) => {
+                const computedStyle = window.getComputedStyle(element);
+                const color = computedStyle.color;
+                const backgroundColor = window.getComputedStyle(element.parentElement).backgroundColor;
+                
+                report += `Element ${index + 1}: "${element.textContent}"\n`;
+                report += `  Text Color: ${color}\n`;
+                report += `  Background: ${backgroundColor}\n`;
+                report += `  Visible: ${color !== 'rgb(255, 255, 255)' ? '✅ YES' : '❌ NO (white text)'}\n\n`;
+            });
+            
+            alert(report);
+        }
+
+        function showColorValues() {
+            const colorInfo = `Status Text Color Values:
+
+✅ Ready/Success: #155724 (dark green)
+⚠️ Warning/Syncing: #856404 (dark yellow)  
+❌ Error/Offline: #721c24 (dark red)
+❓ Unknown/Disabled: #495057 (dark gray)
+
+These colors provide proper contrast against their respective light backgrounds and meet accessibility standards.`;
+            
+            alert(colorInfo);
+        }
+
+        // Test that all text is visible on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const whiteTextElements = Array.from(document.querySelectorAll('.scanner-text, .sync-status-text, .status-text'))
+                    .filter(el => window.getComputedStyle(el).color === 'rgb(255, 255, 255)');
+                
+                if (whiteTextElements.length > 0) {
+                    console.warn(`⚠️ Found ${whiteTextElements.length} elements with white text that may be invisible`);
+                } else {
+                    console.log('✅ All status text elements have proper contrast colors');
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

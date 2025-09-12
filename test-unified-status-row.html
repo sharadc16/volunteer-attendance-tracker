@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Status Row Test</title>
+    <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
+    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
+    <style>
+        body {
+            padding: 2rem;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .issue-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+        }
+        .fix-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            background: #d4edda;
+        }
+        .issue-section h3 {
+            color: #721c24;
+            margin: 0 0 0.5rem 0;
+        }
+        .fix-section h3 {
+            color: #155724;
+            margin: 0 0 0.5rem 0;
+        }
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.success {
+            background: #28a745;
+        }
+        .btn.success:hover {
+            background: #218838;
+        }
+        .status-count {
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        .highlight {
+            background: yellow;
+            padding: 0.25rem;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Unified Status Row Fix</h1>
+        
+        <div class="issue-section">
+            <h3>❌ Problem Identified:</h3>
+            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                <li><code>.scanner-status-container</code> - Contains scanner & sync status</li>
+                <li><code>#connectivityStatus</code> - Contains system & details status</li>
+                <li><strong>Result:</strong> Two separate rows instead of unified single row</li>
+                <li>Inconsistent styling and positioning</li>
+            </ul>
+        </div>
+
+        <div class="fix-section">
+            <h3>✅ Solution Applied:</h3>
+            <ul style="margin: 0.5rem 0 0 1.5rem;">
+                <li>Modified connectivity validator to integrate with existing container</li>
+                <li>Hide separate <code>#connectivityStatus</code> container</li>
+                <li>Move all status elements to single <code>.scanner-status-container</code></li>
+                <li>Apply unified styling to all status elements</li>
+                <li>Ensure single horizontal row layout</li>
+            </ul>
+        </div>
+
+        <div class="demo-section">
+            <h3>🧪 Live Test - All Status Elements in Single Row</h3>
+            
+            <!-- This should show ALL status elements in ONE row -->
+            <div class="scanner-header">
+                <h2>📱 Scan Volunteer Badge</h2>
+                <div class="scanner-status-container">
+                    <!-- Original scanner status elements -->
+                    <div class="scanner-status ready" id="testScannerStatus" title="📱 Scanner Status: Ready to scan volunteer badges">
+                        <span class="scanner-indicator ready"></span>
+                        <span class="scanner-text">Scanner</span>
+                    </div>
+                    <div class="sync-status-compact offline" id="testSyncStatus" title="☁️ Sync Status: Not connected to Google Sheets">
+                        <span class="sync-status-indicator offline"></span>
+                        <span class="sync-status-text">Sync</span>
+                    </div>
+                    <!-- Connectivity status elements (should be integrated here) -->
+                    <div class="status-indicator unknown" id="testSystemStatus" title="ℹ️ System Status: Checking system health">
+                        <span class="status-light unknown"></span>
+                        <span class="status-text">System</span>
+                    </div>
+                    <button class="status-details-btn" id="testDetailsBtn" title="📋 Details: Click for detailed status information">
+                        <span class="status-icon">ℹ️</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-count" id="statusCount">
+            Checking status containers...
+        </div>
+
+        <div style="text-align: center; margin: 2rem 0;">
+            <button class="btn" onclick="testStatusAlignment()">
+                🔍 Test Status Alignment
+            </button>
+            <button class="btn" onclick="simulateConnectivityValidator()">
+                🔧 Simulate Connectivity Validator
+            </button>
+            <button class="btn success" onclick="verifyUnifiedRow()">
+                ✅ Verify Single Row
+            </button>
+        </div>
+
+        <div style="margin-top: 2rem; padding: 1rem; background: #e8f4fd; border-radius: 6px; font-size: 0.9rem; color: #0c5460;">
+            <strong>Expected Result:</strong> All status elements should appear in a single horizontal row, not stacked vertically. The title "📱 Scan Volunteer Badge" should be on the left, and all status badges should be aligned horizontally on the right.
+        </div>
+    </div>
+
+    <script src="js/unified-status-manager.js"></script>
+    <script>
+        function testStatusAlignment() {
+            const containers = document.querySelectorAll('.scanner-status-container, #connectivityStatus, .connectivity-status');
+            const statusElements = document.querySelectorAll('.scanner-status, .sync-status-compact, .status-indicator, .status-details-btn');
+            
+            let report = `Status Containers Found: ${containers.length}\n`;
+            containers.forEach((container, index) => {
+                const rect = container.getBoundingClientRect();
+                report += `  Container ${index + 1}: ${container.className || container.id} (${container.children.length} children)\n`;
+                report += `    Position: top=${Math.round(rect.top)}, left=${Math.round(rect.left)}\n`;
+            });
+            
+            report += `\nStatus Elements Found: ${statusElements.length}\n`;
+            statusElements.forEach((element, index) => {
+                const rect = element.getBoundingClientRect();
+                const parent = element.closest('.scanner-status-container, #connectivityStatus, .connectivity-status');
+                report += `  Element ${index + 1}: ${element.className} (parent: ${parent ? parent.className || parent.id : 'none'})\n`;
+                report += `    Position: top=${Math.round(rect.top)}, left=${Math.round(rect.left)}\n`;
+            });
+            
+            document.getElementById('statusCount').textContent = report;
+        }
+
+        function simulateConnectivityValidator() {
+            // Simulate what the connectivity validator does
+            console.log('🔧 Simulating connectivity validator setup...');
+            
+            // Remove any existing connectivity status containers
+            const existingConnectivity = document.querySelectorAll('#connectivityStatus, .connectivity-status');
+            existingConnectivity.forEach(el => el.remove());
+            
+            // Add system status to main container (like the fixed connectivity validator should do)
+            const mainContainer = document.querySelector('.scanner-status-container');
+            if (mainContainer) {
+                // Check if system status already exists
+                if (!document.getElementById('simulatedSystemStatus')) {
+                    const systemStatus = document.createElement('div');
+                    systemStatus.className = 'status-indicator warning';
+                    systemStatus.id = 'simulatedSystemStatus';
+                    systemStatus.title = 'ℹ️ System Status: Connectivity validator active';
+                    systemStatus.innerHTML = `
+                        <span class="status-light warning"></span>
+                        <span class="status-text">System</span>
+                    `;
+                    
+                    const detailsBtn = document.createElement('button');
+                    detailsBtn.className = 'status-details-btn';
+                    detailsBtn.id = 'simulatedDetailsBtn';
+                    detailsBtn.title = '📋 Details: Simulated connectivity details';
+                    detailsBtn.innerHTML = '<span class="status-icon">ℹ️</span>';
+                    detailsBtn.onclick = () => alert('Simulated connectivity details:\n\n✅ Scanner: Ready\n⚠️ Sync: Checking\n🔍 System: Validating');
+                    
+                    mainContainer.appendChild(systemStatus);
+                    mainContainer.appendChild(detailsBtn);
+                    
+                    console.log('✅ Simulated connectivity status added to main container');
+                }
+            }
+            
+            testStatusAlignment();
+        }
+
+        function verifyUnifiedRow() {
+            const mainContainer = document.querySelector('.scanner-status-container');
+            const separateContainers = document.querySelectorAll('#connectivityStatus, .connectivity-status');
+            const allStatusElements = document.querySelectorAll('.scanner-status, .sync-status-compact, .status-indicator, .status-details-btn');
+            
+            let result = '🔍 Unified Row Verification:\n\n';
+            
+            // Check if there's only one main container
+            if (separateContainers.length === 0) {
+                result += '✅ No separate connectivity containers found\n';
+            } else {
+                result += `❌ Found ${separateContainers.length} separate containers that should be unified\n`;
+            }
+            
+            // Check if all elements are in the main container
+            let elementsInMain = 0;
+            allStatusElements.forEach(element => {
+                if (element.closest('.scanner-status-container')) {
+                    elementsInMain++;
+                }
+            });
+            
+            if (elementsInMain === allStatusElements.length) {
+                result += `✅ All ${allStatusElements.length} status elements are in the main container\n`;
+            } else {
+                result += `❌ Only ${elementsInMain}/${allStatusElements.length} elements are in the main container\n`;
+            }
+            
+            // Check if elements are horizontally aligned
+            if (mainContainer) {
+                const containerRect = mainContainer.getBoundingClientRect();
+                const children = Array.from(mainContainer.children);
+                const topPositions = children.map(child => Math.round(child.getBoundingClientRect().top));
+                const uniqueTops = [...new Set(topPositions)];
+                
+                if (uniqueTops.length === 1) {
+                    result += `✅ All elements are horizontally aligned (same top position: ${uniqueTops[0]})\n`;
+                } else {
+                    result += `❌ Elements are not aligned - found ${uniqueTops.length} different vertical positions: ${uniqueTops.join(', ')}\n`;
+                }
+            }
+            
+            result += '\n' + (result.includes('❌') ? '❌ FAILED: Status elements are not properly unified' : '✅ SUCCESS: All status elements are in a single unified row!');
+            
+            alert(result);
+        }
+
+        // Auto-run alignment test on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(testStatusAlignment, 500);
+        });
+
+        // Add click handler for test details button
+        document.getElementById('testDetailsBtn').addEventListener('click', () => {
+            alert('Test Status Details:\n\n📱 Scanner: Ready to scan\n☁️ Sync: Offline\nℹ️ System: Unknown status\n\nAll elements should be in single row!');
+        });
+    </script>
+</body>
+</html>

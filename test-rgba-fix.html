@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGBA White Text Fix</title>
+    <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
+    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
+    <style>
+        body {
+            padding: 2rem;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .critical-fix {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid #dc3545;
+            background: #f8d7da;
+        }
+        .critical-fix h3 {
+            color: #721c24;
+            margin: 0 0 1rem 0;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.danger {
+            background: #dc3545;
+        }
+        .btn.danger:hover {
+            background: #c82333;
+        }
+        .btn.success {
+            background: #28a745;
+        }
+        .btn.success:hover {
+            background: #218838;
+        }
+        .test-results {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .highlight-problem {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body class="env-development">
+    <div class="app-container">
+        <main id="main-content" class="app-main">
+            <div id="dashboardView" class="view active">
+                <div class="dashboard-grid">
+                    <div class="card scanner-card">
+                        <div class="scanner-header">
+                            <div class="test-container">
+                                <h1>🚨 RGBA White Text Fix</h1>
+                                
+                                <div class="critical-fix">
+                                    <h3>🎯 Target: Specific CSS Rule</h3>
+                                    <p style="color: #721c24; margin: 0 0 1rem 0;">
+                                        <strong>Problem found in css/styles.css:</strong>
+                                    </p>
+                                    <div class="code-block">
+.sync-status-text {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8); /* ← This causes invisible text */
+}
+                                    </div>
+                                    <div class="highlight-problem">
+                                        <strong>Issue:</strong> <code>rgba(255, 255, 255, 0.8)</code> = Semi-transparent white text
+                                        <br><strong>Result:</strong> Invisible on light backgrounds
+                                    </div>
+                                </div>
+
+                                <div class="demo-section">
+                                    <h3>🧪 Test: Direct Override</h3>
+                                    
+                                    <div class="scanner-status-container">
+                                        <div id="syncStatus" class="sync-status-compact offline" title="☁️ Sync Status: Working offline">
+                                            <span class="sync-status-indicator offline"></span>
+                                            <span class="sync-status-text">Sync</span>
+                                        </div>
+                                        <button class="status-details-btn" id="testDetailsBtn" title="📋 Details: System information">
+                                            <span class="status-icon">ℹ️</span>
+                                        </button>
+                                    </div>
+                                    
+                                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                                        ↑ The "Sync" text should be dark red (#721c24), not white/transparent.
+                                    </p>
+                                </div>
+
+                                <div style="text-align: center; margin: 2rem 0;">
+                                    <button class="btn danger" onclick="applyDirectFix()">
+                                        🚀 Apply Direct CSS Override
+                                    </button>
+                                    <button class="btn" onclick="checkCurrentColor()">
+                                        🔍 Check Current Color
+                                    </button>
+                                    <button class="btn success" onclick="testAllMethods()">
+                                        🔧 Test All Fix Methods
+                                    </button>
+                                </div>
+
+                                <div class="test-results" id="testResults">
+                                    Test results will appear here...
+                                </div>
+
+                                <div style="margin-top: 2rem; padding: 1rem; background: #d4edda; border-radius: 6px; border-left: 4px solid #28a745;">
+                                    <h4 style="color: #155724; margin: 0 0 0.5rem 0;">✅ Applied Overrides</h4>
+                                    <div class="code-block" style="background: #155724; color: white;">
+/* Ultra-specific override for rgba(255, 255, 255, 0.8) */
+.sync-status-text {
+    color: #2c3e50 !important;
+    font-size: 0.75rem !important;
+}
+
+/* Status-specific colors */
+.sync-status-compact.offline .sync-status-text {
+    color: #721c24 !important; /* Dark red for offline */
+}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/force-fix-white-text.js"></script>
+    <script>
+        function logResult(message) {
+            const results = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            results.innerHTML += `[${timestamp}] ${message}\n`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function applyDirectFix() {
+            logResult('🚀 Applying direct CSS override...');
+            
+            // Create a style element with maximum specificity
+            const style = document.createElement('style');
+            style.id = 'sync-text-fix';
+            style.textContent = `
+                /* MAXIMUM SPECIFICITY OVERRIDE */
+                .sync-status-text,
+                span.sync-status-text,
+                .sync-status-compact .sync-status-text,
+                div.sync-status-compact span.sync-status-text,
+                #syncStatus .sync-status-text,
+                #syncStatus span.sync-status-text {
+                    color: #721c24 !important; /* Dark red - maximum contrast */
+                    font-size: 0.75rem !important;
+                }
+                
+                /* State-specific colors */
+                .sync-status-compact.online .sync-status-text,
+                .sync-status-compact.online span.sync-status-text {
+                    color: #155724 !important; /* Dark green for online */
+                }
+                
+                .sync-status-compact.syncing .sync-status-text,
+                .sync-status-compact.syncing span.sync-status-text {
+                    color: #856404 !important; /* Dark yellow for syncing */
+                }
+                
+                .sync-status-compact.offline .sync-status-text,
+                .sync-status-compact.offline span.sync-status-text,
+                .sync-status-compact.error .sync-status-text,
+                .sync-status-compact.error span.sync-status-text {
+                    color: #721c24 !important; /* Dark red for offline/error */
+                }
+            `;
+            
+            // Remove existing fix if present
+            const existingFix = document.getElementById('sync-text-fix');
+            if (existingFix) {
+                existingFix.remove();
+            }
+            
+            // Add new fix to head
+            document.head.appendChild(style);
+            
+            logResult('✅ Direct CSS override applied');
+            
+            // Check result
+            setTimeout(() => checkCurrentColor(), 100);
+        }
+
+        function checkCurrentColor() {
+            const syncText = document.querySelector('#syncStatus .sync-status-text');
+            
+            if (!syncText) {
+                logResult('❌ Sync text element not found');
+                return;
+            }
+            
+            const computedStyle = window.getComputedStyle(syncText);
+            const color = computedStyle.color;
+            const fontSize = computedStyle.fontSize;
+            
+            logResult(`🔍 Current sync text properties:`);
+            logResult(`  Text: "${syncText.textContent}"`);
+            logResult(`  Color: ${color}`);
+            logResult(`  Font Size: ${fontSize}`);
+            
+            // Check if it's still white/transparent
+            const isWhiteish = color.includes('255, 255, 255') || 
+                              color === 'white' || 
+                              color === 'rgb(255, 255, 255)' ||
+                              color.includes('rgba(255, 255, 255');
+            
+            if (isWhiteish) {
+                logResult(`❌ STILL WHITE/TRANSPARENT: ${color}`);
+                logResult(`🚀 Applying emergency JavaScript fix...`);
+                
+                // Emergency JavaScript fix
+                syncText.style.cssText = 'color: #721c24 !important; font-size: 0.75rem !important;';
+                syncText.setAttribute('style', 'color: #721c24 !important; font-size: 0.75rem !important;');
+                
+                // Check again
+                setTimeout(() => {
+                    const newColor = window.getComputedStyle(syncText).color;
+                    logResult(`🔍 After JS fix: ${newColor}`);
+                    
+                    if (newColor.includes('255, 255, 255')) {
+                        logResult(`❌ STILL WHITE - This is a stubborn CSS issue!`);
+                    } else {
+                        logResult(`✅ SUCCESS - Text is now visible!`);
+                    }
+                }, 100);
+                
+            } else {
+                logResult(`✅ SUCCESS: Text is visible with color ${color}`);
+            }
+        }
+
+        function testAllMethods() {
+            logResult('🔧 Testing all fix methods...');
+            
+            const syncText = document.querySelector('#syncStatus .sync-status-text');
+            if (!syncText) {
+                logResult('❌ Sync text element not found');
+                return;
+            }
+            
+            // Method 1: Direct style
+            logResult('Method 1: Direct style.color');
+            syncText.style.color = '#721c24 !important';
+            
+            // Method 2: setProperty
+            logResult('Method 2: setProperty with important');
+            syncText.style.setProperty('color', '#721c24', 'important');
+            
+            // Method 3: cssText
+            logResult('Method 3: cssText override');
+            syncText.style.cssText += 'color: #721c24 !important;';
+            
+            // Method 4: setAttribute
+            logResult('Method 4: setAttribute style');
+            syncText.setAttribute('style', 'color: #721c24 !important; font-size: 0.75rem !important;');
+            
+            // Method 5: CSS injection
+            logResult('Method 5: CSS injection');
+            applyDirectFix();
+            
+            // Method 6: Class-based fix
+            logResult('Method 6: Class-based fix');
+            syncText.classList.add('force-dark-text');
+            const classStyle = document.createElement('style');
+            classStyle.textContent = '.force-dark-text { color: #721c24 !important; }';
+            document.head.appendChild(classStyle);
+            
+            setTimeout(() => {
+                logResult('🔍 Final check after all methods...');
+                checkCurrentColor();
+            }, 200);
+        }
+
+        // Auto-check on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                logResult('🚨 RGBA White Text Fix Test Loaded');
+                logResult('Target: rgba(255, 255, 255, 0.8) in css/styles.css');
+                logResult('');
+                checkCurrentColor();
+            }, 500);
+        });
+
+        // Add click handler for details button
+        document.getElementById('testDetailsBtn').addEventListener('click', () => {
+            logResult('📋 Details button clicked - checking text visibility...');
+            checkCurrentColor();
+        });
+    </script>
+</body>
+</html>

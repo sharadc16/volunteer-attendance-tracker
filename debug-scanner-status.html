@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Scanner Status Debug</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+
+        .debug-container {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-section {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .code-output {
+            background: #212529;
+            color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 1rem 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .status-ok {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="debug-container">
+        <h1>🔍 Scanner Status Debug</h1>
+        <p>This tool debugs why the scanner is disabled after successful initialization.</p>
+
+        <div class="status-section">
+            <h3>🎛️ Controls</h3>
+            <button class="btn" onclick="debugScannerStatus()">🔍 Debug Scanner Status</button>
+            <button class="btn" onclick="debugEvents()">📅 Debug Events</button>
+            <button class="btn" onclick="debugConfig()">⚙️ Debug Config</button>
+            <button class="btn btn-success" onclick="forceEnableScanner()">🚀 Force Enable</button>
+        </div>
+
+        <div class="status-section">
+            <h3>📊 Current Scanner State</h3>
+            <div id="scannerState">Checking...</div>
+        </div>
+
+        <div class="status-section">
+            <h3>📝 Debug Output</h3>
+            <div class="code-output" id="debugOutput"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('debugOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `[${timestamp}] ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateScannerState() {
+            const stateDiv = document.getElementById('scannerState');
+
+            if (!window.opener) {
+                stateDiv.innerHTML = '<div class="status-error">❌ Main app not accessible</div>';
+                return;
+            }
+
+            const scannerInput = window.opener.document.getElementById('scannerInput');
+            if (!scannerInput) {
+                stateDiv.innerHTML = '<div class="status-error">❌ Scanner input not found</div>';
+                return;
+            }
+
+            const isDisabled = scannerInput.disabled;
+            const placeholder = scannerInput.placeholder;
+
+            stateDiv.innerHTML = `
+                <div class="status-${isDisabled ? 'error' : 'ok'}">
+                    ${isDisabled ? '❌' : '✅'} Scanner: ${isDisabled ? 'DISABLED' : 'ENABLED'}
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                    <strong>Placeholder:</strong> "${placeholder}"
+                </div>
+            `;
+        }
+
+        async function debugScannerStatus() {
+            log('🔍 Debugging scanner status...');
+
+            if (!window.opener) {
+                log('❌ Main app not accessible');
+                return;
+            }
+
+            try {
+                // Check if scanner manager exists
+                if (!window.opener.window.scanner) {
+                    log('❌ Scanner manager not found');
+                    return;
+                }
+
+                const scanner = window.opener.window.scanner;
+                log('✅ Scanner manager found');
+
+                // Check if getScanningStatus method exists
+                if (typeof scanner.getScanningStatus !== 'function') {
+                    log('❌ getScanningStatus method not found');
+                    return;
+                }
+
+                log('📊 Calling getScanningStatus()...');
+
+                // Call getScanningStatus and log the result
+                const scanningStatus = await scanner.getScanningStatus();
+                log('📊 Scanning status result:');
+                log(JSON.stringify(scanningStatus, null, 2));
+
+                // Check specific properties
+                log(`🔍 canScan: ${scanningStatus.canScan}`);
+                log(`🔍 message: "${scanningStatus.message}"`);
+                log(`🔍 type: "${scanningStatus.type}"`);
+
+                if (scanningStatus.currentEvent) {
+                    log(`🔍 currentEvent: ${scanningStatus.currentEvent.eventName}`);
+                } else {
+                    log('🔍 currentEvent: null');
+                }
+
+                // Check why it might be disabled
+                if (!scanningStatus.canScan) {
+                    log('⚠️ Scanner disabled because canScan is false');
+                    log(`⚠️ Reason: ${scanningStatus.message}`);
+
+                    // Check development mode
+                    if (window.opener.window.Config && window.opener.window.Config.isDevelopment) {
+                        log('✅ Development mode is enabled - scanner should be enabled anyway');
+                    } else {
+                        log('❌ Development mode not enabled or not found');
+                    }
+                }
+
+            } catch (error) {
+                log(`❌ Error debugging scanner status: ${error.message}`);
+                console.error('Debug error:', error);
+            }
+        }
+
+        async function debugEvents() {
+            log('📅 Debugging events...');
+
+            if (!window.opener || !window.opener.window.StorageManager) {
+                log('❌ StorageManager not accessible');
+                return;
+            }
+
+            try {
+                const storageManager = window.opener.window.StorageManager;
+
+                // Get all events
+                const allEvents = await storageManager.getAllEvents();
+                log(`📊 Total events: ${allEvents.length}`);
+
+                // Filter active events
+                const activeEvents = allEvents.filter(event => event.status === 'Active');
+                log(`📊 Active events: ${activeEvents.length}`);
+
+                if (activeEvents.length > 0) {
+                    log('📅 Active events:');
+                    activeEvents.forEach(event => {
+                        log(`  - ${event.eventName} (${event.date}) - ID: ${event.eventId}`);
+                    });
+                } else {
+                    log('⚠️ No active events found');
+                }
+
+                // Check today's date
+                const today = new Date();
+                const todayStr = today.getFullYear() + '-' +
+                    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(today.getDate()).padStart(2, '0');
+                log(`📅 Today's date: ${todayStr}`);
+
+                // Check for today's event
+                const todayEventId = `E${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                const todayEvent = await storageManager.getEvent(todayEventId);
+
+                if (todayEvent) {
+                    log(`✅ Today's event found: ${todayEvent.eventName}`);
+                } else {
+                    log(`❌ No event found for today (${todayEventId})`);
+                }
+
+            } catch (error) {
+                log(`❌ Error debugging events: ${error.message}`);
+                console.error('Events debug error:', error);
+            }
+        }
+
+        function debugConfig() {
+            log('⚙️ Debugging configuration...');
+
+            if (!window.opener) {
+                log('❌ Main app not accessible');
+                return;
+            }
+
+            try {
+                // Check Config object
+                if (window.opener.window.Config) {
+                    const config = window.opener.window.Config;
+                    log('✅ Config object found:');
+                    log(JSON.stringify(config, null, 2));
+
+                    log(`🔍 Environment: ${config.environment}`);
+                    log(`🔍 isDevelopment: ${config.isDevelopment}`);
+                    log(`🔍 isProduction: ${config.isProduction}`);
+                } else {
+                    log('❌ Config object not found');
+                }
+
+                // Check other global objects
+                log('🔍 Global objects check:');
+                log(`- StorageManager: ${window.opener.window.StorageManager ? '✅' : '❌'}`);
+                log(`- App: ${window.opener.window.App ? '✅' : '❌'}`);
+                log(`- scanner: ${window.opener.window.scanner ? '✅' : '❌'}`);
+                log(`- ScannerManager: ${window.opener.window.ScannerManager ? '✅' : '❌'}`);
+
+            } catch (error) {
+                log(`❌ Error debugging config: ${error.message}`);
+                console.error('Config debug error:', error);
+            }
+        }
+
+        function forceEnableScanner() {
+            log('🚀 Force enabling scanner...');
+
+            if (!window.opener) {
+                log('❌ Main app not accessible');
+                return;
+            }
+
+            try {
+                const scannerInput = window.opener.document.getElementById('scannerInput');
+                if (scannerInput) {
+                    scannerInput.disabled = false;
+                    scannerInput.placeholder = 'FORCE ENABLED: Scan badge or enter volunteer ID...';
+                    scannerInput.focus();
+                    log('✅ Scanner force enabled via direct DOM manipulation');
+                } else {
+                    log('❌ Scanner input not found');
+                }
+
+                // Also try via scanner manager
+                if (window.opener.window.scanner && typeof window.opener.window.scanner.forceEnable === 'function') {
+                    window.opener.window.scanner.forceEnable();
+                    log('✅ Scanner force enabled via scanner manager');
+                }
+
+                updateScannerState();
+
+            } catch (error) {
+                log(`❌ Error force enabling scanner: ${error.message}`);
+            }
+        }
+
+        // Auto-update scanner state
+        setInterval(updateScannerState, 2000);
+
+        // Initial load
+        window.addEventListener('load', () => {
+            log('🔍 Scanner status debugger loaded');
+            updateScannerState();
+
+            if (window.opener) {
+                // Auto-debug after a short delay
+                setTimeout(debugScannerStatus, 1000);
+            } else {
+                log('⚠️ Main app not accessible - open this from the main app');
+            }
+        });
+    </script>
+</body>
+
+</html>"

@@ -527,39 +527,19 @@ class ConnectivityValidator {
      * Setup status indicator UI elements
      */
     setupStatusIndicators() {
-        // Create main status indicator if it doesn't exist
-        let statusContainer = document.getElementById('connectivityStatus');
+        // Only setup the details button functionality - don't create redundant status indicators
+        const existingDetailsBtn = document.getElementById('statusDetailsBtn');
         
-        if (!statusContainer) {
-            statusContainer = document.createElement('div');
-            statusContainer.id = 'connectivityStatus';
-            statusContainer.className = 'connectivity-status';
-            
-            // Insert into scanner card header
-            const scannerHeader = document.querySelector('.scanner-header');
-            if (scannerHeader) {
-                scannerHeader.appendChild(statusContainer);
-            }
+        if (existingDetailsBtn) {
+            // Connect existing details button to our modal
+            existingDetailsBtn.addEventListener('click', () => this.showDetailedStatus());
+            console.log('✅ Connected existing details button to connectivity validator');
+        } else {
+            console.warn('⚠️ Details button not found in HTML - connectivity details unavailable');
         }
         
-        // Update the status container HTML
-        statusContainer.innerHTML = `
-            <div class="status-indicator-container">
-                <div class="status-indicator" id="overallStatusIndicator">
-                    <span class="status-light unknown"></span>
-                    <span class="status-text">Checking...</span>
-                </div>
-                <button class="status-details-btn" id="statusDetailsBtn" title="View detailed status">
-                    <span class="status-icon">ℹ️</span>
-                </button>
-            </div>
-        `;
-        
-        // Setup click handler for details
-        const detailsBtn = document.getElementById('statusDetailsBtn');
-        if (detailsBtn) {
-            detailsBtn.addEventListener('click', () => this.showDetailedStatus());
-        }
+        // Don't create any additional status indicators - keep it simple
+        console.log('🎯 Simplified status setup complete - using existing sync status and details button only');
     }
 
     /**

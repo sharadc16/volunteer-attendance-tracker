@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync Text Color Fix</title>
+    <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
+    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
+    <style>
+        body {
+            padding: 2rem;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .test-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .critical-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+        }
+        .critical-section h3 {
+            color: #721c24;
+            margin: 0 0 0.5rem 0;
+        }
+        .demo-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            margin: 0.5rem;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.danger {
+            background: #dc3545;
+        }
+        .btn.danger:hover {
+            background: #c82333;
+        }
+        .color-test {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #e9ecef;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .path-highlight {
+            background: #fff3cd;
+            padding: 0.25rem;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body class="env-development">
+    <div class="app-container">
+        <main id="main-content" class="app-main">
+            <div id="dashboardView" class="view active">
+                <div class="dashboard-grid">
+                    <div class="card scanner-card">
+                        <div class="test-container">
+                            <h1>🎨 Sync Text Color Fix</h1>
+                            
+                            <div class="critical-section">
+                                <h3>🚨 Critical Issue: White Sync Text</h3>
+                                <p style="color: #721c24; margin: 0;">
+                                    The sync status text was appearing as white, making it invisible against light backgrounds.
+                                    <br><br>
+                                    <strong>Problematic element path:</strong><br>
+                                    <span class="path-highlight">body.env-development div.app-container main#main-content.app-main div#dashboardView.view.active div.dashboard-grid div.card.scanner-card div.scanner-header div.scanner-status-container div#syncStatus.sync-status-compact.offline span.sync-status-text</span>
+                                </p>
+                            </div>
+
+                            <div class="demo-section">
+                                <h3>🧪 Test: Sync Status Text Visibility</h3>
+                                
+                                <div class="scanner-header">
+                                    <h2>📱 Scan Volunteer Badge</h2>
+                                    <div class="scanner-status-container">
+                                        <div id="syncStatus" class="sync-status-compact offline" title="☁️ Sync Status: Working offline">
+                                            <span class="sync-status-indicator offline"></span>
+                                            <span class="sync-status-text">Sync</span>
+                                        </div>
+                                        <button class="status-details-btn" id="testDetailsBtn" title="📋 Details: Click for system information">
+                                            <span class="status-icon">ℹ️</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                                    ↑ The "Sync" text should be clearly visible (dark color), not white/invisible.
+                                </p>
+                            </div>
+
+                            <div style="text-align: center; margin: 2rem 0;">
+                                <button class="btn" onclick="checkSyncTextColor()">
+                                    🔍 Check Sync Text Color
+                                </button>
+                                <button class="btn danger" onclick="forceFix()">
+                                    🚀 Force Fix White Text
+                                </button>
+                                <button class="btn" onclick="testAllStates()">
+                                    🔄 Test All Sync States
+                                </button>
+                            </div>
+
+                            <div class="color-test" id="colorResults">
+                                Click "Check Sync Text Color" to see current color values...
+                            </div>
+
+                            <div style="margin-top: 2rem; padding: 1rem; background: #d4edda; border-radius: 6px; border-left: 4px solid #28a745;">
+                                <h4 style="color: #155724; margin: 0 0 0.5rem 0;">✅ Applied Fixes</h4>
+                                <ul style="color: #155724; margin: 0.5rem 0 0 1.5rem;">
+                                    <li><strong>Ultra-specific CSS selector:</strong> Targets exact element path</li>
+                                    <li><strong>Nuclear CSS option:</strong> Forces dark text on ALL sync elements</li>
+                                    <li><strong>JavaScript scanner:</strong> Detects and fixes white text automatically</li>
+                                    <li><strong>Multiple fallbacks:</strong> Ensures text is visible regardless of source</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/force-fix-white-text.js"></script>
+    <script>
+        function checkSyncTextColor() {
+            const syncText = document.querySelector('#syncStatus .sync-status-text');
+            const results = document.getElementById('colorResults');
+            
+            if (!syncText) {
+                results.innerHTML = '❌ Sync text element not found!';
+                return;
+            }
+            
+            const computedStyle = window.getComputedStyle(syncText);
+            const color = computedStyle.color;
+            const backgroundColor = window.getComputedStyle(syncText.parentElement).backgroundColor;
+            
+            let report = `🔍 Sync Text Color Analysis:\n\n`;
+            report += `Element: ${syncText.tagName}.${syncText.className}\n`;
+            report += `Text Content: "${syncText.textContent}"\n`;
+            report += `Computed Color: ${color}\n`;
+            report += `Parent Background: ${backgroundColor}\n\n`;
+            
+            // Check if it's white
+            const isWhite = color === 'rgb(255, 255, 255)' || 
+                           color === 'white' || 
+                           color === '#ffffff' ||
+                           color === '#fff';
+            
+            if (isWhite) {
+                report += `❌ STATUS: WHITE TEXT DETECTED!\n`;
+                report += `This text will be invisible on light backgrounds.\n\n`;
+                report += `SOLUTION: Click "Force Fix White Text" button.`;
+            } else {
+                report += `✅ STATUS: TEXT IS VISIBLE!\n`;
+                report += `Color is properly contrasted and readable.`;
+            }
+            
+            results.textContent = report;
+        }
+
+        function forceFix() {
+            const syncText = document.querySelector('#syncStatus .sync-status-text');
+            const results = document.getElementById('colorResults');
+            
+            if (!syncText) {
+                results.innerHTML = '❌ Sync text element not found!';
+                return;
+            }
+            
+            // Apply multiple fix methods
+            const darkColor = '#721c24'; // Dark red for offline status
+            
+            // Method 1: Direct style
+            syncText.style.color = darkColor + ' !important';
+            
+            // Method 2: setProperty with important
+            syncText.style.setProperty('color', darkColor, 'important');
+            
+            // Method 3: cssText override
+            syncText.style.cssText += `color: ${darkColor} !important;`;
+            
+            // Method 4: setAttribute style
+            const currentStyle = syncText.getAttribute('style') || '';
+            syncText.setAttribute('style', currentStyle + `; color: ${darkColor} !important;`);
+            
+            // Use JavaScript fixer if available
+            if (window.WhiteTextFixer) {
+                window.WhiteTextFixer.fixNow();
+            }
+            
+            results.textContent = `🚀 Applied multiple fix methods:\n\n1. Direct style.color\n2. setProperty with !important\n3. cssText override\n4. setAttribute style\n5. JavaScript WhiteTextFixer\n\nTarget color: ${darkColor}\n\nCheck color again to verify fix.`;
+        }
+
+        function testAllStates() {
+            const syncElement = document.getElementById('syncStatus');
+            const indicator = syncElement.querySelector('.sync-status-indicator');
+            const states = ['online', 'syncing', 'offline'];
+            let currentIndex = 0;
+            
+            function cycleState() {
+                const state = states[currentIndex];
+                
+                // Clear classes
+                syncElement.classList.remove('online', 'syncing', 'offline');
+                indicator.classList.remove('online', 'syncing', 'offline');
+                
+                // Add new state
+                syncElement.classList.add(state);
+                indicator.classList.add(state);
+                
+                console.log(`🔄 Sync state: ${state}`);
+                
+                currentIndex = (currentIndex + 1) % states.length;
+                
+                // Check color after state change
+                setTimeout(() => {
+                    checkSyncTextColor();
+                }, 100);
+                
+                if (currentIndex !== 0) {
+                    setTimeout(cycleState, 2000);
+                }
+            }
+            
+            cycleState();
+        }
+
+        // Auto-check on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                checkSyncTextColor();
+            }, 1000);
+        });
+
+        // Add click handler for details button
+        document.getElementById('testDetailsBtn').addEventListener('click', () => {
+            alert('📋 System Details:\n\nSync text color should now be visible!\nNo more white text issues.');
+        });
+    </script>
+</body>
+</html>

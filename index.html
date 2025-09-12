@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gurukul - Volunteer Attendance Tracker</title>
     <link rel="stylesheet" href="css/styles.css?v=1.1">
+    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
+    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
 </head>
 <body>
@@ -74,14 +76,13 @@
                         <div class="scanner-header">
                             <h2>📱 Scan Volunteer Badge</h2>
                             <div class="scanner-status-container">
-                                <div class="scanner-status" id="scannerStatus">
-                                    <span class="scanner-indicator ready"></span>
-                                    <span class="scanner-text">Ready to scan</span>
-                                </div>
-                                <div class="sync-status-compact" id="syncStatus">
+                                <div class="sync-status-compact offline" id="syncStatus" title="☁️ Sync Status: Not connected to Google Sheets">
                                     <span class="sync-status-indicator offline"></span>
                                     <span class="sync-status-text">Sync</span>
                                 </div>
+                                <button class="status-details-btn" id="statusDetailsBtn" title="📋 Details: Click for system status details">
+                                    <span class="status-icon">ℹ️</span>
+                                </button>
                             </div>
                         </div>
                         <div class="scanner-input-container">
@@ -117,13 +118,6 @@
                                 <div class="stat-content">
                                     <span class="stat-label">Current Event</span>
                                     <span class="stat-value" id="currentEvent">Loading...</span>
-                                </div>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-icon">⏰</span>
-                                <div class="stat-content">
-                                    <span class="stat-label">Event Time</span>
-                                    <span class="stat-value" id="eventTime">--:--</span>
                                 </div>
                             </div>
                         </div>
@@ -481,6 +475,10 @@ localStorage.removeItem('googleSheetsToken');
     <script src="js/sync-manager.js"></script>
     <script src="js/connectivity-validator.js"></script>
     <script src="js/scanner.js"></script>
+    <script src="js/mobile-status-enhancement.js"></script>
+    <script src="js/unified-status-manager.js"></script>
+    <script src="js/status-unification-fix.js"></script>
+
     <script src="js/app.js"></script>
     <script src="create-sunday-events.js"></script>
     <!-- Comprehensive fix for all functionality -->

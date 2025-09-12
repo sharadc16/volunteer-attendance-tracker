@@ -44,12 +44,7 @@ function forceEnableScanner() {
         
         console.log('🎉 Scanner force-enabled successfully!');
         
-        // Show success message
-        if (typeof showNotification === 'function') {
-            showNotification('Scanner enabled successfully!', 'success');
-        } else {
-            alert('✅ Scanner enabled successfully!');
-        }
+        // Success message removed - no more annoying popups!
         
     } catch (error) {
         console.error('❌ Error force-enabling scanner:', error);
