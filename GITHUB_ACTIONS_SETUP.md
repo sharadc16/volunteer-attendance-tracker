@@ -2,10 +2,18 @@
 
 ## Overview
 
-This setup enables automatic deployment of different branches to different environments:
+This setup enables automatic deployment of different branches to different deployment targets:
 
-- **Dev Branch** → `https://[username].github.io/[repo]/dev/` (Development)
-- **Main Branch** → `https://[username].github.io/[repo]/` (Production)
+- **Dev Branch** → **Netlify** (Development) - `https://dev-[commit-hash]--your-site-name.netlify.app`
+- **Main Branch** → **GitHub Pages** (Production) - `https://sharadc16.github.io/volunteer-attendance-tracker/`
+
+## Key Benefits
+
+✅ **Complete Separation**: Dev and production never interfere with each other  
+✅ **Stable Production**: Main branch always controls the live site  
+✅ **Safe Testing**: Dev deployments get temporary URLs for testing  
+✅ **No Conflicts**: Multiple dev deployments can exist simultaneously  
+✅ **Clean Production**: Only essential files in production build
 
 ## Setup Steps
 
@@ -23,19 +31,27 @@ This setup enables automatic deployment of different branches to different envir
    - ✅ **Read and write permissions**
    - ✅ **Allow GitHub Actions to create and approve pull requests**
 
-### 3. Commit the Workflow File
+### 3. Optional: Configure Netlify for Development Deployments
 
-The workflow file is already created at `.github/workflows/deploy.yml`. Commit it:
+**Note**: Netlify configuration is optional. If not configured, dev branch deployments will be skipped.
 
-```bash
-git add .github/workflows/deploy.yml
-git commit -m "feat: add GitHub Actions multi-environment deployment"
-git push origin dev
-```
+1. Create a Netlify account at https://netlify.com
+2. Create a new site (can be empty initially)
+3. Get your Netlify Site ID and Auth Token:
+   - **Site ID**: Found in Site Settings → General → Site Information
+   - **Auth Token**: User Settings → Applications → Personal Access Tokens
+4. Add secrets to your GitHub repository:
+   - Go to repository **Settings** → **Secrets and variables** → **Actions**
+   - Add `NETLIFY_AUTH_TOKEN` with your auth token
+   - Add `NETLIFY_SITE_ID` with your site ID
 
-### 4. Test the Setup
+### 4. Commit the Workflow File
 
-#### Deploy Development Environment
+The workflow file is already created at `.github/workflows/deploy-simple.yml`. It's already committed and active.
+
+### 5. Test the Setup
+
+#### Deploy Development Environment (Netlify)
 ```bash
 # Make changes in dev branch
 git checkout dev
@@ -44,11 +60,13 @@ git add .
 git commit -m "feat: test dev deployment"
 git push origin dev
 
-# Wait 2-3 minutes, then check:
-# https://[username].github.io/[repo]/dev/
+# Check deployment:
+# 1. Go to repository Actions tab
+# 2. Look for deployment URL in commit comments (if Netlify configured)
+# 3. URL format: https://dev-[commit-hash]--your-site-name.netlify.app
 ```
 
-#### Deploy Production Environment
+#### Deploy Production Environment (GitHub Pages)
 ```bash
 # Merge to main when ready
 git checkout main
@@ -56,29 +74,34 @@ git merge dev
 git push origin main
 
 # Wait 2-3 minutes, then check:
-# https://[username].github.io/[repo]/
+# https://sharadc16.github.io/volunteer-attendance-tracker/
 ```
 
 ## How It Works
 
-### Development Deployment (`dev` branch)
+### Development Deployment (`dev` branch → Netlify)
 - **Trigger**: Push to `dev` branch
-- **URL**: `https://[username].github.io/[repo]/dev/`
+- **Target**: Netlify (temporary URLs)
+- **URL**: `https://dev-[commit-hash]--your-site-name.netlify.app`
 - **Features**:
-  - Forces development environment (`?env=dev`)
+  - Forces development environment (`window.FORCE_DEV_MODE = true`)
   - Shows "[DEV]" in page title
-  - Uses development database (`VolunteerAttendanceDB_Dev`)
-  - Shows orange DEV badge
-  - Includes all test files
+  - Uses development database (`volunteer-attendance-dev`)
+  - Shows orange development banner
+  - Includes all test files and debugging tools
+  - Each deployment gets a unique URL
+  - Safe for testing without affecting production
 
-### Production Deployment (`main` branch)
+### Production Deployment (`main` branch → GitHub Pages)
 - **Trigger**: Push to `main` branch  
-- **URL**: `https://[username].github.io/[repo]/`
+- **Target**: GitHub Pages (stable URL)
+- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/`
 - **Features**:
   - Clean production build
   - Removes test files and development guides
-  - Uses production database (`VolunteerAttendanceDB`)
-  - No DEV badge or indicators
+  - Uses production database (`volunteer-attendance-prod`)
+  - No development indicators
+  - Optimized for end users
 
 ## Workflow Benefits
 
@@ -130,8 +153,13 @@ git push origin main
 3. Click on workflow for detailed logs
 
 ### Deployment URLs
-- **Development**: `https://[username].github.io/[repo]/dev/`
-- **Production**: `https://[username].github.io/[repo]/`
+- **Development**: `https://dev-[commit-hash]--your-site-name.netlify.app` (if Netlify configured)
+- **Production**: `https://sharadc16.github.io/volunteer-attendance-tracker/`
+
+### Checking Deployment Status
+1. **GitHub Actions**: Go to repository → Actions tab
+2. **Production**: Check GitHub Pages deployment status
+3. **Development**: Look for Netlify deployment URLs in commit comments
 
 ## Troubleshooting
 

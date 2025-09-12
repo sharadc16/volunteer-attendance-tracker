@@ -9,20 +9,30 @@ This guide outlines the complete testing and deployment workflow for the Volunte
 ### Local Development Environment
 - **Branch**: `dev` or feature branches
 - **Database**: Development IndexedDB (`volunteer-attendance-dev`)
-- **URL**: `file://` or local server
+- **URL**: `file://` or local server (e.g., `http://localhost:8080`)
 - **Google Sheets**: Test spreadsheet (optional)
+- **Purpose**: Local development and initial testing
 
-### Development Environment (GitHub Pages)
+### Development Environment (Netlify)
 - **Branch**: `dev` 
-- **URL**: `https://[username].github.io/volunteer-attendance-tracker/` (if dev branch is configured for Pages)
+- **URL**: `https://dev-[commit-hash]--your-site-name.netlify.app` (temporary URLs)
 - **Database**: Development IndexedDB (`volunteer-attendance-dev`)
-- **Purpose**: Team testing and validation
+- **Purpose**: Online testing and team collaboration
+- **Features**: 
+  - Includes all test files and debugging tools
+  - Development banner indicator
+  - Temporary URLs for each deployment
+  - Does not interfere with production
 
 ### Production Environment (GitHub Pages)
 - **Branch**: `main`
-- **URL**: `https://[username].github.io/volunteer-attendance-tracker/`
+- **URL**: `https://sharadc16.github.io/volunteer-attendance-tracker/`
 - **Database**: Production IndexedDB (`volunteer-attendance-prod`)
 - **Purpose**: Live application for actual volunteer tracking
+- **Features**:
+  - Clean build without test files
+  - Stable URL for end users
+  - Production-optimized performance
 
 ## Testing Workflow
 
@@ -86,7 +96,7 @@ node create-sunday-events.js
 
 ### 2. Development Environment Testing
 
-#### Deploy to Dev Branch
+#### Deploy to Dev Environment (Netlify)
 ```bash
 # Commit changes to dev branch
 git add .
@@ -94,17 +104,25 @@ git commit -m "feat: description of changes"
 git push origin dev
 ```
 
-#### Configure GitHub Pages for Dev Branch (Optional)
-1. Go to repository Settings → Pages
-2. Set source to `dev` branch
-3. Access via dev URL for team testing
+**What happens:**
+1. GitHub Actions triggers automatically
+2. Builds development version with all test files
+3. Deploys to Netlify with temporary URL
+4. Comments deployment URL on the commit (if Netlify is configured)
+5. Development banner appears on the site
+
+#### Access Dev Environment
+- **Automatic**: Check commit comments for deployment URL
+- **Manual**: Go to repository Actions tab to see deployment logs
+- **URL Format**: `https://dev-[commit-hash]--your-site-name.netlify.app`
 
 #### Dev Environment Testing
-- Test with multiple users/devices
+- Test with multiple users/devices using the temporary URL
 - Verify cross-browser compatibility
 - Test Google Sheets integration with real data
 - Performance testing with larger datasets
 - Mobile device testing
+- All test files and debugging tools are available
 
 ### 3. Production Deployment
 
@@ -148,13 +166,28 @@ git push origin main
 ```
 feature-branch → dev → main
      ↓           ↓      ↓
-  local test → dev test → production
+  local test → Netlify → GitHub Pages
+                ↓         ↓
+           temp dev URL → stable prod URL
 ```
 
 ### Branch Purposes
 - **Feature branches**: Individual feature development
-- **dev**: Integration testing and team collaboration
-- **main**: Production-ready code only
+- **dev**: Integration testing and team collaboration → **Deploys to Netlify**
+- **main**: Production-ready code only → **Deploys to GitHub Pages**
+
+### Deployment Targets
+- **Netlify (Development)**: 
+  - Triggered by pushes to `dev` branch
+  - Creates temporary URLs for testing
+  - Includes all development tools and test files
+  - Safe for experimentation without affecting production
+  
+- **GitHub Pages (Production)**:
+  - Triggered by pushes to `main` branch
+  - Stable URL for end users
+  - Clean build without development files
+  - Production-ready performance
 
 ## Testing Checklist by Environment
 
