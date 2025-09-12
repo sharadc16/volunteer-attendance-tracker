@@ -83,6 +83,12 @@ jobs:
             
             // Adjust body padding to account for banner
             document.body.style.paddingTop = '40px';
+            
+            // Show dev test indicator
+            const devIndicator = document.getElementById('devTestIndicator');
+            if (devIndicator) {
+              devIndicator.style.display = 'block';
+            }
           });
           EOF
           
