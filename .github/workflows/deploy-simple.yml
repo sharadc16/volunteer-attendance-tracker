@@ -35,6 +35,9 @@ jobs:
           # Clean up development files for production
           rm -f build/test-*.html build/test-*.js build/*GUIDE.md build/setup.md
           
+          # Note: We do NOT inject credentials into client-side code for security
+          # Credentials are served via secure backend API endpoints only
+          
           echo "✅ Production environment created"
 
       - name: Setup Pages
@@ -111,18 +114,32 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         if: env.NETLIFY_AUTH_TOKEN != ''
 
-      - name: Comment deployment URL
+      - name: Comment deployment status
         uses: actions/github-script@v6
-        if: env.NETLIFY_AUTH_TOKEN != ''
         with:
           script: |
-            const deployUrl = `https://dev-${context.sha}--your-site-name.netlify.app`;
+            const netlifyConfigured = '${{ secrets.NETLIFY_AUTH_TOKEN }}' !== '';
             
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `🔧 **Development deployment ready!**\n\n📱 **Test URL:** ${deployUrl}\n\n*This is a temporary development deployment for testing. Production remains at the main GitHub Pages URL.*`
-            });
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+            if (netlifyConfigured) {
+              const deployUrl = `https://dev-${context.sha}--your-site-name.netlify.app`;
+              github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: `🔧 **Development deployment ready!**\n\n📱 **Test URL:** ${deployUrl}\n\n*This is a temporary development deployment for testing. Production remains at the main GitHub Pages URL.*`
+              });
+            } else {
+              github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: `🔧 **Development build completed!**\n\n✅ **Status:** Development environment built successfully\n📁 **Build includes:** All test files and development tools\n🧪 **Test locally:** Download artifacts or test with local server\n\n*Note: Netlify not configured. To enable online dev deployments, configure Netlify secrets.*`
+              });
+            }
+
+      - name: Upload development build as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: development-build-${{ github.sha }}
+          path: './build'
+          retention-days: 7
