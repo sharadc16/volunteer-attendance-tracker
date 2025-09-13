@@ -1861,7 +1861,7 @@ class StorageManager {
             }
 
             // Check if credentials are configured
-            const hasCredentials = this.checkGoogleSheetsCredentials();
+            const hasCredentials = await this.checkGoogleSheetsCredentials();
             if (!hasCredentials) {
                 console.log('📊 Google Sheets credentials not configured');
 
@@ -1884,13 +1884,23 @@ class StorageManager {
     /**
      * Check if Google Sheets credentials are configured
      */
-    checkGoogleSheetsCredentials() {
+    async checkGoogleSheetsCredentials() {
         // First check server credential manager (new secure method)
-        if (window.serverCredentialManager && window.serverCredentialManager.isInitialized) {
-            const hasServerCredentials = window.serverCredentialManager.hasCredentials();
-            if (hasServerCredentials) {
-                console.log('✅ Google Sheets credentials available from server');
-                return true;
+        if (window.serverCredentialManager) {
+            try {
+                // Initialize if not already done
+                if (!window.serverCredentialManager.isInitialized) {
+                    console.log('🔄 Initializing server credential manager...');
+                    await window.serverCredentialManager.initialize();
+                }
+
+                const hasServerCredentials = window.serverCredentialManager.hasCredentials();
+                if (hasServerCredentials) {
+                    console.log('✅ Google Sheets credentials available from server');
+                    return true;
+                }
+            } catch (error) {
+                console.warn('❌ Error checking server credentials:', error);
             }
         }
 
@@ -2252,7 +2262,7 @@ class StorageManager {
             }
 
             // Check if credentials are available
-            if (!this.checkGoogleSheetsCredentials()) {
+            if (!(await this.checkGoogleSheetsCredentials())) {
                 return false;
             }
 
@@ -2458,7 +2468,7 @@ class StorageManager {
                 await window.serverCredentialManager.initialize();
             }
 
-            const hasCredentials = this.checkGoogleSheetsCredentials();
+            const hasCredentials = await this.checkGoogleSheetsCredentials();
             const banner = document.getElementById('googleSheetsSetupBanner');
 
             if (hasCredentials && banner) {
@@ -2497,10 +2507,10 @@ window.forceSyncFromSheets = async function () {
     return false;
 };
 
-window.checkSyncStatus = function () {
+window.checkSyncStatus = async function () {
     const lastSync = localStorage.getItem('lastGoogleSheetsSync');
     const isAuthoritative = window.Config?.features?.googleSheetsAuthority;
-    const hasCredentials = window.StorageManager?.checkGoogleSheetsCredentials();
+    const hasCredentials = window.StorageManager ? await window.StorageManager.checkGoogleSheetsCredentials() : false;
 
     console.log('📊 Google Sheets Sync Status:', {
         isAuthoritative,
