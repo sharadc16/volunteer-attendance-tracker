@@ -8,6 +8,8 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: "pages-${{ github.ref_name }}"
@@ -116,25 +118,32 @@ jobs:
 
       - name: Comment deployment status
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
-            const netlifyConfigured = '${{ secrets.NETLIFY_AUTH_TOKEN }}' !== '';
-            
-            if (netlifyConfigured) {
-              const deployUrl = `https://dev-${context.sha}--your-site-name.netlify.app`;
-              github.rest.repos.createCommitComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: context.sha,
-                body: `🔧 **Development deployment ready!**\n\n📱 **Test URL:** ${deployUrl}\n\n*This is a temporary development deployment for testing. Production remains at the main GitHub Pages URL.*`
-              });
-            } else {
-              github.rest.repos.createCommitComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: context.sha,
-                body: `🔧 **Development build completed!**\n\n✅ **Status:** Development environment built successfully\n📁 **Build includes:** All test files and development tools\n🧪 **Test locally:** Download artifacts or test with local server\n\n*Note: Netlify not configured. To enable online dev deployments, configure Netlify secrets.*`
-              });
+            try {
+              const netlifyConfigured = '${{ secrets.NETLIFY_AUTH_TOKEN }}' !== '';
+              
+              if (netlifyConfigured) {
+                const deployUrl = `https://dev-${context.sha}--gurukul-attendance.netlify.app`;
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: context.sha,
+                  body: `🔧 **Development deployment ready!**\n\n📱 **Test URL:** ${deployUrl}\n\n*This is a temporary development deployment for testing. Production remains at the main GitHub Pages URL.*`
+                });
+              } else {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: context.sha,
+                  body: `🔧 **Development build completed!**\n\n✅ **Status:** Development environment built successfully\n📁 **Build includes:** All test files and development tools\n🧪 **Test locally:** Download artifacts or test with local server\n\n*Note: Netlify not configured. To enable online dev deployments, configure Netlify secrets.*`
+                });
+              }
+              console.log('✅ Deployment comment posted successfully');
+            } catch (error) {
+              console.log('ℹ️ Could not post deployment comment (permissions may be limited)');
+              console.log('Deployment completed successfully regardless');
             }
 
       - name: Upload development build as artifact
