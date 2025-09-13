@@ -15,7 +15,9 @@ class ServerCredentialManager {
    */
   getCredentialEndpoint() {
     // Production: Use Netlify Functions
-    if (window.location.hostname.includes('netlify.app') || window.location.hostname.includes('github.io')) {
+    if (window.location.hostname.includes('netlify.app') || 
+        window.location.hostname.includes('github.io') ||
+        window.location.hostname.includes('gurukul-attendance.netlify.app')) {
       return '/.netlify/functions/credentials';
     }
     

@@ -593,7 +593,41 @@ class GoogleSheetsService {
      * Get API credentials from user or storage
      */
     async getCredentialsInternal() {
-        // Try to get from localStorage first
+        // First try server credential manager (secure method)
+        if (window.serverCredentialManager) {
+            try {
+                console.log('🔐 Attempting to load credentials from server...');
+                
+                // Initialize if not already done
+                if (!window.serverCredentialManager.isInitialized) {
+                    await window.serverCredentialManager.initialize();
+                }
+
+                const apiKey = await window.serverCredentialManager.getCredential('google_sheets_api_key');
+                const clientId = await window.serverCredentialManager.getCredential('google_oauth_client_id');
+                const spreadsheetId = await window.serverCredentialManager.getCredential('volunteer_spreadsheet_id');
+
+                if (apiKey && clientId && spreadsheetId) {
+                    const credentials = {
+                        apiKey: apiKey,
+                        clientId: clientId,
+                        spreadsheetId: spreadsheetId
+                    };
+
+                    // Update instance variables
+                    this.apiKey = credentials.apiKey;
+                    this.clientId = credentials.clientId;
+                    this.spreadsheetId = credentials.spreadsheetId;
+
+                    console.log('✅ Loaded credentials from secure server');
+                    return credentials;
+                }
+            } catch (error) {
+                console.warn('❌ Failed to load server credentials:', error);
+            }
+        }
+
+        // Fallback to localStorage (legacy method)
         const stored = localStorage.getItem('googleSheetsCredentials');
         if (stored) {
             try {
@@ -604,14 +638,15 @@ class GoogleSheetsService {
                 this.clientId = credentials.clientId;
                 this.spreadsheetId = credentials.spreadsheetId;
 
-                console.log('Loaded stored credentials successfully');
+                console.log('✅ Loaded stored credentials from localStorage');
                 return credentials;
             } catch (error) {
-                console.warn('Invalid stored credentials, will prompt user');
+                console.warn('❌ Invalid stored credentials, will prompt user');
             }
         }
 
-        // Prompt user for credentials
+        // Last resort: Prompt user for credentials
+        console.log('⚠️ No credentials found, prompting user...');
         const credentials = await this.promptForCredentials();
 
         // Update instance variables

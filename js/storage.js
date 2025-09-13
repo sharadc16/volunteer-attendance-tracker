@@ -1885,17 +1885,33 @@ class StorageManager {
      * Check if Google Sheets credentials are configured
      */
     checkGoogleSheetsCredentials() {
+        // First check server credential manager (new secure method)
+        if (window.serverCredentialManager && window.serverCredentialManager.isInitialized) {
+            const hasServerCredentials = window.serverCredentialManager.hasCredentials();
+            if (hasServerCredentials) {
+                console.log('✅ Google Sheets credentials available from server');
+                return true;
+            }
+        }
+
+        // Fallback to local storage (legacy method)
         const stored = localStorage.getItem('googleSheetsCredentials_development') ||
             localStorage.getItem('googleSheetsCredentials');
 
         if (stored) {
             try {
                 const credentials = JSON.parse(stored);
-                return credentials.apiKey && credentials.clientId && credentials.spreadsheetId;
+                const hasLocalCredentials = credentials.apiKey && credentials.clientId && credentials.spreadsheetId;
+                if (hasLocalCredentials) {
+                    console.log('✅ Google Sheets credentials available from local storage');
+                    return true;
+                }
             } catch (error) {
-                return false;
+                console.warn('❌ Error parsing local credentials:', error);
             }
         }
+
+        console.log('❌ No Google Sheets credentials found');
         return false;
     }
 
@@ -2436,6 +2452,12 @@ class StorageManager {
      */
     async checkAndUpdateGoogleSheetsStatus() {
         try {
+            // Wait for server credentials to load if available
+            if (window.serverCredentialManager && !window.serverCredentialManager.isInitialized) {
+                console.log('🔄 Waiting for server credentials to initialize...');
+                await window.serverCredentialManager.initialize();
+            }
+
             const hasCredentials = this.checkGoogleSheetsCredentials();
             const banner = document.getElementById('googleSheetsSetupBanner');
 

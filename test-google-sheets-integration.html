@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Google Sheets Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { border-color: #28a745; background: #d4edda; }
+        .error { border-color: #dc3545; background: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Google Sheets Integration Test</h1>
+    
+    <div class="test-container">
+        <h2>Test Google Sheets Connection</h2>
+        <p>This tests if the Google Sheets integration can load credentials from the server.</p>
+        
+        <button class="test-button" onclick="testGoogleSheetsConnection()">🔗 Test Connection</button>
+        <button class="test-button" onclick="testCredentialLoading()">🔐 Test Credential Loading</button>
+        <button class="test-button" onclick="testStorageManager()">📊 Test Storage Manager</button>
+        <button class="test-button" onclick="refreshBannerStatus()">🔄 Refresh Banner Status</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <!-- Include necessary scripts -->
+    <script src="js/server-credential-manager.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-sheets.js"></script>
+
+    <script>
+        function addResult(message, isSuccess = true) {
+            const results = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = `test-result ${isSuccess ? 'success' : 'error'}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+
+        async function testCredentialLoading() {
+            try {
+                addResult('🔄 Testing server credential loading...');
+                
+                // Initialize server credential manager
+                if (!window.serverCredentialManager.isInitialized) {
+                    await window.serverCredentialManager.initialize();
+                }
+
+                const apiKey = await window.serverCredentialManager.getCredential('google_sheets_api_key');
+                const clientId = await window.serverCredentialManager.getCredential('google_oauth_client_id');
+                const spreadsheetId = await window.serverCredentialManager.getCredential('volunteer_spreadsheet_id');
+
+                addResult(`✅ Server credentials loaded:
+API Key: ${apiKey ? 'Available' : 'Missing'}
+Client ID: ${clientId ? 'Available' : 'Missing'}
+Spreadsheet ID: ${spreadsheetId ? 'Available' : 'Missing'}`);
+
+            } catch (error) {
+                addResult(`❌ Credential loading failed: ${error.message}`, false);
+            }
+        }
+
+        async function testStorageManager() {
+            try {
+                addResult('🔄 Testing Storage Manager credential check...');
+                
+                if (!window.StorageManager) {
+                    throw new Error('StorageManager not available');
+                }
+
+                // Wait for server credentials to initialize
+                if (window.serverCredentialManager && !window.serverCredentialManager.isInitialized) {
+                    await window.serverCredentialManager.initialize();
+                }
+
+                const hasCredentials = window.StorageManager.checkGoogleSheetsCredentials();
+                addResult(`📊 Storage Manager credential check: ${hasCredentials ? 'PASS ✅' : 'FAIL ❌'}`);
+
+                // Test the banner update
+                await window.StorageManager.checkAndUpdateGoogleSheetsStatus();
+                addResult('🔄 Banner status updated');
+
+            } catch (error) {
+                addResult(`❌ Storage Manager test failed: ${error.message}`, false);
+            }
+        }
+
+        async function testGoogleSheetsConnection() {
+            try {
+                addResult('🔄 Testing Google Sheets service...');
+                
+                if (!window.GoogleSheetsService) {
+                    throw new Error('GoogleSheetsService not available');
+                }
+
+                const credentials = await window.GoogleSheetsService.getCredentials();
+                addResult(`✅ Google Sheets credentials retrieved:
+API Key: ${credentials.apiKey ? 'Available' : 'Missing'}
+Client ID: ${credentials.clientId ? 'Available' : 'Missing'}
+Spreadsheet ID: ${credentials.spreadsheetId ? 'Available' : 'Missing'}`);
+
+            } catch (error) {
+                addResult(`❌ Google Sheets test failed: ${error.message}`, false);
+            }
+        }
+
+        async function refreshBannerStatus() {
+            try {
+                addResult('🔄 Refreshing banner status...');
+                
+                // Remove existing banner
+                const existingBanner = document.getElementById('googleSheetsSetupBanner');
+                if (existingBanner) {
+                    existingBanner.remove();
+                    addResult('🗑️ Removed existing banner');
+                }
+
+                // Check and update status
+                if (window.StorageManager) {
+                    await window.StorageManager.checkAndUpdateGoogleSheetsStatus();
+                    addResult('✅ Banner status refreshed');
+                } else {
+                    throw new Error('StorageManager not available');
+                }
+
+            } catch (error) {
+                addResult(`❌ Banner refresh failed: ${error.message}`, false);
+            }
+        }
+
+        // Auto-run basic test on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            addResult('🚀 Page loaded, running basic tests...');
+            
+            setTimeout(async () => {
+                await testCredentialLoading();
+                await testStorageManager();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
