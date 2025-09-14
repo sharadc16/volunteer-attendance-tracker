@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug App Loading Issues</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { margin: 10px; padding: 10px 20px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug App Loading Issues</h1>
+    
+    <div id="results"></div>
+    
+    <div class="section">
+        <h3>Quick Actions</h3>
+        <button onclick="runFullDiagnostic()">🚀 Run Full Diagnostic</button>
+        <button onclick="checkScriptLoading()">📜 Check Script Loading</button>
+        <button onclick="checkDOMElements()">🏗️ Check DOM Elements</button>
+        <button onclick="checkConsoleErrors()">⚠️ Check Console Errors</button>
+        <button onclick="openMainApp()">🏠 Open Main App</button>
+    </div>
+    
+    <script>
+        let errorLog = [];
+        let loadedScripts = [];
+        
+        // Capture all console messages
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            errorLog.push({
+                type: 'error',
+                timestamp: new Date().toISOString(),
+                message: args.join(' '),
+                stack: new Error().stack
+            });
+            originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            errorLog.push({
+                type: 'warning',
+                timestamp: new Date().toISOString(),
+                message: args.join(' ')
+            });
+            originalWarn.apply(console, args);
+        };
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function runFullDiagnostic() {
+            addResult('🚀 Starting comprehensive app loading diagnostic...', 'info');
+            
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+            
+            checkScriptLoading();
+            setTimeout(() => checkDOMElements(), 500);
+            setTimeout(() => checkGlobalObjects(), 1000);
+            setTimeout(() => checkConsoleErrors(), 1500);
+            setTimeout(() => checkAppInitialization(), 2000);
+        }
+        
+        function checkScriptLoading() {
+            addResult('📜 Checking script loading...', 'info');
+            
+            const expectedScripts = [
+                'js/utils.js',
+                'js/storage.js',
+                'js/google-sheets.js',
+                'js/scanner.js',
+                'js/app.js'
+            ];
+            
+            const loadedScripts = Array.from(document.scripts).map(script => {
+                const src = script.src;
+                if (src) {
+                    return src.split('/').pop() || src;
+                }
+                return 'inline script';
+            });
+            
+            addResult(`Found ${loadedScripts.length} script tags`, 'info');
+            
+            expectedScripts.forEach(expectedScript => {
+                const scriptName = expectedScript.split('/').pop();
+                const isLoaded = loadedScripts.some(loaded => loaded.includes(scriptName));
+                
+                if (isLoaded) {
+                    addResult(`✅ ${expectedScript} - loaded`, 'success');
+                } else {
+                    addResult(`❌ ${expectedScript} - NOT loaded`, 'error');
+                }
+            });
+            
+            // Check for script errors
+            const scripts = document.querySelectorAll('script[src]');
+            let scriptsChecked = 0;
+            
+            scripts.forEach(script => {
+                script.addEventListener('error', (e) => {
+                    addResult(`❌ Script failed to load: ${script.src}`, 'error');
+                });
+                
+                script.addEventListener('load', (e) => {
+                    addResult(`✅ Script loaded: ${script.src.split('/').pop()}`, 'success');
+                });
+                
+                scriptsChecked++;
+            });
+            
+            addResult(`Monitoring ${scriptsChecked} external scripts for load/error events`, 'info');
+        }
+        
+        function checkDOMElements() {
+            addResult('🏗️ Checking DOM elements...', 'info');
+            
+            const criticalElements = [
+                'addEventBtn',
+                'modalOverlay',
+                'modalTitle',
+                'modalBody',
+                'modalConfirm',
+                'modalCancel',
+                'eventsView',
+                'dashboardView'
+            ];
+            
+            let foundElements = 0;
+            
+            criticalElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    addResult(`✅ ${id} - found`, 'success');
+                    foundElements++;
+                } else {
+                    addResult(`❌ ${id} - NOT found`, 'error');
+                }
+            });
+            
+            addResult(`Found ${foundElements}/${criticalElements.length} critical elements`, foundElements === criticalElements.length ? 'success' : 'warning');
+            
+            // Check if we're in the main app or a separate page
+            const isMainApp = window.location.pathname === '/' || window.location.pathname.endsWith('index.html');
+            addResult(`Running in main app: ${isMainApp}`, isMainApp ? 'success' : 'warning');
+        }
+        
+        function checkGlobalObjects() {
+            addResult('🌐 Checking global objects...', 'info');
+            
+            const expectedGlobals = [
+                'Utils',
+                'StorageManager', 
+                'GoogleSheetsService',
+                'VolunteerAttendanceApp',
+                'app'
+            ];
+            
+            expectedGlobals.forEach(globalName => {
+                const exists = typeof window[globalName] !== 'undefined';
+                if (exists) {
+                    addResult(`✅ window.${globalName} - exists`, 'success');
+                    
+                    // Additional checks for specific objects
+                    if (globalName === 'app') {
+                        const app = window[globalName];
+                        addResult(`   App initialized: ${app?.isInitialized || false}`, 'info');
+                        addResult(`   Current view: ${app?.currentView || 'unknown'}`, 'info');
+                        addResult(`   Constructor: ${app?.constructor?.name || 'unknown'}`, 'info');
+                    }
+                } else {
+                    addResult(`❌ window.${globalName} - NOT found`, 'error');
+                }
+            });
+        }
+        
+        function checkConsoleErrors() {
+            addResult('⚠️ Checking console errors...', 'info');
+            
+            if (errorLog.length === 0) {
+                addResult('✅ No console errors detected', 'success');
+            } else {
+                addResult(`Found ${errorLog.length} console messages:`, 'warning');
+                
+                errorLog.forEach((error, index) => {
+                    const type = error.type === 'error' ? 'error' : 'warning';
+                    addResult(`${index + 1}. [${error.type.toUpperCase()}] ${error.message}`, type);
+                });
+            }
+            
+            // Check for unhandled promise rejections
+            window.addEventListener('unhandledrejection', (event) => {
+                addResult(`Unhandled promise rejection: ${event.reason}`, 'error');
+            });
+        }
+        
+        function checkAppInitialization() {
+            addResult('🚀 Checking app initialization...', 'info');
+            
+            if (typeof window.app !== 'undefined') {
+                const app = window.app;
+                addResult('✅ App object exists', 'success');
+                
+                // Check initialization status
+                if (app.isInitialized) {
+                    addResult('✅ App is initialized', 'success');
+                    
+                    // Test key methods
+                    const methods = ['showAddEventModal', 'showModal', 'hideModal', 'switchView'];
+                    methods.forEach(method => {
+                        if (typeof app[method] === 'function') {
+                            addResult(`✅ ${method} method exists`, 'success');
+                        } else {
+                            addResult(`❌ ${method} method missing`, 'error');
+                        }
+                    });
+                    
+                } else {
+                    addResult('⚠️ App exists but not initialized', 'warning');
+                    addResult('This could mean the app is still loading...', 'info');
+                }
+                
+            } else {
+                addResult('❌ App object not found', 'error');
+                addResult('This means the main application failed to load', 'error');
+                
+                // Check if we're in the right context
+                if (window.opener) {
+                    addResult('🔍 Checking parent window for app...', 'info');
+                    if (window.opener.app) {
+                        addResult('✅ Found app in parent window', 'success');
+                    } else {
+                        addResult('❌ No app in parent window either', 'error');
+                    }
+                }
+            }
+        }
+        
+        function openMainApp() {
+            const mainAppUrl = window.location.origin + '/';
+            addResult(`Opening main app: ${mainAppUrl}`, 'info');
+            window.open(mainAppUrl, '_blank');
+        }
+        
+        // Auto-run diagnostic when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult('🔍 Auto-running diagnostic...', 'info');
+                runFullDiagnostic();
+            }, 1000);
+        });
+        
+        // Monitor for app loading
+        let checkCount = 0;
+        const maxChecks = 30; // 15 seconds
+        
+        const appLoadMonitor = setInterval(() => {
+            checkCount++;
+            
+            if (typeof window.app !== 'undefined') {
+                addResult('🎉 App object detected!', 'success');
+                clearInterval(appLoadMonitor);
+                
+                if (window.app.isInitialized) {
+                    addResult('🎉 App is fully initialized!', 'success');
+                } else {
+                    addResult('⏳ App detected but still initializing...', 'info');
+                }
+            } else if (checkCount >= maxChecks) {
+                addResult('⏰ Stopped monitoring - app did not load within 15 seconds', 'warning');
+                clearInterval(appLoadMonitor);
+            }
+        }, 500);
+        
+    </script>
+</body>
+</html>

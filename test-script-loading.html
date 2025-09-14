@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Script Loading</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .script-status { margin: 5px 0; padding: 8px; border-radius: 4px; }
+        .loaded { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { background-color: #fff3cd; color: #856404; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        button { margin: 10px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Script Loading Test</h1>
+    
+    <div class="section">
+        <h3>Script Loading Status</h3>
+        <div id="scriptStatus"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Actions</h3>
+        <button onclick="testMinimalApp()">🧪 Test Minimal App</button>
+        <button onclick="loadScriptsSequentially()">📜 Load Scripts One by One</button>
+        <button onclick="checkAppObject()">🔍 Check App Object</button>
+        <button onclick="openMainApp()">🏠 Open Main App</button>
+    </div>
+    
+    <div class="section">
+        <h3>Console Output</h3>
+        <div id="consoleOutput" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+    
+    <script>
+        const scripts = [
+            'js/server-credential-manager.js',
+            'js/secure-storage.js',
+            'js/credential-manager.js',
+            'js/api-integration.js',
+            'js/credential-integration-fix.js',
+            'js/environment-manager.js',
+            'js/config.js',
+            'js/utils.js',
+            'js/storage.js',
+            'js/google-sheets.js',
+            'js/sync-manager.js',
+            'js/connectivity-validator.js',
+            'js/scanner.js',
+            'js/mobile-status-enhancement.js',
+            'js/unified-status-manager.js',
+            'js/status-unification-fix.js',
+            'js/app.js'
+        ];
+        
+        let loadedCount = 0;
+        let errorCount = 0;
+        
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function addConsoleOutput(message, type = 'log') {
+            const output = document.getElementById('consoleOutput');
+            const div = document.createElement('div');
+            div.style.color = type === 'error' ? '#dc3545' : type === 'warn' ? '#ffc107' : '#28a745';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            addConsoleOutput(args.join(' '), 'log');
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            addConsoleOutput(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            addConsoleOutput(args.join(' '), 'warn');
+            originalWarn.apply(console, args);
+        };
+        
+        function updateScriptStatus(scriptName, status, message = '') {
+            const statusDiv = document.getElementById('scriptStatus');
+            const existingDiv = document.getElementById(`status-${scriptName.replace(/[^a-zA-Z0-9]/g, '-')}`);
+            
+            if (existingDiv) {
+                existingDiv.className = `script-status ${status}`;
+                existingDiv.textContent = `${scriptName}: ${status.toUpperCase()} ${message}`;
+            } else {
+                const div = document.createElement('div');
+                div.id = `status-${scriptName.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                div.className = `script-status ${status}`;
+                div.textContent = `${scriptName}: ${status.toUpperCase()} ${message}`;
+                statusDiv.appendChild(div);
+            }
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const scriptName = src.split('/').pop();
+                updateScriptStatus(scriptName, 'loading');
+                
+                const script = document.createElement('script');
+                script.src = src;
+                
+                script.onload = () => {
+                    updateScriptStatus(scriptName, 'loaded');
+                    loadedCount++;
+                    resolve(scriptName);
+                };
+                
+                script.onerror = (error) => {
+                    updateScriptStatus(scriptName, 'error', error.message || 'Failed to load');
+                    errorCount++;
+                    reject(new Error(`Failed to load ${src}`));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function loadScriptsSequentially() {
+            addConsoleOutput('🚀 Starting sequential script loading...', 'log');
+            loadedCount = 0;
+            errorCount = 0;
+            
+            for (const script of scripts) {
+                try {
+                    await loadScript(script);
+                    addConsoleOutput(`✅ Loaded: ${script}`, 'log');
+                    
+                    // Check for app object after loading app.js
+                    if (script === 'js/app.js') {
+                        setTimeout(() => {
+                            if (typeof window.app !== 'undefined') {
+                                addConsoleOutput('🎉 App object detected!', 'log');
+                                updateScriptStatus('app.js', 'loaded', '- App object created');
+                            } else {
+                                addConsoleOutput('⚠️ App object not found after loading app.js', 'warn');
+                            }
+                        }, 1000);
+                    }
+                    
+                } catch (error) {
+                    addConsoleOutput(`❌ Failed to load: ${script} - ${error.message}`, 'error');
+                }
+                
+                // Small delay between scripts
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            addConsoleOutput(`📊 Loading complete: ${loadedCount} loaded, ${errorCount} errors`, 'log');
+        }
+        
+        function testMinimalApp() {
+            addConsoleOutput('🧪 Testing minimal app creation...', 'log');
+            
+            // Try to create a minimal app instance
+            try {
+                if (typeof VolunteerAttendanceApp !== 'undefined') {
+                    addConsoleOutput('✅ VolunteerAttendanceApp class found', 'log');
+                    
+                    // Don't actually create an instance to avoid conflicts
+                    addConsoleOutput('ℹ️ Class exists, skipping instantiation to avoid conflicts', 'log');
+                } else {
+                    addConsoleOutput('❌ VolunteerAttendanceApp class not found', 'error');
+                }
+                
+                // Check for existing app instance
+                if (typeof window.app !== 'undefined') {
+                    addConsoleOutput('✅ Existing app instance found', 'log');
+                    addConsoleOutput(`App initialized: ${window.app.isInitialized}`, 'log');
+                    addConsoleOutput(`Current view: ${window.app.currentView}`, 'log');
+                } else {
+                    addConsoleOutput('❌ No app instance found', 'error');
+                }
+                
+            } catch (error) {
+                addConsoleOutput(`❌ Error testing app: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkAppObject() {
+            addConsoleOutput('🔍 Checking app object...', 'log');
+            
+            const checks = [
+                { name: 'window.app', obj: window.app },
+                { name: 'window.VolunteerAttendanceApp', obj: window.VolunteerAttendanceApp },
+                { name: 'window.Utils', obj: window.Utils },
+                { name: 'window.StorageManager', obj: window.StorageManager },
+                { name: 'window.GoogleSheetsService', obj: window.GoogleSheetsService }
+            ];
+            
+            checks.forEach(check => {
+                if (check.obj) {
+                    addConsoleOutput(`✅ ${check.name} exists`, 'log');
+                    if (check.name === 'window.app') {
+                        addConsoleOutput(`   - Initialized: ${check.obj.isInitialized}`, 'log');
+                        addConsoleOutput(`   - Current view: ${check.obj.currentView}`, 'log');
+                        addConsoleOutput(`   - Constructor: ${check.obj.constructor.name}`, 'log');
+                    }
+                } else {
+                    addConsoleOutput(`❌ ${check.name} not found`, 'error');
+                }
+            });
+        }
+        
+        function openMainApp() {
+            const mainAppUrl = window.location.origin + '/';
+            addConsoleOutput(`Opening main app: ${mainAppUrl}`, 'log');
+            window.open(mainAppUrl, '_blank');
+        }
+        
+        // Initialize status display
+        scripts.forEach(script => {
+            const scriptName = script.split('/').pop();
+            updateScriptStatus(scriptName, 'loading', 'Waiting to load...');
+        });
+        
+        // Auto-start loading
+        setTimeout(() => {
+            addConsoleOutput('🔄 Auto-starting script loading test...', 'log');
+            loadScriptsSequentially();
+        }, 1000);
+    </script>
+</body>
+</html>
