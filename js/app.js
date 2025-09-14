@@ -2221,7 +2221,7 @@ VolunteerAttendanceApp.prototype.testGoogleSheetsConnection = async function () 
     } finally {
         this.showLoading(false);
     }
-};
+}
 
 // Add testBasicConnection to the VolunteerAttendanceApp prototype
 VolunteerAttendanceApp.prototype.testBasicConnection = async function () {

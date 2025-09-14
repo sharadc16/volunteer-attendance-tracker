@@ -438,8 +438,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Add required CSS animations
-const animationStyles = document.createElement('style');
-animationStyles.textContent = `
+const unifiedAnimationStyles = document.createElement('style');
+unifiedAnimationStyles.textContent = `
     @keyframes fadeIn {
         from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
         to { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -455,4 +455,4 @@ animationStyles.textContent = `
         to { transform: translateX(-50%) translateY(-100%); opacity: 0; }
     }
 `;
-document.head.appendChild(animationStyles);
+document.head.appendChild(unifiedAnimationStyles);
