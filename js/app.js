@@ -3720,7 +3720,6 @@ closeMobileNav() {
         document.body.style.overflow = '';
     }
 }
-}
 
 // Initialize application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
