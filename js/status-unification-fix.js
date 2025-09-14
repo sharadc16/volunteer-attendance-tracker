@@ -29,7 +29,7 @@ class StatusUnificationFix {
             this.unifyStatusContainers();
             this.ensureSingleRowLayout();
             this.cleanupSeparateContainers();
-            this.applyUnifiedStyling();
+            this.applyGlobalUnifiedStyling();
             
             console.log('✅ Status unification fix applied successfully');
         } catch (error) {
@@ -203,6 +203,37 @@ class StatusUnificationFix {
                     break;
             }
         }
+    }
+
+    applyGlobalUnifiedStyling() {
+        console.log('🎨 Applying global unified styling...');
+        
+        // Apply styling to all status elements in the main container
+        const mainContainer = document.querySelector('.scanner-status-container');
+        if (mainContainer) {
+            const statusElements = mainContainer.querySelectorAll('.status-indicator, .status-details-btn, .scanner-status, .sync-status-compact');
+            statusElements.forEach(element => {
+                this.applyUnifiedElementStyling(element);
+            });
+        }
+
+        // Ensure the main container has proper styling
+        if (mainContainer) {
+            mainContainer.style.display = 'flex';
+            mainContainer.style.flexDirection = 'row';
+            mainContainer.style.alignItems = 'center';
+            mainContainer.style.gap = '0.375rem';
+            mainContainer.style.flexWrap = 'nowrap';
+            mainContainer.style.justifyContent = 'flex-end';
+            mainContainer.style.padding = '0.5rem';
+            mainContainer.style.borderRadius = '8px';
+            mainContainer.style.background = 'rgba(255, 255, 255, 0.95)';
+            mainContainer.style.backdropFilter = 'blur(10px)';
+            mainContainer.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+            mainContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+        }
+
+        console.log('✅ Global unified styling applied');
     }
 
     // Public method to manually trigger fix

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Status Unification Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { margin: 10px; padding: 10px 20px; }
+        .status-demo {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Status Unification Fix Test</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testStatusFix()">Test Status Fix</button>
+    <button onclick="verifyFix()">Verify Fix</button>
+    <button onclick="reloadStatusFix()">Reload Status Fix</button>
+    <button onclick="openMainApp()">Open Main App</button>
+    
+    <div class="status-demo">
+        <h3>Demo Status Elements</h3>
+        <div class="scanner-status-container" style="display: flex; gap: 10px; align-items: center;">
+            <div class="status-indicator ready">✅ Scanner Ready</div>
+            <div class="status-indicator warning">⚠️ Syncing</div>
+            <div class="status-details-btn">Details</div>
+        </div>
+        
+        <!-- Separate containers that should be unified -->
+        <div id="connectivityStatus" style="margin-top: 10px;">
+            <div class="status-indicator online">🌐 Online</div>
+        </div>
+        
+        <div class="connectivity-status" style="margin-top: 10px;">
+            <div class="status-indicator success">✅ Connected</div>
+        </div>
+    </div>
+    
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            results.appendChild(div);
+        }
+        
+        function testStatusFix() {
+            addResult('🔍 Testing status unification fix...', 'info');
+            
+            try {
+                // Check if the fix class exists
+                if (typeof StatusUnificationFix !== 'undefined') {
+                    addResult('✅ StatusUnificationFix class found', 'success');
+                    
+                    // Apply the fix
+                    const fix = new StatusUnificationFix();
+                    addResult('✅ Status fix applied', 'success');
+                    
+                    // Wait a moment then verify
+                    setTimeout(() => {
+                        const verification = fix.verifyFix();
+                        addResult(`Verification: ${verification.message}`, verification.success ? 'success' : 'error');
+                        addResult(`Separate containers: ${verification.separateContainers}`, 'info');
+                        addResult(`Elements in main: ${verification.elementsInMain}/${verification.totalElements}`, 'info');
+                    }, 500);
+                    
+                } else {
+                    addResult('❌ StatusUnificationFix class not found', 'error');
+                    addResult('Loading fix from main app...', 'info');
+                    
+                    // Try to load from main app
+                    if (window.opener && window.opener.StatusUnificationFix) {
+                        const fix = new window.opener.StatusUnificationFix();
+                        addResult('✅ Loaded fix from main app', 'success');
+                    } else {
+                        addResult('❌ Could not load fix', 'error');
+                    }
+                }
+                
+            } catch (error) {
+                addResult(`❌ Error testing fix: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        function verifyFix() {
+            addResult('🔍 Verifying status fix...', 'info');
+            
+            const mainContainer = document.querySelector('.scanner-status-container');
+            const separateContainers = document.querySelectorAll('#connectivityStatus, .connectivity-status');
+            const allStatusElements = document.querySelectorAll('.status-indicator, .status-details-btn');
+            
+            addResult(`Main container found: ${!!mainContainer}`, mainContainer ? 'success' : 'error');
+            addResult(`Separate containers: ${separateContainers.length}`, separateContainers.length === 0 ? 'success' : 'error');
+            addResult(`Total status elements: ${allStatusElements.length}`, 'info');
+            
+            let elementsInMain = 0;
+            allStatusElements.forEach(element => {
+                if (element.closest('.scanner-status-container')) {
+                    elementsInMain++;
+                }
+            });
+            
+            addResult(`Elements in main container: ${elementsInMain}`, 'info');
+            
+            if (separateContainers.length === 0 && elementsInMain === allStatusElements.length) {
+                addResult('✅ Status elements successfully unified!', 'success');
+            } else {
+                addResult('❌ Status elements not fully unified', 'error');
+            }
+        }
+        
+        function reloadStatusFix() {
+            addResult('🔄 Reloading status fix...', 'info');
+            
+            // Create a script element to reload the fix
+            const script = document.createElement('script');
+            script.src = 'js/status-unification-fix.js';
+            script.onload = () => {
+                addResult('✅ Status fix reloaded', 'success');
+                setTimeout(testStatusFix, 500);
+            };
+            script.onerror = () => {
+                addResult('❌ Failed to reload status fix', 'error');
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        function openMainApp() {
+            if (window.opener) {
+                window.opener.focus();
+                addResult('✅ Focused main app window', 'success');
+            } else {
+                window.open('/', '_blank');
+                addResult('✅ Opened main app in new tab', 'success');
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult('🚀 Starting automatic test...', 'info');
+                testStatusFix();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
