@@ -4,510 +4,211 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gurukul - Volunteer Attendance Tracker</title>
-    <!-- DEV TEST: This comment added to test dev deployment -->
-    <link rel="stylesheet" href="css/styles.css?v=1.1">
-    <link rel="stylesheet" href="css/mobile-status-optimization.css?v=1.0">
-    <link rel="stylesheet" href="css/mobile-status-quick-fix.css?v=1.0">
-    <link rel="stylesheet" href="css/credential-manager.css?v=1.0">
+    <link rel="stylesheet" href="css/app.css">
     <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+    
+    <!-- Google APIs -->
+    <script async defer src="https://apis.google.com/js/api.js" 
+            onload="window.gapiLoaded = true; window.dispatchEvent(new Event('gapiLoaded'));"
+            onerror="console.error('Failed to load Google APIs library'); window.gapiLoadError = true;"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" 
+            onload="window.gisLoaded = true; window.dispatchEvent(new Event('gisLoaded'));"
+            onerror="console.error('Failed to load Google Identity Services'); window.gisLoadError = true;"></script>
 </head>
 <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-content">
-                <!-- Hamburger menu button -->
-                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu" aria-expanded="false">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                </button>
-                
-                <!-- App title with logo (flexible, can wrap) -->
-                <div class="header-title">
-                    <div class="logo-container">
-                        <img src="https://gurukulweb.azurewebsites.net/Images/GurukulLogoShadow.png" alt="Gurukul Logo" class="app-logo">
-                        <h1 class="app-title">Gurukul</h1>
-                    </div>
-                </div>
-                
-                <!-- Right controls -->
-                <div class="header-controls">
-                    <button class="btn-icon" id="googleSyncBtn" title="Sync with Google Sheets">🔄</button>
-                    <button class="btn-icon" id="settingsBtn" title="Settings" onclick="window.location.href='settings.html'">⚙️</button>
-                </div>
+    <div class="app">
+        <!-- Header - Will be replaced by HeaderComponent -->
+        <header class="header">
+            <div class="header-title">
+                <h1>Loading...</h1>
             </div>
         </header>
 
-        <!-- DEV TEST: Development environment indicator -->
-        <div id="devTestIndicator" style="display: none; background: #ff6b35; color: white; text-align: center; padding: 5px; font-size: 12px;">
-            🧪 DEV DEPLOYMENT TEST - This indicator shows in development environment
-        </div>
-
-        <!-- Navigation -->
-        <nav class="app-nav" role="navigation" aria-label="Main navigation">
-            
-            <!-- Navigation container -->
-            <div class="nav-container" id="navContainer">
-                <button class="nav-btn active" data-view="dashboard" aria-current="page">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-text">Dashboard</span>
-                </button>
-                <button class="nav-btn" data-view="volunteers">
-                    <span class="nav-icon">👥</span>
-                    <span class="nav-text">Volunteers</span>
-                </button>
-                <button class="nav-btn" data-view="events">
-                    <span class="nav-icon">📅</span>
-                    <span class="nav-text">Events</span>
-                </button>
-                <button class="nav-btn" data-view="reports">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-text">Reports</span>
-                </button>
-
+        <!-- Navigation - Will be replaced by NavigationComponent -->
+        <nav class="nav" id="nav">
+            <div class="nav-left">
+                <div>Loading navigation...</div>
             </div>
-            
-            <!-- Mobile nav overlay -->
-            <div class="nav-overlay" id="navOverlay"></div>
         </nav>
 
         <!-- Main Content -->
-        <main class="app-main" id="main-content">
+        <main class="main">
             <!-- Dashboard View -->
-            <div class="view active" id="dashboardView">
-                <div class="dashboard-grid">
-                    <!-- Scanner Input Section -->
+            <section class="view active" id="dashboard-view">
+                <div class="dashboard">
+                    <!-- Scanner Card -->
                     <div class="card scanner-card">
-                        <div class="scanner-header">
-                            <h2>📱 Scan Volunteer Badge</h2>
-                            <div class="scanner-status-container">
-                                <div class="sync-status-compact offline" id="syncStatus" title="☁️ Sync Status: Not connected to Google Sheets">
-                                    <span class="sync-status-indicator offline"></span>
-                                    <span class="sync-status-text">Sync</span>
-                                </div>
-                                <button class="status-details-btn" id="statusDetailsBtn" title="📋 Details: Click for system status details">
-                                    <span class="status-icon">ℹ️</span>
-                                </button>
+                        <div class="card-header">
+                            <h2>📱 Scan Badge</h2>
+                            <div class="sync-status" id="syncStatus">
+                                <span class="status-dot"></span>
+                                <span class="status-text">Offline</span>
                             </div>
                         </div>
-                        <div class="scanner-input-container">
-                            <div class="input-wrapper">
-                                <input 
-                                    type="text" 
-                                    id="scannerInput" 
-                                    placeholder="Scan badge or enter volunteer ID..."
-                                    class="scanner-input"
-                                    autocomplete="off"
-                                    inputmode="text"
-                                    enterkeyhint="done"
-                                >
-                                <button class="clear-input-btn" id="clearInputBtn" type="button" aria-label="Clear input">
-                                    ✕
-                                </button>
-                                <button class="force-enable-btn" id="forceEnableBtn" type="button" aria-label="Force enable scanner" title="Force enable scanner if stuck">
-                                    🔧
-                                </button>
-                            </div>
-                            <div class="scan-feedback" id="scanFeedback" role="status" aria-live="polite"></div>
+                        <div class="scanner-input">
+                            <input type="text" id="scannerInput" placeholder="Scan badge or enter ID..." autocomplete="off">
+                            <button class="clear-btn" id="clearBtn">✕</button>
                         </div>
+                        <div class="scan-feedback" id="scanFeedback"></div>
                         <div class="scanner-stats">
                             <div class="stat">
-                                <span class="stat-icon">📊</span>
-                                <div class="stat-content">
-                                    <span class="stat-label">Today's Scans</span>
-                                    <span class="stat-value" id="todayScans">0</span>
-                                </div>
+                                <span class="stat-value" id="todayScans">0</span>
+                                <span class="stat-label">Today's Scans</span>
                             </div>
                             <div class="stat">
-                                <span class="stat-icon">📅</span>
-                                <div class="stat-content">
-                                    <span class="stat-label">Current Event</span>
-                                    <span class="stat-value" id="currentEvent">Loading...</span>
-                                </div>
+                                <span class="stat-value" id="currentEvent">No Event</span>
+                                <span class="stat-label">Current Event</span>
                             </div>
-                        </div>
-                        <div class="scanner-actions">
-                            <button class="btn btn-secondary scanner-test-btn" id="scannerTestBtn">
-                                🔧 Test Scanner
-                            </button>
                         </div>
                     </div>
 
-                    <!-- Recent Attendance -->
-                    <div class="card attendance-card">
+                    <!-- Recent Activity -->
+                    <div class="card activity-card">
                         <div class="card-header">
                             <h2>👥 Recent Check-ins</h2>
-                            <div class="card-actions">
-                                <button class="btn btn-small btn-secondary" id="refreshAttendanceBtn">
-                                    🔄 Refresh
-                                </button>
-                                <button class="btn btn-small btn-secondary" id="viewAllAttendanceBtn">
-                                    📋 View All
-                                </button>
-                            </div>
+                            <button class="btn-small" id="refreshBtn">🔄</button>
                         </div>
-                        <div class="attendance-list" id="recentAttendance">
-                            <div class="attendance-item placeholder">
-                                <div class="volunteer-info">
-                                    <span class="volunteer-name">No check-ins yet today</span>
-                                    <span class="volunteer-committee">Start scanning to see recent activity</span>
-                                </div>
-                                <span class="check-in-time">--:--</span>
+                        <div class="activity-list" id="activityList">
+                            <div class="empty-state">
+                                <span class="empty-icon">📋</span>
+                                <p>No check-ins yet today</p>
                             </div>
-                        </div>
-                        <div class="attendance-footer">
-                            <span class="attendance-count">Showing last <span id="attendanceCount">0</span> check-ins</span>
                         </div>
                     </div>
 
-                    <!-- Event Summary -->
-                    <div class="card summary-card">
+                    <!-- Summary Stats -->
+                    <div class="card stats-card">
                         <div class="card-header">
-                            <h2>📈 Event Summary</h2>
-                            <div class="summary-time" id="summaryTime">
-                                Updated: <span id="lastUpdateTime">Never</span>
-                            </div>
+                            <h2>📈 Summary</h2>
                         </div>
-                        <div class="summary-stats">
-                            <div class="summary-stat">
-                                <div class="summary-icon">✅</div>
-                                <span class="summary-number" id="totalCheckedIn">0</span>
-                                <span class="summary-label">Checked In</span>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-number" id="checkedIn">0</span>
+                                <span class="stat-text">Checked In</span>
                             </div>
-                            <div class="summary-stat">
-                                <div class="summary-icon">👤</div>
-                                <span class="summary-number" id="totalVolunteers">0</span>
-                                <span class="summary-label">Total Volunteers</span>
+                            <div class="stat-item">
+                                <span class="stat-number" id="totalVolunteers">0</span>
+                                <span class="stat-text">Total Volunteers</span>
                             </div>
-                            <div class="summary-stat">
-                                <div class="summary-icon">📊</div>
-                                <span class="summary-number" id="attendanceRate">0%</span>
-                                <span class="summary-label">Attendance Rate</span>
+                            <div class="stat-item">
+                                <span class="stat-number" id="attendanceRate">0%</span>
+                                <span class="stat-text">Attendance Rate</span>
                             </div>
-                        </div>
-                        <div class="summary-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="attendanceProgress" style="width: 0%"></div>
-                            </div>
-                            <span class="progress-text">Event Progress</span>
                         </div>
                     </div>
-
-
                 </div>
-            </div>
+            </section>
 
             <!-- Volunteers View -->
-            <div class="view" id="volunteersView">
+            <section class="view" id="volunteers-view">
                 <div class="view-header">
-                    <h2>Volunteer Directory</h2>
-                    <div class="view-controls">
+                    <h2>Volunteers</h2>
+                    <div class="view-actions">
                         <input type="text" id="volunteerSearch" placeholder="Search volunteers..." class="search-input">
                         <button class="btn btn-primary" id="addVolunteerBtn">Add Volunteer</button>
-                        <button class="btn btn-secondary" id="importVolunteersBtn">Import CSV</button>
                     </div>
                 </div>
-                <div class="volunteers-grid" id="volunteersGrid">
-                    <p>Loading volunteers...</p>
+                <div class="content-grid" id="volunteersGrid">
+                    <div class="loading">Loading volunteers...</div>
                 </div>
-            </div>
+            </section>
 
             <!-- Events View -->
-            <div class="view" id="eventsView">
+            <section class="view" id="events-view">
                 <div class="view-header">
-                    <h2>Event Management</h2>
-                    <div class="view-controls">
-                        <button class="btn btn-secondary" id="createSundayEventsBtn">Create Regular Class Events</button>
+                    <h2>Events</h2>
+                    <div class="view-actions">
+                        <button class="btn btn-secondary" id="createEventsBtn">Create Sunday Events</button>
                         <button class="btn btn-primary" id="addEventBtn">Add Event</button>
                     </div>
                 </div>
-                <div class="events-list" id="eventsList">
-                    <p>Loading events...</p>
+                <div class="content-list" id="eventsList">
+                    <div class="loading">Loading events...</div>
                 </div>
-            </div>
+            </section>
 
             <!-- Reports View -->
-            <div class="view" id="reportsView">
+            <section class="view" id="reports-view">
                 <div class="view-header">
-                    <h2>📊 Attendance Reports</h2>
-                    <div class="view-controls">
-                        <select id="reportPeriod" class="select-input" aria-label="Report period">
+                    <h2>Reports</h2>
+                    <div class="view-actions">
+                        <select id="reportPeriod" class="select-input">
                             <option value="week">This Week</option>
                             <option value="month">This Month</option>
                             <option value="quarter">This Quarter</option>
-                            <option value="year">This Year</option>
-                            <option value="custom">Custom Range</option>
                         </select>
-                        <button class="btn btn-secondary" id="exportReportBtn">📤 Export CSV</button>
-                        <button class="btn btn-secondary" id="printReportBtn">🖨️ Print</button>
+                        <button class="btn btn-secondary" id="exportBtn">Export CSV</button>
                     </div>
                 </div>
                 <div class="reports-content" id="reportsContent">
-                    <div class="reports-placeholder">
-                        <div class="placeholder-icon">📊</div>
-                        <p>Select a time period to view attendance reports</p>
+                    <div class="empty-state">
+                        <span class="empty-icon">📊</span>
+                        <p>Select a period to view reports</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Settings View -->
-            <div class="view" id="settingsView">
-                <div class="view-header">
-                    <h2>⚙️ Settings</h2>
-                </div>
-                <div class="settings-content">
-                    <div class="settings-section">
-                        <div class="card">
-                            <h3>Scanner Configuration</h3>
-                            <div class="setting-group">
-                                <label for="scannerType">Scanner Type</label>
-                                <select id="scannerType" class="select-input">
-                                    <option value="keyboard">Keyboard Wedge</option>
-                                    <option value="usb">USB Scanner</option>
-                                    <option value="bluetooth">Bluetooth Scanner</option>
-                                </select>
-                            </div>
-                            <div class="setting-group">
-                                <label for="scanPrefix">Scan Prefix (optional)</label>
-                                <input type="text" id="scanPrefix" class="setting-input" placeholder="e.g., V">
-                            </div>
-                            <div class="setting-group">
-                                <label for="scanSuffix">Scan Suffix (optional)</label>
-                                <input type="text" id="scanSuffix" class="setting-input" placeholder="e.g., #">
-                            </div>
-                            <button class="btn btn-secondary" id="testScannerBtn">🔧 Test Scanner</button>
-                        </div>
-                    </div>
-
-                    <div class="settings-section">
-                        <div class="card">
-                            <h3>Data Sync</h3>
-                            <div class="setting-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="autoSync" checked>
-                                    <span class="checkmark"></span>
-                                    Auto-sync to Google Sheets
-                                </label>
-                            </div>
-                            <div class="setting-group">
-                                <label for="syncInterval">Sync Interval (seconds)</label>
-                                <input type="number" id="syncInterval" class="setting-input" value="60" min="30" max="300">
-                            </div>
-                            <div class="setting-group">
-                                <button class="btn btn-primary" id="configureSheetsBtn">📊 Configure Google Sheets</button>
-                                <button class="btn btn-secondary" id="forceSyncBtn">🔄 Force Sync Now</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-section">
-                        <div class="card">
-                            <h3>Display Options</h3>
-                            <div class="setting-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="showCommittees" checked>
-                                    <span class="checkmark"></span>
-                                    Show committee information
-                                </label>
-                            </div>
-                            <div class="setting-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="playSound" checked>
-                                    <span class="checkmark"></span>
-                                    Play sound on successful scan
-                                </label>
-                            </div>
-                            <div class="setting-group">
-                                <label for="recentCount">Recent check-ins to show</label>
-                                <input type="number" id="recentCount" class="setting-input" value="10" min="5" max="50">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-section">
-                        <div class="card">
-                            <h3>Data Management</h3>
-                            <div class="setting-group">
-                                <button class="btn btn-secondary" id="exportAllDataBtn">📤 Export All Data</button>
-                                <button class="btn btn-secondary" id="importDataBtn">📥 Import Data</button>
-                            </div>
-                            <div class="setting-group">
-                                <button class="btn btn-warning" id="clearLocalDataBtn">🗑️ Clear Local Data</button>
-                                <small class="setting-help">This will remove all locally stored data. Make sure to sync first!</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-section">
-                        <div class="card">
-                            <h3>🔧 Troubleshooting</h3>
-                            
-                            <!-- Scanner Issues -->
-                            <div class="troubleshooting-item">
-                                <h4>📱 Scanner Input Disabled</h4>
-                                <p><strong>Problem:</strong> Scanner shows "System initializing..." or "Checking events and scanning status..."</p>
-                                <div class="troubleshooting-solutions">
-                                    <p><strong>Solutions:</strong></p>
-                                    <div class="solution-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="forceEnableScanner()">🚀 Force Enable Scanner</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.open('debug-scanner-initialization.html', '_blank')">🔍 Debug Scanner</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.open('smart-initialization-status.html', '_blank')">📊 Check Status</button>
-                                    </div>
-                                    <div class="manual-solution">
-                                        <p><strong>Manual Fix:</strong> Press <kbd>Ctrl+Shift+S</kbd> or open browser console (F12) and run:</p>
-                                        <code class="code-block">
-document.getElementById('scannerInput').disabled = false;<br>
-document.getElementById('scannerInput').placeholder = 'Scan badge or enter volunteer ID...';<br>
-document.getElementById('scannerInput').focus();
-                                        </code>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Google Sheets Issues -->
-                            <div class="troubleshooting-item">
-                                <h4>📊 Google Sheets Sync Issues</h4>
-                                <p><strong>Problem:</strong> Constant authentication popups or sync failures</p>
-                                <div class="troubleshooting-solutions">
-                                    <p><strong>Solutions:</strong></p>
-                                    <div class="solution-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="window.open('google-sheets-environment-setup.html', '_blank')">⚙️ Configure Sheets</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.open('test-google-auth-persistence.html', '_blank')">🔐 Test Auth</button>
-                                        <button class="btn btn-sm btn-warning" onclick="disableGoogleSync()">🛑 Disable Sync</button>
-                                    </div>
-                                    <div class="manual-solution">
-                                        <p><strong>Quick Fix:</strong> Disable sync temporarily in console:</p>
-                                        <code class="code-block">
-window.Config.features.googleSheetsSync = false;<br>
-localStorage.removeItem('googleSheetsToken');
-                                        </code>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Performance Issues -->
-                            <div class="troubleshooting-item">
-                                <h4>⚡ Performance Issues</h4>
-                                <p><strong>Problem:</strong> Slow loading, excessive database transactions, or console spam</p>
-                                <div class="troubleshooting-solutions">
-                                    <p><strong>Solutions:</strong></p>
-                                    <div class="solution-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="window.open('debug-transaction-load.html', '_blank')">📊 Monitor Transactions</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="clearAppCache()">🧹 Clear Cache</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.location.reload()">🔄 Refresh App</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Event Issues -->
-                            <div class="troubleshooting-item">
-                                <h4>📅 Event Issues</h4>
-                                <p><strong>Problem:</strong> Wrong event dates, Saturday events instead of Sunday, or missing events</p>
-                                <div class="troubleshooting-solutions">
-                                    <p><strong>Solutions:</strong></p>
-                                    <div class="solution-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="window.open('one-click-fix.html', '_blank')">🔧 Fix Sunday Events</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.open('verify-sunday-events.html', '_blank')">✅ Verify Events</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="createTestEvent()">➕ Create Test Event</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- General Diagnostics -->
-                            <div class="troubleshooting-item">
-                                <h4>🔍 General Diagnostics</h4>
-                                <p><strong>System Health Check and Comprehensive Diagnostics</strong></p>
-                                <div class="troubleshooting-solutions">
-                                    <div class="solution-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="runSystemDiagnostics()">🏥 System Health Check</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="window.open('immediate-fix.html', '_blank')">🚨 Emergency Fixes</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="showSystemInfo()">ℹ️ System Info</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Emergency Contacts -->
-                            <div class="troubleshooting-item">
-                                <h4>📞 Need More Help?</h4>
-                                <p>If these solutions don't work, try these resources:</p>
-                                <ul class="help-list">
-                                    <li>📋 Check the <strong>TESTING_GUIDE.md</strong> for detailed troubleshooting</li>
-                                    <li>🔍 Use browser developer tools (F12) to check for console errors</li>
-                                    <li>🔄 Try refreshing the page or clearing browser cache</li>
-                                    <li>📱 Test on a different browser or device</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </main>
 
-        <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay">
-            <div class="loading-spinner"></div>
-            <p>Loading...</p>
-        </div>
-
-        <!-- Modal Container -->
+        <!-- Modal -->
         <div class="modal-overlay" id="modalOverlay">
             <div class="modal" id="modal">
                 <div class="modal-header">
-                    <h3 id="modalTitle">Modal Title</h3>
-                    <button class="modal-close" id="modalClose">&times;</button>
+                    <h3 id="modalTitle">Modal</h3>
+                    <button class="modal-close" id="modalClose">×</button>
                 </div>
-                <div class="modal-body" id="modalBody">
-                    Modal content goes here
-                </div>
+                <div class="modal-body" id="modalBody"></div>
                 <div class="modal-footer" id="modalFooter">
                     <button class="btn btn-secondary" id="modalCancel">Cancel</button>
                     <button class="btn btn-primary" id="modalConfirm">Confirm</button>
                 </div>
             </div>
         </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
     </div>
 
-    <!-- Google APIs -->
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
-    
     <!-- Scripts -->
-    <script src="js/server-credential-manager.js"></script>
-    <script src="js/secure-storage.js"></script>
-    <script src="js/credential-manager.js"></script>
-    <script src="js/api-integration.js"></script>
-    <script src="js/credential-integration-fix.js"></script>
-    <script src="js/environment-manager.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/google-sheets.js"></script>
-    <script src="js/sync-manager.js"></script>
-    <script src="js/connectivity-validator.js"></script>
-    <script src="js/scanner.js"></script>
-    <script src="js/mobile-status-enhancement.js"></script>
-    <script src="js/unified-status-manager.js"></script>
-    <script src="js/status-unification-fix.js"></script>
-
-    <script src="js/app.js"></script>
-    <!-- Fix for app initialization issues -->
-    <script src="fix-app-initialization.js"></script>
-    <script src="create-sunday-events.js"></script>
-    <!-- Comprehensive fix for all functionality -->
-    <script src="comprehensive-fix.js"></script>
-    <!-- Fix for events display issue -->
-    <script src="fix-events-display-main.js"></script>
-    <!-- Fix for scanner connectivity issue -->
-    <script src="force-enable-scanner-fix.js"></script>
-    <!-- Fix for volunteers loading issue -->
-    <script src="fix-volunteers-loading.js"></script>
-    <!-- Add fix button to volunteers view -->
-    <script src="add-volunteers-fix-button.js"></script>
-    <!-- Disable frequent event syncing -->
-    <script src="disable-frequent-event-sync.js"></script>
-    <!-- Optimize volunteer syncing -->
-    <script src="optimize-volunteer-sync.js"></script>
+    <script src="js/local-env.js"></script>
+    <script src="js/core/config.js"></script>
+    <script src="js/core/validation-utils.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/credential-manager.js"></script>
+    <script src="js/core/status-manager.js"></script>
+    <script src="js/core/ui-utils.js"></script>
+    <script src="js/core/config-manager.js"></script>
+    <script src="js/core/environment-config.js"></script>
+    <script src="js/core/environment.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/storage.js"></script>
+    <script src="js/components/header.js"></script>
+    <script src="js/components/navigation.js"></script>
+    <script src="js/components/layout.js"></script>
+    <script src="js/components/ui.js"></script>
+    <script src="js/components/sync-status.js"></script>
+    <script src="js/components/settings-validator.js"></script>
+    <script src="js/components/scanner.js"></script>
+    <script src="js/components/volunteers.js"></script>
+    <script src="js/components/events.js"></script>
+    <script src="js/components/reports.js"></script>
+    <script src="js/services/errors.js"></script>
+    <script src="js/services/auth.js"></script>
+    <script src="js/services/sheets.js"></script>
+    <script src="js/services/transformer.js"></script>
+    <script src="js/services/queue.js"></script>
+    <script src="js/services/conflicts.js"></script>
+    <script src="js/services/progress-tracker.js"></script>
+    <script src="js/services/sync-progress-integration.js"></script>
+    <script src="js/services/sync-logger.js"></script>
+    <script src="js/services/sync-logging-integration.js"></script>
+    <script src="js/services/delta-sync.js"></script>
+    <script src="js/services/performance-monitor.js"></script>
+    <script src="js/services/sync-performance-optimizer.js"></script>
+    <script src="js/services/sync-performance-integration.js"></script>
+    <script src="js/services/sync.js"></script>
+    <script src="js/core/app.js"></script>
 </body>
 </html>

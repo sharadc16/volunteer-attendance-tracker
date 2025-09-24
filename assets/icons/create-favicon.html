@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Favicon Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .preview { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .output { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        code { background: #e5e5e5; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>Gurukul Favicon Generator</h1>
+    
+    <div class="preview">
+        <canvas id="favicon" width="32" height="32"></canvas>
+        <span>32x32 favicon preview</span>
+    </div>
+    
+    <div class="preview">
+        <canvas id="favicon16" width="16" height="16"></canvas>
+        <span>16x16 favicon preview</span>
+    </div>
+    
+    <button onclick="generateFavicon()">Generate Favicon</button>
+    <button onclick="downloadFavicon()">Download ICO</button>
+    
+    <div class="output">
+        <h3>Base64 Data URL (for HTML):</h3>
+        <code id="dataUrl">Click "Generate Favicon" to create</code>
+    </div>
+    
+    <div class="output">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>Click "Generate Favicon" to create the favicon</li>
+            <li>Copy the Base64 data URL</li>
+            <li>Replace the favicon link in your HTML</li>
+            <li>Or click "Download ICO" to get a .ico file</li>
+        </ol>
+    </div>
+
+    <script>
+        function drawFavicon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const scale = size / 32;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Background circle
+            ctx.fillStyle = '#2563eb';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, (size/2) - 1, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Border
+            ctx.strokeStyle = '#1d4ed8';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Draw "G" letter
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${Math.floor(size * 0.6)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('G', size/2, size/2);
+            
+            // Small accent dot
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(size * 0.75, size * 0.25, size * 0.08, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        function generateFavicon() {
+            // Draw 32x32 version
+            const canvas32 = document.getElementById('favicon');
+            drawFavicon(canvas32, 32);
+            
+            // Draw 16x16 version
+            const canvas16 = document.getElementById('favicon16');
+            drawFavicon(canvas16, 16);
+            
+            // Generate data URL
+            const dataUrl = canvas16.toDataURL('image/png');
+            document.getElementById('dataUrl').textContent = dataUrl;
+            
+            console.log('Favicon generated!');
+        }
+        
+        function downloadFavicon() {
+            const canvas = document.getElementById('favicon16');
+            const link = document.createElement('a');
+            link.download = 'favicon.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Generate favicon on page load
+        window.onload = generateFavicon;
+    </script>
+</body>
+</html>
