@@ -21,6 +21,9 @@ class CredentialManager {
     this.loadAttempted = true;
 
     try {
+      // Small delay to ensure all scripts are loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // 1. Load from environment (including local-env.js and Netlify)
       const envCredentials = await this.loadEnvironmentCredentials();
       console.log('Environment credentials loaded:', this.maskCredentials(envCredentials));
@@ -59,9 +62,18 @@ class CredentialManager {
     const variableNames = this.getVariableNames();
 
     // Check if we're on Netlify and try Functions API first (most reliable)
+    console.log('🔍 Checking Netlify environment:', {
+      hostname: window.location.hostname,
+      isNetlify: window.location.hostname.includes('netlify.app'),
+      hasLoader: !!window.NetlifyCredentialsLoader
+    });
+    
     if (window.location.hostname.includes('netlify.app') && window.NetlifyCredentialsLoader) {
       try {
+        console.log('🌐 Attempting to load from Netlify Functions API...');
         const netlifyCredentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+        console.log('🌐 Netlify API response:', Object.keys(netlifyCredentials));
+        
         if (Object.keys(netlifyCredentials).length > 0) {
           Object.assign(credentials, netlifyCredentials);
           console.log('🌐 Loaded credentials from Netlify Functions API (primary method)');
@@ -70,6 +82,8 @@ class CredentialManager {
       } catch (error) {
         console.warn('⚠️ Failed to load from Netlify Functions API:', error);
       }
+    } else {
+      console.log('🏠 Not on Netlify or loader not available, using fallback method');
     }
 
     // Fallback: Check window globals (from local-env.js and netlify-env.js)
