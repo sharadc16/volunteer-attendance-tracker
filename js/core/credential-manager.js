@@ -58,27 +58,30 @@ class CredentialManager {
     const credentials = {};
     const variableNames = this.getVariableNames();
 
-    // Check window globals (from local-env.js and netlify-env.js)
+    // Check if we're on Netlify and try Functions API first (most reliable)
+    if (window.location.hostname.includes('netlify.app') && window.NetlifyCredentialsLoader) {
+      try {
+        const netlifyCredentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+        if (Object.keys(netlifyCredentials).length > 0) {
+          Object.assign(credentials, netlifyCredentials);
+          console.log('🌐 Loaded credentials from Netlify Functions API (primary method)');
+          return credentials;
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load from Netlify Functions API:', error);
+      }
+    }
+
+    // Fallback: Check window globals (from local-env.js and netlify-env.js)
     Object.keys(variableNames).forEach(credType => {
       for (const varName of variableNames[credType]) {
-        if (window[varName]) {
+        if (window[varName] && !credentials[credType]) {
           credentials[credType] = window[varName];
           console.log(`✅ Found ${varName} in window globals`);
           break;
         }
       }
     });
-
-    // If no credentials found and we're on Netlify, try the Functions API
-    if (Object.keys(credentials).length === 0 && window.NetlifyCredentialsLoader) {
-      try {
-        const netlifyCredentials = await window.NetlifyCredentialsLoader.loadFromAPI();
-        Object.assign(credentials, netlifyCredentials);
-        console.log('🌐 Loaded credentials from Netlify Functions API');
-      } catch (error) {
-        console.warn('⚠️ Failed to load from Netlify Functions API:', error);
-      }
-    }
 
     return credentials;
   }

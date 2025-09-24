@@ -75,7 +75,7 @@ let indexContent = fs.readFileSync(indexPath, 'utf8');
 // Remove existing netlify-env.js script if present
 indexContent = indexContent.replace(/<script src="js\/netlify-env\.js"><\/script>\s*/g, '');
 
-// Add netlify-env.js script before local-env.js
+// Add netlify-env.js script before local-env.js (higher priority)
 if (indexContent.includes('<script src="js/local-env.js"></script>')) {
   indexContent = indexContent.replace(
     '<script src="js/local-env.js"></script>',
@@ -86,6 +86,37 @@ if (indexContent.includes('<script src="js/local-env.js"></script>')) {
   console.log('✅ Updated index.html to include netlify-env.js');
 } else {
   console.log('⚠️  Could not find local-env.js script tag in index.html');
+}
+
+// Also create a backup method - update local-env.js to check for Netlify env first
+const localEnvPath = path.join(__dirname, 'js', 'local-env.js');
+let localEnvContent = fs.readFileSync(localEnvPath, 'utf8');
+
+// Add Netlify environment check at the top
+const netlifyCheck = `
+// Check for Netlify environment variables first (higher priority)
+if (typeof process !== 'undefined' && process.env) {
+  if (process.env.GOOGLE_SHEETS_API_KEY) {
+    window.GOOGLE_SHEETS_API_KEY = process.env.GOOGLE_SHEETS_API_KEY;
+    console.log('🌐 Using GOOGLE_SHEETS_API_KEY from Netlify environment');
+  }
+  if (process.env.GOOGLE_OAUTH_CLIENT_ID) {
+    window.GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    console.log('🌐 Using GOOGLE_OAUTH_CLIENT_ID from Netlify environment');
+  }
+  if (process.env.VOLUNTEER_SPREADSHEET_ID) {
+    window.VOLUNTEER_SPREADSHEET_ID = process.env.VOLUNTEER_SPREADSHEET_ID;
+    console.log('🌐 Using VOLUNTEER_SPREADSHEET_ID from Netlify environment');
+  }
+}
+
+`;
+
+// Only add if not already present
+if (!localEnvContent.includes('Check for Netlify environment variables first')) {
+  localEnvContent = netlifyCheck + localEnvContent;
+  fs.writeFileSync(localEnvPath, localEnvContent);
+  console.log('✅ Updated local-env.js with Netlify environment check');
 }
 
 console.log('🚀 Netlify environment injection complete!');
