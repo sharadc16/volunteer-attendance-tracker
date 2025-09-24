@@ -39,6 +39,8 @@ class NetlifyCredentialsLoader {
 
       const data = await response.json();
       
+      console.log('🔍 Raw API response:', data);
+      
       // Transform API response to expected format
       const credentials = {
         apiKey: data.google_sheets_api_key,
@@ -46,10 +48,14 @@ class NetlifyCredentialsLoader {
         spreadsheetId: data.volunteer_spreadsheet_id
       };
 
+      console.log('🔍 Transformed credentials:', credentials);
+
       // Filter out undefined values
       const filteredCredentials = Object.fromEntries(
         Object.entries(credentials).filter(([key, value]) => value !== undefined)
       );
+
+      console.log('🔍 Filtered credentials:', filteredCredentials);
 
       this.cache = filteredCredentials;
       this.lastFetch = now;

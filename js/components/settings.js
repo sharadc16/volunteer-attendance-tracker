@@ -230,11 +230,12 @@ class SettingsPage {
                     <label for="spreadsheetInput">Spreadsheet Setup:</label>
                     <div class="input-with-button">
                       <input type="text" id="spreadsheetInput" 
+                             value="${credentials.spreadsheetId || ''}"
                              placeholder="Enter Spreadsheet ID or URL" 
                              style="font-family: monospace;">
                       <button type="button" class="btn btn-small btn-primary" onclick="settingsPage.setupSpreadsheet()">Setup</button>
                     </div>
-                    <small class="help-text">Enter a Google Spreadsheet ID/URL, or leave blank to create a new one</small>
+                    <small class="help-text">Enter a Google Spreadsheet ID/URL, or leave blank to create a new one${credentials.spreadsheetId ? ' (showing environment variable)' : ''}</small>
                   </div>
                   
                   <div class="setting-item">
