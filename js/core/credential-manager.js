@@ -21,8 +21,8 @@ class CredentialManager {
     this.loadAttempted = true;
 
     try {
-      // 1. Load from environment (including local-env.js)
-      const envCredentials = this.loadEnvironmentCredentials();
+      // 1. Load from environment (including local-env.js and Netlify)
+      const envCredentials = await this.loadEnvironmentCredentials();
       console.log('Environment credentials loaded:', this.maskCredentials(envCredentials));
 
       // 2. Load from secure storage (user overrides)
@@ -54,19 +54,31 @@ class CredentialManager {
   /**
    * Load credentials from environment sources
    */
-  loadEnvironmentCredentials() {
+  async loadEnvironmentCredentials() {
     const credentials = {};
     const variableNames = this.getVariableNames();
 
-    // Check window globals (from local-env.js)
+    // Check window globals (from local-env.js and netlify-env.js)
     Object.keys(variableNames).forEach(credType => {
       for (const varName of variableNames[credType]) {
         if (window[varName]) {
           credentials[credType] = window[varName];
+          console.log(`✅ Found ${varName} in window globals`);
           break;
         }
       }
     });
+
+    // If no credentials found and we're on Netlify, try the Functions API
+    if (Object.keys(credentials).length === 0 && window.NetlifyCredentialsLoader) {
+      try {
+        const netlifyCredentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+        Object.assign(credentials, netlifyCredentials);
+        console.log('🌐 Loaded credentials from Netlify Functions API');
+      } catch (error) {
+        console.warn('⚠️ Failed to load from Netlify Functions API:', error);
+      }
+    }
 
     return credentials;
   }

@@ -23,7 +23,8 @@ export default async function handler(req, res) {
     // Verify request origin (optional security)
     const origin = req.headers['x-app-origin'] || req.headers['origin'];
     const allowedOrigins = [
-      'https://yourusername.github.io',
+      'https://gurukul-attendance.netlify.app',
+      'https://sharadc16.github.io',
       'http://localhost:8080',
       'http://127.0.0.1:8080'
     ];

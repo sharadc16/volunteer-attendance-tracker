@@ -25,18 +25,24 @@ A high-performance web application for tracking volunteer attendance at events w
 
 ## 🌐 Live Environments
 
-### Production
-**URL**: https://sharadc16.github.io/volunteer-attendance-tracker/
+### Production (Netlify)
+**URL**: https://gurukul-attendance.netlify.app
 - Optimized version for daily use
-- Full volunteer database
+- Environment variables configured in Netlify
 - Production sync intervals
 - High-performance sync engine
 
-### Development  
-**URL**: https://sharadc16.github.io/volunteer-attendance-tracker/dev/
+### Development (Netlify)
+**URL**: https://dev-[commit]--gurukul-attendance.netlify.app
 - Latest features and testing
 - Debug features enabled
 - "DEV" badge visible
+- Temporary URLs per deployment
+
+### Backup (GitHub Pages)
+**URL**: https://sharadc16.github.io/volunteer-attendance-tracker/
+- Backup deployment
+- Manual credential configuration required
 
 ## 🚀 Quick Start
 
@@ -48,6 +54,13 @@ A high-performance web application for tracking volunteer attendance at events w
 
 2. **Set up Google Sheets API**
    - Follow the [Google Sheets Setup Guide](GOOGLE_SHEETS_SETUP_GUIDE.md)
+
+3. **Configure Environment Variables (for Netlify deployment)**
+   - Set up environment variables in Netlify dashboard:
+     - `GOOGLE_OAUTH_CLIENT_ID` - Your Google OAuth Client ID
+     - `GOOGLE_SHEETS_API_KEY` - Your Google Sheets API Key  
+     - `VOLUNTEER_SPREADSHEET_ID` - Your spreadsheet ID (optional)
+   - See [Netlify Environment Setup Guide](NETLIFY_ENV_SETUP.md) for detailed instructions
    - Get your API key and Client ID
    - Configure the credentials in the app
 

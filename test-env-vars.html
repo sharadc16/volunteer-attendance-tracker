@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Variables Test - Gurukul Attendance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .credential-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .masked-value {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .test-results {
+            margin-top: 20px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Environment Variables Test</h1>
+        <p>This page tests the loading of Netlify environment variables for the Gurukul Attendance Tracker.</p>
+        
+        <div class="status info">
+            <strong>Expected Variables:</strong>
+            <ul>
+                <li><code>GOOGLE_OAUTH_CLIENT_ID</code> - Google OAuth Client ID</li>
+                <li><code>GOOGLE_SHEETS_API_KEY</code> - Google Sheets API Key</li>
+                <li><code>VOLUNTEER_SPREADSHEET_ID</code> - Volunteer Spreadsheet ID (optional)</li>
+            </ul>
+        </div>
+
+        <button onclick="runTests()">🔍 Run Environment Tests</button>
+        <button onclick="testNetlifyAPI()">🌐 Test Netlify Functions API</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+
+        <div id="testResults" class="test-results"></div>
+    </div>
+
+    <!-- Load the same scripts as main app -->
+    <script src="js/local-env.js"></script>
+    <script src="js/core/netlify-credentials.js"></script>
+    <script src="js/core/environment-config.js"></script>
+    <script src="js/core/credential-manager.js"></script>
+    <script src="js/core/environment.js"></script>
+
+    <script>
+        let testResults = document.getElementById('testResults');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            testResults.appendChild(div);
+            console.log(message);
+        }
+
+        function logCredential(name, value, source) {
+            const div = document.createElement('div');
+            div.className = 'credential-item';
+            
+            let maskedValue = 'Not found';
+            let status = 'error';
+            
+            if (value) {
+                if (name.includes('KEY') && value.length > 8) {
+                    maskedValue = value.substring(0, 8) + '...';
+                } else if (value.length > 20) {
+                    maskedValue = value.substring(0, 20) + '...';
+                } else {
+                    maskedValue = value;
+                }
+                status = 'success';
+            }
+            
+            div.innerHTML = `
+                <strong>${name}</strong> (${source})<br>
+                <span class="masked-value ${status}">${maskedValue}</span>
+            `;
+            testResults.appendChild(div);
+        }
+
+        async function runTests() {
+            clearResults();
+            log('🔧 Starting environment variable tests...', 'info');
+
+            // Test 1: Check window globals (from build-time injection)
+            log('<h3>📊 Test 1: Window Globals (Build-time Injection)</h3>', 'info');
+            
+            const expectedVars = ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_SHEETS_API_KEY', 'VOLUNTEER_SPREADSHEET_ID'];
+            let foundCount = 0;
+            
+            expectedVars.forEach(varName => {
+                const value = window[varName];
+                if (value) foundCount++;
+                logCredential(varName, value, 'window.' + varName);
+            });
+
+            if (foundCount > 0) {
+                log(`✅ Found ${foundCount}/${expectedVars.length} variables in window globals`, 'success');
+            } else {
+                log('⚠️ No variables found in window globals - may need build-time injection', 'warning');
+            }
+
+            // Test 2: Check environment injection markers
+            log('<h3>🏷️ Test 2: Environment Injection Markers</h3>', 'info');
+            
+            if (window.ENV_NETLIFY) {
+                log('✅ Netlify environment injection detected', 'success');
+                log(`📅 Injection time: ${window.ENV_INJECTION_TIME}`, 'info');
+            } else if (window.ENV_LOCAL) {
+                log('🏠 Local environment detected (test credentials)', 'warning');
+            } else {
+                log('❌ No environment injection markers found', 'error');
+            }
+
+            // Test 3: Test CredentialManager
+            log('<h3>🔐 Test 3: Credential Manager</h3>', 'info');
+            
+            try {
+                const credentials = await window.CredentialManager.loadCredentials();
+                log('✅ CredentialManager loaded successfully', 'success');
+                
+                logCredential('API Key', credentials.apiKey, 'CredentialManager');
+                logCredential('Client ID', credentials.clientId, 'CredentialManager');
+                logCredential('Spreadsheet ID', credentials.spreadsheetId, 'CredentialManager');
+                
+                const validation = window.CredentialManager.validateCredentials(credentials);
+                if (validation.isValid) {
+                    log('✅ Credentials validation passed', 'success');
+                } else {
+                    log(`❌ Credentials validation failed: ${validation.errors.join(', ')}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ CredentialManager failed: ${error.message}`, 'error');
+            }
+
+            // Test 4: Check deployment environment
+            log('<h3>🌐 Test 4: Deployment Environment</h3>', 'info');
+            
+            const hostname = window.location.hostname;
+            if (hostname.includes('netlify.app')) {
+                log('✅ Running on Netlify deployment', 'success');
+            } else if (hostname.includes('github.io')) {
+                log('📄 Running on GitHub Pages', 'info');
+            } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                log('🏠 Running locally', 'info');
+            } else {
+                log(`🌍 Running on: ${hostname}`, 'info');
+            }
+
+            log('🏁 Environment tests completed!', 'success');
+        }
+
+        async function testNetlifyAPI() {
+            log('<h3>🌐 Testing Netlify Functions API</h3>', 'info');
+            
+            if (!window.NetlifyCredentialsLoader) {
+                log('❌ NetlifyCredentialsLoader not available', 'error');
+                return;
+            }
+
+            try {
+                // Test if API is available
+                const isAvailable = await window.NetlifyCredentialsLoader.isAvailable();
+                if (isAvailable) {
+                    log('✅ Netlify Functions API is available', 'success');
+                } else {
+                    log('⚠️ Netlify Functions API not available (may be expected on non-Netlify deployments)', 'warning');
+                    return;
+                }
+
+                // Load credentials from API
+                const credentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+                
+                if (Object.keys(credentials).length > 0) {
+                    log('✅ Successfully loaded credentials from Netlify Functions', 'success');
+                    
+                    logCredential('API Key', credentials.apiKey, 'Netlify Functions');
+                    logCredential('Client ID', credentials.clientId, 'Netlify Functions');
+                    logCredential('Spreadsheet ID', credentials.spreadsheetId, 'Netlify Functions');
+                } else {
+                    log('⚠️ No credentials returned from Netlify Functions', 'warning');
+                }
+                
+            } catch (error) {
+                log(`❌ Netlify Functions test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearResults() {
+            testResults.innerHTML = '';
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 1000);
+        });
+    </script>
+</body>
+</html>

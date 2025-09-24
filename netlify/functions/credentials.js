@@ -34,7 +34,8 @@ exports.handler = async (event, context) => {
     // Verify request origin (optional security)
     const origin = event.headers['x-app-origin'] || event.headers['origin'];
     const allowedOrigins = [
-      'https://yourusername.github.io',
+      'https://gurukul-attendance.netlify.app',
+      'https://sharadc16.github.io',
       'http://localhost:8080',
       'http://127.0.0.1:8080'
     ];

@@ -37,7 +37,7 @@ class EnvironmentManager {
   /**
    * Load credentials from environment variables
    */
-  loadFromEnvironment() {
+  async loadFromEnvironment() {
     const credentials = {};
     const variableNames = window.EnvironmentConfig.getVariableNames();
     
@@ -70,6 +70,17 @@ class EnvironmentManager {
       }
     }
 
+    // If no credentials found and we're on Netlify, try the Functions API
+    if (Object.keys(credentials).length === 0 && window.NetlifyCredentialsLoader) {
+      try {
+        const netlifyCredentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+        Object.assign(credentials, netlifyCredentials);
+        console.log('🌐 Loaded credentials from Netlify Functions API');
+      } catch (error) {
+        console.warn('⚠️ Failed to load from Netlify Functions API:', error);
+      }
+    }
+
     return credentials;
   }
 
@@ -84,6 +95,7 @@ class EnvironmentManager {
       for (const varName of variableNames[credType]) {
         if (typeof window !== 'undefined' && window[varName]) {
           netlifyEnv[credType] = window[varName];
+          console.log(`✅ Found ${varName} in window globals`);
           break;
         }
       }
@@ -96,11 +108,17 @@ class EnvironmentManager {
           for (const varName of variableNames[credType]) {
             if (process.env[varName]) {
               netlifyEnv[credType] = process.env[varName];
+              console.log(`✅ Found ${varName} in process.env`);
               break;
             }
           }
         }
       });
+    }
+
+    // Try to fetch from Netlify Functions API if no environment variables found
+    if (Object.keys(netlifyEnv).length === 0) {
+      console.log('🔄 No build-time env vars found, will try Netlify Functions API');
     }
     
     return netlifyEnv;

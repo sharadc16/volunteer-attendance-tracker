@@ -105,16 +105,22 @@ git log --oneline -5
 
 ## URLs and Access
 
-### Production (Always Available)
-- **URL**: https://sharadc16.github.io/volunteer-attendance-tracker/
+### Production (Netlify)
+- **URL**: https://gurukul-attendance.netlify.app
 - **Status**: Stable, always accessible
 - **Users**: End users, production volunteer tracking
+- **Environment Variables**: Set in Netlify dashboard
 
 ### Development (Temporary URLs)
-- **URL Pattern**: `https://dev-[commit-hash]--your-site-name.netlify.app`
+- **URL Pattern**: `https://dev-[commit-hash]--gurukul-attendance.netlify.app`
 - **Status**: Temporary, created per deployment
 - **Users**: Developers, testers, team collaboration
 - **Access**: Check commit comments or GitHub Actions logs
+
+### GitHub Pages (Backup)
+- **URL**: https://sharadc16.github.io/volunteer-attendance-tracker/
+- **Status**: Backup deployment
+- **Users**: Fallback access if Netlify is unavailable
 
 ## Key Benefits
 

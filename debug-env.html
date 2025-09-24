@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Variables Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .var { margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+        .found { border-left: 4px solid #28a745; }
+        .missing { border-left: 4px solid #dc3545; }
+        .value { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Environment Variables Debug</h1>
+    <div id="results"></div>
+
+    <script src="js/local-env.js"></script>
+    <script>
+        const vars = [
+            'GOOGLE_OAUTH_CLIENT_ID',
+            'GOOGLE_SHEETS_API_KEY', 
+            'VOLUNTEER_SPREADSHEET_ID'
+        ];
+
+        const results = document.getElementById('results');
+        
+        vars.forEach(varName => {
+            const value = window[varName];
+            const div = document.createElement('div');
+            div.className = `var ${value ? 'found' : 'missing'}`;
+            
+            let displayValue = 'Not found';
+            if (value) {
+                if (varName.includes('KEY') && value.length > 8) {
+                    displayValue = value.substring(0, 8) + '...';
+                } else if (value.length > 20) {
+                    displayValue = value.substring(0, 20) + '...';
+                } else {
+                    displayValue = value;
+                }
+            }
+            
+            div.innerHTML = `
+                <strong>${varName}</strong><br>
+                <span class="value">${displayValue}</span>
+            `;
+            results.appendChild(div);
+        });
+
+        // Show environment markers
+        const markers = document.createElement('div');
+        markers.innerHTML = `
+            <h2>Environment Markers</h2>
+            <div class="var ${window.ENV_NETLIFY ? 'found' : 'missing'}">
+                <strong>ENV_NETLIFY</strong><br>
+                <span class="value">${window.ENV_NETLIFY || 'false'}</span>
+            </div>
+            <div class="var ${window.ENV_LOCAL ? 'found' : 'missing'}">
+                <strong>ENV_LOCAL</strong><br>
+                <span class="value">${window.ENV_LOCAL || 'false'}</span>
+            </div>
+            <div class="var ${window.ENV_INJECTION_TIME ? 'found' : 'missing'}">
+                <strong>ENV_INJECTION_TIME</strong><br>
+                <span class="value">${window.ENV_INJECTION_TIME || 'Not set'}</span>
+            </div>
+        `;
+        results.appendChild(markers);
+    </script>
+</body>
+</html>
