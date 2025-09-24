@@ -43,8 +43,10 @@ class SettingsPage {
         window.SyncStatusUI.init();
       }
       
-      // Initialize Google Sheets authentication if enabled
-      if (Config.googleSheets.enabled) {
+      // Initialize Google Sheets authentication if enabled or if credentials are available
+      const shouldInitializeAuth = Config.googleSheets.enabled || await this.hasValidCredentials();
+      
+      if (shouldInitializeAuth) {
         try {
           await this.initializeGoogleAuth();
         } catch (error) {
@@ -79,11 +81,83 @@ class SettingsPage {
       if (authInitialized && window.AuthManager.isAuthenticatedUser()) {
         if (window.SheetsManager) {
           await window.SheetsManager.init();
+          
+          // Auto-setup spreadsheet if environment variable is available but not configured
+          await this.autoSetupSpreadsheetFromEnvironment();
         }
       }
       
       // Reload the settings form to reflect the correct authentication status
       await this.loadSettingsForm();
+    }
+  }
+
+  /**
+   * Check if valid credentials are available from environment variables
+   */
+  async hasValidCredentials() {
+    try {
+      if (!window.CredentialManager) return false;
+      
+      const credentials = await window.CredentialManager.loadCredentials();
+      const validation = window.CredentialManager.validateCredentials(credentials);
+      
+      return validation.isValid;
+    } catch (error) {
+      console.warn('Error checking credentials:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Automatically setup spreadsheet from environment variables if available
+   */
+  async autoSetupSpreadsheetFromEnvironment() {
+    try {
+      // Check if spreadsheet is already configured
+      const storedId = window.UIUtils.Storage.get('vat_spreadsheet_id');
+      if (storedId) {
+        console.log('✅ Settings: Spreadsheet already configured, skipping auto-setup');
+        return;
+      }
+
+      // Get credentials from CredentialManager
+      if (!window.CredentialManager) {
+        console.log('⚠️ Settings: CredentialManager not available for auto-setup');
+        return;
+      }
+
+      const credentials = await window.CredentialManager.loadCredentials();
+      const spreadsheetId = credentials?.spreadsheetId;
+
+      if (!spreadsheetId || spreadsheetId === 'YOUR_SPREADSHEET_ID_HERE' || spreadsheetId === '') {
+        console.log('ℹ️ Settings: No valid spreadsheet ID in environment variables, skipping auto-setup');
+        return;
+      }
+
+      console.log('🔄 Settings: Auto-setting up spreadsheet from environment variable:', spreadsheetId.substring(0, 20) + '...');
+
+      // Use SheetsManager to set up the spreadsheet
+      if (window.SheetsManager && typeof window.SheetsManager.setSpreadsheetId === 'function') {
+        const result = await window.SheetsManager.setSpreadsheetId(spreadsheetId);
+        
+        if (result && result.success) {
+          console.log('✅ Settings: Spreadsheet auto-configured successfully');
+          
+          // Update the display
+          setTimeout(() => {
+            this.updateSpreadsheetDisplay();
+          }, 100);
+          
+        } else {
+          console.warn('⚠️ Settings: Auto-setup failed:', result?.error || 'Unknown error');
+        }
+      } else {
+        console.warn('⚠️ Settings: SheetsManager.setSpreadsheetId not available');
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Settings: Error during auto-setup:', error);
     }
   }
 
