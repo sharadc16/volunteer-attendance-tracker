@@ -58,10 +58,22 @@ exports.handler = async (event, context) => {
       backup_spreadsheet_id: process.env.BACKUP_SPREADSHEET_ID
     };
 
+    // Add deployment context information
+    const deploymentInfo = {
+      context: process.env.CONTEXT || 'unknown',
+      branch: process.env.BRANCH || 'unknown',
+      deploy_prime_url: process.env.DEPLOY_PRIME_URL || '',
+      site_name: process.env.SITE_NAME || ''
+    };
+
     // Filter out undefined values
     const filteredCredentials = Object.fromEntries(
       Object.entries(credentials).filter(([key, value]) => value !== undefined)
     );
+
+    // Add deployment context to response
+    filteredCredentials._deployment = deploymentInfo;
+    filteredCredentials._timestamp = Date.now();
 
     return {
       statusCode: 200,
