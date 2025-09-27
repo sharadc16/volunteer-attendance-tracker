@@ -42,8 +42,12 @@ class VolunteerApp {
       // Load initial data
       await this.loadInitialData();
       
-      // Initialize services
-      await this.initializeSyncServices();
+      // Initialize services (with error handling)
+      try {
+        await this.initializeSyncServices();
+      } catch (error) {
+        console.warn('Sync services initialization failed, continuing without sync:', error.message);
+      }
       
       // Initialize Google Sheets authentication if enabled
       if (Config.googleSheets.enabled) {
@@ -271,9 +275,11 @@ class VolunteerApp {
       }
       
       // Initialize performance monitor
-      if (window.PerformanceMonitor) {
+      if (window.PerformanceMonitor && typeof window.PerformanceMonitor.init === 'function') {
         await window.PerformanceMonitor.init();
         console.log('✅ PerformanceMonitor initialized for bottleneck detection');
+      } else if (window.PerformanceMonitor) {
+        console.log('✅ PerformanceMonitor available (no init method required)');
       }
       
       // Initialize performance dashboard
@@ -297,21 +303,27 @@ class VolunteerApp {
       console.log('Initializing error handling system...');
       
       // Initialize error handler
-      if (window.ErrorHandler) {
+      if (window.ErrorHandler && typeof window.ErrorHandler.init === 'function') {
         await window.ErrorHandler.init();
         console.log('ErrorHandler initialized');
+      } else if (window.ErrorHandler) {
+        console.log('ErrorHandler available (no init method required)');
       }
       
       // Initialize loading manager
-      if (window.LoadingManager) {
+      if (window.LoadingManager && typeof window.LoadingManager.init === 'function') {
         await window.LoadingManager.init();
         console.log('LoadingManager initialized');
+      } else if (window.LoadingManager) {
+        console.log('LoadingManager available (no init method required)');
       }
       
       // Initialize system status monitoring
-      if (window.SystemStatus) {
+      if (window.SystemStatus && typeof window.SystemStatus.init === 'function') {
         await window.SystemStatus.init();
         console.log('SystemStatus initialized');
+      } else if (window.SystemStatus) {
+        console.log('SystemStatus available (no init method required)');
       }
       
       // Initialize error feedback component

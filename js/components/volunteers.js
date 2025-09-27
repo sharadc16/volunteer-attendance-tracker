@@ -3,9 +3,16 @@
  */
 window.Volunteers = {
   
+  currentLayout: 'table', // Default to table view for better performance
+  initialized: false,
+  
   // Initialize volunteers component
   init() {
+    if (this.initialized) return;
+    
     this.setupSearch();
+    this.setupLayoutControls();
+    this.initialized = true;
     console.log('Volunteers component initialized');
   },
   
@@ -19,9 +26,35 @@ window.Volunteers = {
     }
   },
   
+  // Setup layout controls
+  setupLayoutControls() {
+    const layoutBtns = document.querySelectorAll('.layout-btn');
+    layoutBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const layout = e.target.dataset.layout;
+        this.setLayout(layout);
+      });
+    });
+  },
+  
+  // Set volunteer layout
+  setLayout(layout) {
+    this.currentLayout = layout;
+    
+    // Update active button
+    document.querySelectorAll('.layout-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.layout === layout);
+    });
+    
+    // Re-render with current data
+    const searchInput = Utils.DOM.get('#volunteerSearch');
+    const searchTerm = searchInput ? searchInput.value : '';
+    this.filterVolunteers(searchTerm);
+  },
+  
   // Filter volunteers by search term
   async filterVolunteers(searchTerm) {
-    const container = Utils.DOM.get('#volunteersGrid');
+    const container = Utils.DOM.get('#volunteersContainer');
     if (!container) return;
     
     try {
@@ -46,9 +79,9 @@ window.Volunteers = {
     }
   },
   
-  // Render volunteers grid
+  // Render volunteers in selected layout
   renderVolunteers(volunteers) {
-    const container = Utils.DOM.get('#volunteersGrid');
+    const container = Utils.DOM.get('#volunteersContainer');
     if (!container) return;
     
     if (volunteers.length === 0) {
@@ -56,11 +89,91 @@ window.Volunteers = {
       return;
     }
     
-    const html = volunteers.map(volunteer => this.createVolunteerCard(volunteer)).join('');
-    container.innerHTML = html;
+    switch (this.currentLayout) {
+      case 'table':
+        container.innerHTML = this.createTableView(volunteers);
+        break;
+      case 'dense':
+        container.innerHTML = `<div class="content-grid dense">${volunteers.map(v => this.createDenseCard(v)).join('')}</div>`;
+        break;
+      case 'list':
+        container.innerHTML = this.createListView(volunteers);
+        break;
+      case 'cards':
+      default:
+        container.innerHTML = `<div class="content-grid">${volunteers.map(v => this.createVolunteerCard(v)).join('')}</div>`;
+        break;
+    }
   },
   
-  // Create volunteer card HTML
+  // Create table view (most efficient for large datasets)
+  createTableView(volunteers) {
+    return `
+      <div class="volunteers-table">
+        <div class="volunteers-table-header">
+          <div class="volunteer-id-cell">ID</div>
+          <div class="volunteer-name-cell">Name</div>
+          <div class="volunteer-committee-cell">Committee</div>
+          <div class="volunteer-actions-cell">Actions</div>
+        </div>
+        ${volunteers.map(volunteer => `
+          <div class="volunteers-table-row" data-id="${volunteer.id}" onclick="Volunteers.quickView('${volunteer.id}')">
+            <div class="volunteer-id-cell">${volunteer.id}</div>
+            <div class="volunteer-name-cell">${volunteer.name}</div>
+            <div class="volunteer-committee-cell">${volunteer.committee || 'Not assigned'}</div>
+            <div class="volunteer-actions-cell" onclick="event.stopPropagation()">
+              <button class="action-btn" onclick="Volunteers.edit('${volunteer.id}')" title="Edit">✏️</button>
+              <button class="action-btn" onclick="Volunteers.viewHistory('${volunteer.id}')" title="History">📊</button>
+              <button class="action-btn" onclick="Volunteers.delete('${volunteer.id}')" title="Delete">🗑️</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+  
+  // Create dense card view
+  createDenseCard(volunteer) {
+    return `
+      <div class="card volunteer-card dense" data-id="${volunteer.id}" onclick="Volunteers.quickView('${volunteer.id}')">
+        <div class="card-body">
+          <div class="volunteer-header">
+            <div class="volunteer-name">${volunteer.name}</div>
+            <div class="volunteer-id">${volunteer.id}</div>
+          </div>
+          <div class="volunteer-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-small btn-secondary" onclick="Volunteers.edit('${volunteer.id}')" title="Edit">✏️</button>
+            <button class="btn btn-small btn-secondary" onclick="Volunteers.viewHistory('${volunteer.id}')" title="History">📊</button>
+            <button class="btn btn-small btn-warning" onclick="Volunteers.delete('${volunteer.id}')" title="Delete">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+  
+  // Create list view
+  createListView(volunteers) {
+    return `
+      <div class="volunteers-list">
+        ${volunteers.map(volunteer => `
+          <div class="volunteer-list-item" data-id="${volunteer.id}" onclick="Volunteers.quickView('${volunteer.id}')">
+            <div class="volunteer-avatar">${volunteer.name.charAt(0).toUpperCase()}</div>
+            <div class="volunteer-list-info">
+              <div class="volunteer-list-name">${volunteer.name}</div>
+              <div class="volunteer-list-meta">${volunteer.id} • ${volunteer.committee || 'No committee'}</div>
+            </div>
+            <div class="volunteer-list-actions" onclick="event.stopPropagation()">
+              <button class="action-btn" onclick="Volunteers.edit('${volunteer.id}')" title="Edit">✏️</button>
+              <button class="action-btn" onclick="Volunteers.viewHistory('${volunteer.id}')" title="History">📊</button>
+              <button class="action-btn" onclick="Volunteers.delete('${volunteer.id}')" title="Delete">🗑️</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  },
+  
+  // Create volunteer card HTML (original full card)
   createVolunteerCard(volunteer) {
     return `
       <div class="card volunteer-card" data-id="${volunteer.id}">
@@ -99,6 +212,71 @@ window.Volunteers = {
         </div>
       </div>
     `;
+  },
+  
+  // Quick view volunteer details (for compact layouts)
+  async quickView(volunteerId) {
+    try {
+      const volunteer = await Storage.getVolunteer(volunteerId);
+      if (!volunteer) {
+        Utils.Notify.error('Volunteer not found');
+        return;
+      }
+      
+      const content = `
+        <div class="volunteer-quick-view">
+          <div class="quick-view-header">
+            <div class="volunteer-avatar large">${volunteer.name.charAt(0).toUpperCase()}</div>
+            <div class="quick-view-info">
+              <h3>${volunteer.name}</h3>
+              <p class="volunteer-id">ID: ${volunteer.id}</p>
+            </div>
+          </div>
+          
+          <div class="quick-view-details">
+            <div class="detail-row">
+              <span class="detail-label">Email:</span>
+              <span class="detail-value">${volunteer.email || 'Not provided'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Committee:</span>
+              <span class="detail-value">${volunteer.committee || 'Not assigned'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Joined:</span>
+              <span class="detail-value">${Utils.Date.format(volunteer.createdAt, 'datetime')}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      UI.Modal.show(`${volunteer.name}`, content, [
+        {
+          text: 'Edit',
+          class: 'btn-secondary',
+          handler: () => {
+            UI.Modal.hide();
+            this.edit(volunteerId);
+          }
+        },
+        {
+          text: 'View History',
+          class: 'btn-secondary',
+          handler: () => {
+            UI.Modal.hide();
+            this.viewHistory(volunteerId);
+          }
+        },
+        {
+          text: 'Close',
+          class: 'btn-primary',
+          handler: () => UI.Modal.hide()
+        }
+      ]);
+      
+    } catch (error) {
+      Utils.Notify.error('Error loading volunteer: ' + error.message);
+    }
   },
   
   // Add new volunteer

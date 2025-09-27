@@ -7670,8 +7670,8 @@ der Status Indicators Layout */
     gap: 4px;
   }
 }
-/
-* Header Status Indicators */
+
+/* Header Status Indicators */
 .header-status-indicators {
   display: flex;
   align-items: center;

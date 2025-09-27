@@ -36,7 +36,6 @@ class DeploymentContext {
    */
   detectContext() {
     const hostname = window.location.hostname;
-    const url = window.location.href;
 
     // Local development
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('local')) {
@@ -283,10 +282,14 @@ class DeploymentContext {
   }
 }
 
-// Global instance
-window.DeploymentContext = new DeploymentContext();
-
-// Log context on initialization
-window.DeploymentContext.logContext();
-
-console.log('🌐 Deployment Context initialized');
+// Global instance (prevent multiple instantiations)
+if (!window.DeploymentContext) {
+  window.DeploymentContext = new DeploymentContext();
+  
+  // Log context on initialization
+  window.DeploymentContext.logContext();
+  
+  console.log('🌐 Deployment Context initialized');
+} else {
+  console.log('🌐 Deployment Context already initialized, skipping');
+}

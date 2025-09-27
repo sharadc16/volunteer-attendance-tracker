@@ -40,9 +40,14 @@
                     <div class="card scanner-card">
                         <div class="card-header">
                             <h2>📱 Scan Badge</h2>
-                            <div class="sync-status" id="syncStatus">
-                                <span class="status-dot"></span>
-                                <span class="status-text">Offline</span>
+                            <div class="header-status-indicators">
+                                <div class="validation-mode-icon" id="validationModeIcon" title="Validation Mode">
+                                    🔒
+                                </div>
+                                <div class="sync-status" id="syncStatus">
+                                    <span class="status-dot"></span>
+                                    <span class="status-text">Offline</span>
+                                </div>
                             </div>
                         </div>
                         <div class="scanner-input">
@@ -108,7 +113,17 @@
                         <button class="btn btn-primary" id="addVolunteerBtn">Add Volunteer</button>
                     </div>
                 </div>
-                <div class="content-grid" id="volunteersGrid">
+                
+                <!-- Layout Controls -->
+                <div class="volunteers-layout-controls">
+                    <span style="font-size: var(--font-sm); color: var(--text-muted);">View:</span>
+                    <button class="layout-btn active" data-layout="table" title="Table View">📋 Table</button>
+                    <button class="layout-btn" data-layout="dense" title="Dense Cards">🔲 Dense</button>
+                    <button class="layout-btn" data-layout="list" title="List View">📄 List</button>
+                    <button class="layout-btn" data-layout="cards" title="Full Cards">🗃️ Cards</button>
+                </div>
+                
+                <div class="volunteers-container" id="volunteersContainer">
                     <div class="loading">Loading volunteers...</div>
                 </div>
             </section>
@@ -147,6 +162,16 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Settings View -->
+            <section class="view" id="settings-view">
+                <div class="settings-container">
+                    <div class="settings-form" id="settingsForm">
+                        <!-- Settings content will be loaded here -->
+                        <div class="loading">Loading settings...</div>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <!-- Modal -->
@@ -173,12 +198,13 @@
 
     <!-- Scripts -->
     <script src="js/core/deployment-context.js"></script>
+    <script src="js/core/deployment-config-loader.js"></script>
+    <script src="js/services/environment-sheets-manager.js"></script>
     <script src="js/local-env.js"></script>
     <script src="js/core/netlify-credentials.js"></script>
-    <script src="js/core/deployment-context.js"></script>
     <script src="js/core/config.js"></script>
     <script src="js/core/validation-utils.js"></script>
-    <script src="js/core/error-handler.js"></script>
+
     <script src="js/core/credential-manager.js"></script>
     <script src="js/core/status-manager.js"></script>
     <script src="js/core/ui-utils.js"></script>
@@ -193,25 +219,43 @@
     <script src="js/components/ui.js"></script>
     <script src="js/components/sync-status.js"></script>
     <script src="js/components/settings-validator.js"></script>
+    <script src="js/components/validation-indicators.js"></script>
+    <script src="js/components/quick-volunteer-form.js"></script>
+    <script src="js/components/help.js"></script>
     <script src="js/components/scanner.js"></script>
     <script src="js/components/volunteers.js"></script>
     <script src="js/components/events.js"></script>
     <script src="js/components/reports.js"></script>
     <script src="js/services/errors.js"></script>
+    <script src="js/services/error-handler.js"></script>
+    <script src="js/services/performance-monitor.js"></script>
+    <script src="js/services/loading-manager.js"></script>
+    <script src="js/services/system-status.js"></script>
+    <script src="js/components/error-feedback.js"></script>
+    <script src="js/services/audit-logger.js"></script>
+    <script src="js/services/data-manager.js"></script>
+    <script src="js/services/validation-engine.js"></script>
     <script src="js/services/auth.js"></script>
-    <script src="js/services/sheets.js"></script>
     <script src="js/services/transformer.js"></script>
+    <script src="js/services/sheets.js"></script>
     <script src="js/services/queue.js"></script>
     <script src="js/services/conflicts.js"></script>
     <script src="js/services/progress-tracker.js"></script>
-    <script src="js/services/sync-progress-integration.js"></script>
-    <script src="js/services/sync-logger.js"></script>
-    <script src="js/services/sync-logging-integration.js"></script>
-    <script src="js/services/delta-sync.js"></script>
-    <script src="js/services/performance-monitor.js"></script>
-    <script src="js/services/sync-performance-optimizer.js"></script>
-    <script src="js/services/sync-performance-integration.js"></script>
-    <script src="js/services/sync.js"></script>
+    <!-- Performance Optimization Services -->
+    <script src="js/services/data-index.js"></script>
+    <script src="js/services/batch-processor.js"></script>
+    <script src="js/services/ui-update-manager.js"></script>
+    <script src="js/services/fast-connectivity-validator.js"></script>
+    <script src="js/components/performance-dashboard.js"></script>
+    
+    <!-- Unified Sync System -->
+    <script src="js/services/sync-migration.js"></script>
+    <script src="js/services/unified-sync.js"></script>
+    <script src="js/services/sync-init.js"></script>
+    
+    <!-- Settings Component -->
+    <script src="js/components/settings.js"></script>
+    
     <script src="js/core/app.js"></script>
 </body>
 </html>
