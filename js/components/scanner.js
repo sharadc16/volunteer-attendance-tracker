@@ -18,6 +18,11 @@ window.Scanner = {
       }
     });
     
+    // Listen for settings changes
+    Utils.Event.on('settingsSaved', () => {
+      this.updateStatus();
+    });
+    
     console.log('Scanner initialized');
   },
   
@@ -296,23 +301,49 @@ window.Scanner = {
   
   // Update scanner status
   updateStatus() {
-    this.isEnabled = Config.scanner.enabled && this.currentEvent !== null;
+    // Scanner is enabled only if:
+    // 1. Scanner is enabled in config
+    // 2. There's an active event
+    // 3. Google Sheets sync is enabled (needed to save attendance data)
+    const syncEnabled = Config.googleSheets?.enabled || false;
+    this.isEnabled = Config.scanner.enabled && this.currentEvent !== null && syncEnabled;
     
     // Debug logging
     console.log('Scanner status update:', {
       configEnabled: Config.scanner.enabled,
       currentEvent: this.currentEvent,
+      syncEnabled: syncEnabled,
       isEnabled: this.isEnabled
     });
     
     const input = Utils.DOM.get('#scannerInput');
+    const scannerCard = Utils.DOM.get('.scanner-card');
+    
     if (input) {
       input.disabled = !this.isEnabled;
       
       if (this.isEnabled) {
         input.placeholder = 'Scan badge or enter volunteer ID...';
       } else {
-        input.placeholder = this.currentEvent ? 'Scanner disabled' : 'No active event';
+        // Provide specific reason why scanner is disabled
+        if (!syncEnabled) {
+          input.placeholder = 'Scanner disabled - Google Sheets sync required';
+        } else if (!this.currentEvent) {
+          input.placeholder = 'Scanner disabled - No active event';
+        } else if (!Config.scanner.enabled) {
+          input.placeholder = 'Scanner disabled in settings';
+        } else {
+          input.placeholder = 'Scanner disabled';
+        }
+      }
+    }
+    
+    // Update scanner card visual state
+    if (scannerCard) {
+      if (this.isEnabled) {
+        Utils.DOM.removeClass(scannerCard, 'disabled');
+      } else {
+        Utils.DOM.addClass(scannerCard, 'disabled');
       }
     }
   },
