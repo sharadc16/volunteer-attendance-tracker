@@ -1,0 +1,203 @@
+{
+  "environments": {
+    "production": {
+      "name": "PRODUCTION",
+      "displayName": "Production",
+      "branch": "main",
+      "deployment": {
+        "type": "github-pages",
+        "url": "https://attendance.gurukul.org",
+        "fallbackUrl": "https://sharadc16.github.io/volunteer-attendance-tracker/",
+        "customDomain": "attendance.gurukul.org"
+      },
+      "googleSheets": {
+        "templateName": "Gurukul Attendance Tracker - PRODUCTION",
+        "syncInterval": 300000,
+        "validationMode": "strict",
+        "backupEnabled": true
+      },
+      "features": {
+        "debugMode": false,
+        "testFiles": false,
+        "bypassMode": false,
+        "performanceMonitoring": true,
+        "errorReporting": true
+      },
+      "ui": {
+        "showEnvironmentBadge": false,
+        "enableDebugFeatures": false,
+        "showTestFiles": false
+      },
+      "security": {
+        "strictValidation": true,
+        "auditLogging": true,
+        "dataEncryption": true
+      }
+    },
+    "testing": {
+      "name": "TESTING",
+      "displayName": "Testing",
+      "branch": "test",
+      "deployment": {
+        "type": "netlify-preview",
+        "url": "https://test-{commit}--gurukul-attendance.netlify.app",
+        "customDomain": null
+      },
+      "googleSheets": {
+        "templateName": "Gurukul Attendance Tracker - TESTING",
+        "syncInterval": 120000,
+        "validationMode": "create-if-not-found",
+        "backupEnabled": true
+      },
+      "features": {
+        "debugMode": true,
+        "testFiles": true,
+        "bypassMode": true,
+        "performanceMonitoring": true,
+        "errorReporting": true
+      },
+      "ui": {
+        "showEnvironmentBadge": true,
+        "enableDebugFeatures": true,
+        "showTestFiles": true,
+        "bannerColor": "#ffa500",
+        "bannerText": "🧪 TESTING ENVIRONMENT - Pre-production validation"
+      },
+      "security": {
+        "strictValidation": false,
+        "auditLogging": true,
+        "dataEncryption": true
+      }
+    },
+    "development": {
+      "name": "DEVELOPMENT",
+      "displayName": "Development",
+      "branch": "dev",
+      "deployment": {
+        "type": "netlify-branch",
+        "url": "https://dev-{commit}--gurukul-attendance.netlify.app",
+        "customDomain": null
+      },
+      "googleSheets": {
+        "templateName": "Gurukul Attendance Tracker - DEVELOPMENT",
+        "syncInterval": 60000,
+        "validationMode": "strict",
+        "backupEnabled": true
+      },
+      "features": {
+        "debugMode": true,
+        "testFiles": true,
+        "bypassMode": true,
+        "performanceMonitoring": true,
+        "errorReporting": true,
+        "experimentalFeatures": true
+      },
+      "ui": {
+        "showEnvironmentBadge": true,
+        "enableDebugFeatures": true,
+        "showTestFiles": true,
+        "bannerColor": "#ff6b35",
+        "bannerText": "🔧 DEVELOPMENT ENVIRONMENT - Latest features and testing"
+      },
+      "security": {
+        "strictValidation": false,
+        "auditLogging": true,
+        "dataEncryption": false
+      }
+    }
+  },
+  "deploymentPipeline": {
+    "stages": [
+      {
+        "name": "development",
+        "branch": "dev",
+        "autoPromote": false,
+        "requiredChecks": ["unit-tests", "lint"],
+        "approvers": ["developers"]
+      },
+      {
+        "name": "testing",
+        "branch": "test",
+        "autoPromote": false,
+        "requiredChecks": ["integration-tests", "e2e-tests", "security-scan"],
+        "approvers": ["qa-team", "tech-lead"]
+      },
+      {
+        "name": "production",
+        "branch": "main",
+        "autoPromote": false,
+        "requiredChecks": ["all-tests", "security-review", "performance-review"],
+        "approvers": ["tech-lead", "product-owner"]
+      }
+    ]
+  },
+  "branchProtection": {
+    "main": {
+      "requirePullRequest": true,
+      "requiredReviews": 2,
+      "dismissStaleReviews": true,
+      "requireCodeOwnerReviews": true,
+      "requiredStatusChecks": ["ci/tests", "ci/security", "ci/performance"]
+    },
+    "test": {
+      "requirePullRequest": true,
+      "requiredReviews": 1,
+      "dismissStaleReviews": false,
+      "requireCodeOwnerReviews": false,
+      "requiredStatusChecks": ["ci/tests", "ci/integration"]
+    },
+    "dev": {
+      "requirePullRequest": false,
+      "requiredReviews": 0,
+      "dismissStaleReviews": false,
+      "requireCodeOwnerReviews": false,
+      "requiredStatusChecks": []
+    }
+  },
+  "environmentVariables": {
+    "production": {
+      "GOOGLE_SHEETS_API_KEY": "env:PROD_GOOGLE_SHEETS_API_KEY",
+      "GOOGLE_OAUTH_CLIENT_ID": "env:PROD_GOOGLE_OAUTH_CLIENT_ID",
+      "VOLUNTEER_SPREADSHEET_ID": "env:PROD_VOLUNTEER_SPREADSHEET_ID",
+      "ENVIRONMENT": "PRODUCTION",
+      "DEBUG_MODE": "false",
+      "PERFORMANCE_MONITORING": "true"
+    },
+    "testing": {
+      "GOOGLE_SHEETS_API_KEY": "env:TEST_GOOGLE_SHEETS_API_KEY",
+      "GOOGLE_OAUTH_CLIENT_ID": "env:TEST_GOOGLE_OAUTH_CLIENT_ID",
+      "VOLUNTEER_SPREADSHEET_ID": "env:TEST_VOLUNTEER_SPREADSHEET_ID",
+      "ENVIRONMENT": "TESTING",
+      "DEBUG_MODE": "true",
+      "PERFORMANCE_MONITORING": "true"
+    },
+    "development": {
+      "GOOGLE_SHEETS_API_KEY": "env:DEV_GOOGLE_SHEETS_API_KEY",
+      "GOOGLE_OAUTH_CLIENT_ID": "env:DEV_GOOGLE_OAUTH_CLIENT_ID",
+      "VOLUNTEER_SPREADSHEET_ID": "env:DEV_VOLUNTEER_SPREADSHEET_ID",
+      "ENVIRONMENT": "DEVELOPMENT",
+      "DEBUG_MODE": "true",
+      "PERFORMANCE_MONITORING": "true"
+    }
+  },
+  "monitoring": {
+    "production": {
+      "errorTracking": true,
+      "performanceMonitoring": true,
+      "uptimeMonitoring": true,
+      "alerting": true
+    },
+    "testing": {
+      "errorTracking": true,
+      "performanceMonitoring": true,
+      "uptimeMonitoring": false,
+      "alerting": false
+    },
+    "development": {
+      "errorTracking": true,
+      "performanceMonitoring": true,
+      "uptimeMonitoring": false,
+      "alerting": false
+    }
+  }
+}

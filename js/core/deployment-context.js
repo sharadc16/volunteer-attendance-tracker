@@ -10,6 +10,28 @@ class DeploymentContext {
   }
 
   /**
+   * Detect if running with Netlify CLI (netlify dev)
+   */
+  detectNetlifyCLI() {
+    // Netlify CLI typically runs on port 8888 by default
+    const port = window.location.port;
+    
+    // Check for common Netlify CLI indicators
+    const isNetlifyPort = port === '8888' || port === '3999';
+    
+    // Check if Netlify Functions are available (indicates Netlify CLI)
+    const hasNetlifyFunctions = window.location.pathname.includes('/.netlify/') || 
+                               document.querySelector('script[src*="/.netlify/"]');
+    
+    // Check for Netlify CLI specific headers or environment markers
+    // (These would be set by the Netlify CLI development server)
+    const hasNetlifyMarkers = document.querySelector('meta[name="netlify-cli"]') ||
+                             window.NETLIFY_DEV === true;
+    
+    return isNetlifyPort || hasNetlifyFunctions || hasNetlifyMarkers;
+  }
+
+  /**
    * Detect the current deployment context based on Netlify configuration
    */
   detectContext() {
@@ -18,14 +40,20 @@ class DeploymentContext {
 
     // Local development
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('local')) {
+      // Check if running with Netlify CLI (netlify dev)
+      const isNetlifyCLI = this.detectNetlifyCLI();
+      
       return {
         type: 'local',
-        name: 'Local Development',
-        description: 'Running locally (localhost or local server)',
+        name: isNetlifyCLI ? 'Local Development (Netlify CLI)' : 'Local Development',
+        description: isNetlifyCLI ? 
+          'Running locally with Netlify CLI (netlify dev) - environment variables available' : 
+          'Running locally with basic server - using fallback credentials',
         isProduction: false,
         netlifyContext: 'local-development',
         branch: 'local',
-        expectedSpreadsheetContext: 'Local development (Netlify CLI)'
+        expectedSpreadsheetContext: 'Local development (Netlify CLI)',
+        hasNetlifyCLI: isNetlifyCLI
       };
     }
 
@@ -144,22 +172,27 @@ class DeploymentContext {
    */
   async loadActualSpreadsheetId() {
     try {
-      // Try to get from Netlify Functions API first
-      if (window.NetlifyCredentialsLoader && this.context.type !== 'local') {
-        const credentials = await window.NetlifyCredentialsLoader.loadFromAPI();
-        if (credentials && credentials.spreadsheetId) {
-          this.actualSpreadsheetId = credentials.spreadsheetId;
-          console.log(`📋 Loaded spreadsheet ID from Netlify: ${this.actualSpreadsheetId.substring(0, 20)}...`);
-          return this.actualSpreadsheetId;
+      // For Netlify CLI local development, try Functions API first
+      if (window.NetlifyCredentialsLoader && (this.context.type !== 'local' || this.context.hasNetlifyCLI)) {
+        try {
+          const credentials = await window.NetlifyCredentialsLoader.loadFromAPI();
+          if (credentials && credentials.spreadsheetId) {
+            this.actualSpreadsheetId = credentials.spreadsheetId;
+            console.log(`📋 Loaded spreadsheet ID from Netlify Functions: ${this.actualSpreadsheetId.substring(0, 20)}...`);
+            return this.actualSpreadsheetId;
+          }
+        } catch (error) {
+          console.log('⚠️ Netlify Functions API not available, trying fallback methods');
         }
       }
 
-      // Fallback to CredentialManager
+      // Fallback to CredentialManager (includes local-env.js)
       if (window.CredentialManager) {
         const credentials = await window.CredentialManager.loadCredentials();
         if (credentials && credentials.spreadsheetId) {
           this.actualSpreadsheetId = credentials.spreadsheetId;
-          console.log(`📋 Loaded spreadsheet ID from CredentialManager: ${this.actualSpreadsheetId.substring(0, 20)}...`);
+          const source = this.context.hasNetlifyCLI ? 'Netlify CLI environment' : 'local fallback';
+          console.log(`📋 Loaded spreadsheet ID from ${source}: ${this.actualSpreadsheetId.substring(0, 20)}...`);
           return this.actualSpreadsheetId;
         }
       }

@@ -26,6 +26,11 @@ class VolunteerApp {
       // Initialize storage
       await Storage.init();
       
+      // Auto-restore configuration from available sources
+      console.log('🔄 Starting auto-restore configuration...');
+      await this.autoRestoreConfiguration();
+      console.log('✅ Auto-restore configuration completed');
+      
       // Initialize status manager
       if (window.StatusManager) {
         await window.StatusManager.init();
@@ -55,20 +60,12 @@ class VolunteerApp {
               if (sheetsInitialized) {
                 console.log('Google Sheets integration fully initialized');
                 
-                // Initialize sync manager with Google Sheets
-                if (window.Sync && !window.Sync.isEnabled) {
-                  await window.Sync.enable();
-                  console.log('Sync manager enabled with Google Sheets');
-                }
-                
-                // Always notify status manager when Google Sheets is fully initialized
-                if (window.StatusManager) {
-                  window.StatusManager.updateSyncStatus({
-                    enabled: true,
-                    authenticated: true,
-                    online: true
-                  });
-                  console.log('StatusManager notified: sync enabled and authenticated');
+                // Re-evaluate sync status now that Google Sheets is ready
+                if (window.SyncManager && window.SyncManager.reevaluateEnabledStatus) {
+                  await window.SyncManager.reevaluateEnabledStatus();
+                  console.log('Sync system re-evaluated after Google Sheets initialization');
+                } else {
+                  console.log('Google Sheets integration ready - unified sync system active');
                 }
               }
             } else {
@@ -77,32 +74,18 @@ class VolunteerApp {
               if (restored) {
                 console.log('Authentication restored from storage - Google Sheets sync active');
                 
-                // Initialize sync manager with restored authentication
-                if (window.Sync && !window.Sync.isEnabled) {
-                  await window.Sync.enable();
-                  console.log('Sync manager enabled with restored authentication');
-                }
-                
-                // Always notify status manager when authentication is restored
-                if (window.StatusManager) {
-                  window.StatusManager.updateSyncStatus({
-                    enabled: true,
-                    authenticated: true,
-                    online: true
-                  });
-                  console.log('StatusManager notified: sync enabled with restored auth');
+                // Re-evaluate sync status now that authentication is restored
+                if (window.SyncManager && window.SyncManager.reevaluateEnabledStatus) {
+                  await window.SyncManager.reevaluateEnabledStatus();
+                  console.log('Sync system re-evaluated after authentication restored');
+                } else {
+                  console.log('Authentication restored - unified sync system active');
                 }
               } else {
                 console.log('User not authenticated - Google Sheets sync available but not active');
                 
-                // Notify status manager that sync is not authenticated
-                if (window.StatusManager) {
-                  window.StatusManager.updateSyncStatus({
-                    enabled: false,
-                    authenticated: false,
-                    online: false
-                  });
-                }
+                // Unified sync system handles unauthenticated state automatically
+                console.log('User not authenticated - sync system will handle this automatically');
               }
             }
           } else {
@@ -116,8 +99,49 @@ class VolunteerApp {
         console.log('Google Sheets sync is disabled in configuration');
       }
       
+      // Initialize validation engine
+      if (window.ValidationEngine) {
+        await window.ValidationEngine.init();
+        console.log('Validation engine initialized');
+        
+        // Force refresh ValidationIndicators after ValidationEngine is ready
+        if (window.ValidationIndicators) {
+          setTimeout(() => {
+            window.ValidationIndicators.refresh();
+            console.log('ValidationIndicators refreshed after ValidationEngine initialization');
+          }, 100);
+        }
+      }
+      
+      // Initialize environment-specific configuration (after user settings are loaded)
+      if (window.EnvironmentSheetsManager && typeof window.EnvironmentSheetsManager.init === 'function') {
+        await window.EnvironmentSheetsManager.init();
+        console.log('Environment sheets manager initialized');
+      }
+      
+      // Initialize performance optimizations for high-volume scanning
+      await this.initializePerformanceOptimizations();
+      
+      // Initialize error handling system
+      await this.initializeErrorHandling();
+      
       // Initialize scanner (after data is loaded)
-      await Scanner.init();
+      if (window.Scanner && typeof window.Scanner.init === 'function') {
+        await window.Scanner.init();
+      }
+      
+      // Auto-fix event detection issues if scanner has no current event
+      if (window.Scanner && !window.Scanner.currentEvent) {
+        console.log('⚠️ Scanner has no current event - running auto-fix...');
+        const fixedCount = await Storage.autoFixEventIssues();
+        
+        if (fixedCount > 0) {
+          console.log(`🔧 Auto-fix applied ${fixedCount} fixes - reloading scanner...`);
+          if (typeof window.Scanner.loadCurrentEvent === 'function') {
+            await window.Scanner.loadCurrentEvent();
+          }
+        }
+      }
       
       // Setup event listeners
       this.setupEventListeners();
@@ -130,7 +154,21 @@ class VolunteerApp {
       
     } catch (error) {
       console.error('Failed to initialize application:', error);
-      Utils.Notify.error('Failed to initialize application. Please refresh the page.');
+      
+      // Use enhanced error handling if available
+      if (window.ErrorHandler) {
+        window.ErrorHandler.handleError(error, {
+          type: 'system',
+          operation: 'app_initialization'
+        }, {
+          showTechnicalDetails: true,
+          targetElement: 'body'
+        });
+      } else {
+        // Fallback error handling
+        Utils.Notify.error('Failed to initialize application. Please refresh the page.');
+      }
+      
       Utils.Loading.hide();
     }
   }
@@ -138,31 +176,155 @@ class VolunteerApp {
   // Initialize sync services
   async initializeSyncServices() {
     try {
-      // Initialize sync progress integration
-      if (window.SyncProgressIntegration) {
-        window.SyncProgressIntegration.init();
+      // Note: Unified sync system is initialized automatically by sync-init.js
+      // This method is kept for compatibility and additional setup if needed
+      
+      // Wait for sync system to be ready
+      if (!window.SyncManager) {
+        console.log('Waiting for unified sync system to initialize...');
+        
+        // Wait up to 5 seconds for sync system
+        let attempts = 0;
+        while (!window.SyncManager && attempts < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
       }
       
-      // Initialize sync logging integration
-      if (window.SyncLoggingIntegration) {
-        window.SyncLoggingIntegration.init();
+      if (window.SyncManager) {
+        console.log('Unified sync system is ready');
+        
+        // Verify sync manager is properly initialized
+        const syncStatus = window.SyncManager.getSyncStatus();
+        console.log('Sync status:', {
+          enabled: syncStatus.enabled,
+          online: syncStatus.online,
+          changeCount: syncStatus.changeCount
+        });
+      } else {
+        console.warn('Unified sync system not available after initialization timeout');
       }
       
-      // Initialize performance monitoring integration
-      if (window.SyncPerformanceIntegration) {
-        window.SyncPerformanceIntegration.init();
-      }
-      
-      // Initialize main sync manager
-      if (window.Sync) {
-        await window.Sync.init();
-      }
-      
-      console.log('Sync services initialized successfully');
+      console.log('Sync services initialization completed');
       
     } catch (error) {
       console.error('Failed to initialize sync services:', error);
       // Don't throw - allow app to continue without sync
+    }
+  }
+  
+  // Initialize performance optimizations for high-volume scanning
+  async initializePerformanceOptimizations() {
+    try {
+      console.log('🚀 Initializing performance optimizations for high-volume scanning...');
+      
+      // Initialize data indexing system
+      if (window.DataIndex) {
+        await window.DataIndex.init();
+        console.log('✅ DataIndex initialized for fast volunteer lookups');
+      }
+      
+      // Initialize batch processor
+      if (window.BatchProcessor) {
+        await window.BatchProcessor.init();
+        
+        // Configure for optimal scanning performance
+        window.BatchProcessor.configure({
+          batchSize: 10, // Process 10 scans at once
+          batchTimeout: 400, // 400ms timeout for responsive scanning
+          maxQueueSize: 150 // Handle up to 150 queued scans
+        });
+        
+        console.log('✅ BatchProcessor initialized for high-volume scanning');
+      }
+      
+      // Initialize UI update manager
+      if (window.UIUpdateManager) {
+        await window.UIUpdateManager.init();
+        
+        // Configure for smooth UI updates
+        window.UIUpdateManager.configure({
+          batchSize: 8, // Process 8 UI updates at once
+          updateInterval: 100, // 100ms update interval
+          maxQueueSize: 200, // Handle up to 200 queued updates
+          useRequestAnimationFrame: true, // Smooth animations
+          enableVirtualScrolling: true, // Handle large lists efficiently
+          enableUpdateCoalescing: true // Merge similar updates
+        });
+        
+        console.log('✅ UIUpdateManager initialized for smooth UI updates');
+      }
+      
+      // Initialize fast connectivity validator
+      if (window.FastConnectivityValidator) {
+        await window.FastConnectivityValidator.init();
+        
+        // Configure for minimal scanning delays
+        window.FastConnectivityValidator.configure({
+          cacheTimeout: 60000, // 60 second cache for fast responses
+          fastCheckTimeout: 2000, // 2 second fast check timeout
+          backgroundCheckInterval: 120000, // 2 minute background checks
+          fastMode: true // Enable fast mode for scanning
+        });
+        
+        console.log('✅ FastConnectivityValidator initialized for minimal delays');
+      }
+      
+      // Initialize performance monitor
+      if (window.PerformanceMonitor) {
+        await window.PerformanceMonitor.init();
+        console.log('✅ PerformanceMonitor initialized for bottleneck detection');
+      }
+      
+      // Initialize performance dashboard
+      if (window.PerformanceDashboard) {
+        await window.PerformanceDashboard.init();
+        console.log('✅ PerformanceDashboard initialized (Ctrl+Shift+P to toggle)');
+      }
+      
+      console.log('🎯 All performance optimizations initialized successfully');
+      console.log('📊 Performance Dashboard: Press Ctrl+Shift+P to view real-time metrics');
+      
+    } catch (error) {
+      console.error('❌ Failed to initialize performance optimizations:', error);
+      // Don't throw - allow app to continue without optimizations
+    }
+  }
+
+  // Initialize error handling system
+  async initializeErrorHandling() {
+    try {
+      console.log('Initializing error handling system...');
+      
+      // Initialize error handler
+      if (window.ErrorHandler) {
+        await window.ErrorHandler.init();
+        console.log('ErrorHandler initialized');
+      }
+      
+      // Initialize loading manager
+      if (window.LoadingManager) {
+        await window.LoadingManager.init();
+        console.log('LoadingManager initialized');
+      }
+      
+      // Initialize system status monitoring
+      if (window.SystemStatus) {
+        await window.SystemStatus.init();
+        console.log('SystemStatus initialized');
+      }
+      
+      // Initialize error feedback component
+      if (window.ErrorFeedback) {
+        await window.ErrorFeedback.init();
+        console.log('ErrorFeedback initialized');
+      }
+      
+      console.log('Error handling system fully initialized');
+      
+    } catch (error) {
+      console.error('Failed to initialize error handling system:', error);
+      // Don't throw - allow app to continue with basic error handling
     }
   }
   
@@ -185,6 +347,21 @@ class VolunteerApp {
       }
     }
     
+    // Initialize validation indicators
+    if (window.ValidationIndicators) {
+      window.ValidationIndicators.init();
+      console.log('Validation indicators initialized');
+    }
+
+    // Initialize volunteers component
+    if (window.Volunteers) {
+      window.Volunteers.init();
+      console.log('Volunteers component initialized');
+    }
+
+    // Settings component will be initialized lazily when settings view is shown
+    console.log('Settings component will be initialized on demand');
+    
     // Initialize sync status
     this.updateSyncStatus();
   }
@@ -195,7 +372,7 @@ class VolunteerApp {
     let activeItem = 'dashboard';
     if (window.location.hash) {
       const hash = window.location.hash.substring(1);
-      if (['volunteers', 'events', 'reports'].includes(hash)) {
+      if (['volunteers', 'events', 'reports', 'settings'].includes(hash)) {
         activeItem = hash;
       }
     }
@@ -212,6 +389,15 @@ class VolunteerApp {
       setTimeout(() => {
         if (window.UI && window.UI.Navigation) {
           window.UI.Navigation.init();
+          
+          // Ensure initial view is loaded after all components are ready
+          setTimeout(() => {
+            const currentHash = window.location.hash.substring(1) || 'dashboard';
+            if (currentHash === 'volunteers') {
+              console.log('Loading volunteers view on initial load');
+              this.handleViewChange('volunteers');
+            }
+          }, 50);
         }
       }, 100);
     }
@@ -283,7 +469,7 @@ class VolunteerApp {
       const today = Utils.Date.today();
       const sampleEvent = {
         id: 'E001',
-        name: 'Sunday Class',
+        name: this.generateGurukulEventName(today),
         date: today,
         startTime: '10:00',
         endTime: '12:00',
@@ -369,7 +555,11 @@ class VolunteerApp {
   // Update dashboard
   async updateDashboard() {
     try {
-      await Scanner.updateStats();
+      if (window.Scanner && typeof window.Scanner.updateStats === 'function') {
+        await window.Scanner.updateStats();
+      } else {
+        console.warn('Scanner not available for dashboard update');
+      }
     } catch (error) {
       console.error('Error updating dashboard:', error);
     }
@@ -377,11 +567,18 @@ class VolunteerApp {
   
   // Update volunteers view
   async updateVolunteersView() {
-    const container = Utils.DOM.get('#volunteersGrid');
+    const container = Utils.DOM.get('#volunteersContainer');
     if (!container) return;
     
     try {
       UI.Loading.show(container, 'Loading volunteers...');
+      
+      // Ensure Volunteers component is initialized
+      if (window.Volunteers && typeof window.Volunteers.init === 'function' && !window.Volunteers.initialized) {
+        window.Volunteers.init();
+        window.Volunteers.initialized = true;
+        console.log('Volunteers component initialized on demand');
+      }
       
       const volunteers = await Storage.getAllVolunteers();
       
@@ -393,23 +590,13 @@ class VolunteerApp {
         return;
       }
       
-      // Render volunteers grid
-      const html = volunteers.map(volunteer => `
-        <div class="card">
-          <div class="card-body">
-            <h4>${volunteer.name}</h4>
-            <p><strong>ID:</strong> ${volunteer.id}</p>
-            <p><strong>Email:</strong> ${volunteer.email || 'Not provided'}</p>
-            <p><strong>Committee:</strong> ${volunteer.committee || 'Not assigned'}</p>
-            <div class="card-actions">
-              <button class="btn btn-small btn-secondary" onclick="app.editVolunteer('${volunteer.id}')">Edit</button>
-              <button class="btn btn-small btn-warning" onclick="app.deleteVolunteer('${volunteer.id}')">Delete</button>
-            </div>
-          </div>
-        </div>
-      `).join('');
-      
-      container.innerHTML = html;
+      // Use the Volunteers component to render
+      if (window.Volunteers && typeof window.Volunteers.renderVolunteers === 'function') {
+        Volunteers.renderVolunteers(volunteers);
+      } else {
+        console.error('Volunteers component not available');
+        container.innerHTML = '<div class="error">Volunteers component not loaded</div>';
+      }
       
     } catch (error) {
       console.error('Error updating volunteers view:', error);
@@ -604,7 +791,7 @@ class VolunteerApp {
       <form class="form">
         <div class="form-group">
           <label class="form-label">Event Name <span class="required">*</span></label>
-          <input class="form-input" type="text" name="name" placeholder="Sunday Class" required>
+          <input class="form-input" type="text" name="name" placeholder="Gurukul - MM/DD/YY" required>
         </div>
         <div class="form-group">
           <label class="form-label">Date <span class="required">*</span></label>
@@ -657,7 +844,9 @@ class VolunteerApp {
                 this.updateEventsView();
               }
               // Reload current event for scanner
-              Scanner.loadCurrentEvent();
+              if (window.Scanner && typeof window.Scanner.loadCurrentEvent === 'function') {
+                window.Scanner.loadCurrentEvent();
+              }
             } catch (error) {
               Utils.Notify.error('Error adding event: ' + error.message);
             }
@@ -669,10 +858,19 @@ class VolunteerApp {
   
   // Create Sunday events
   async createSundayEvents() {
+    console.log('🔄 createSundayEvents called');
+    
+    if (!UI || !UI.Modal) {
+      console.error('❌ UI.Modal not available');
+      Utils.Notify.error('Modal system not available');
+      return;
+    }
+    
     UI.Modal.confirm(
       'Create Sunday Events',
       'This will create events for the next 12 Sundays. Continue?',
       async () => {
+        console.log('✅ Modal confirmed, starting event creation');
         try {
           Utils.Loading.show('Creating Sunday events...');
           
@@ -686,13 +884,15 @@ class VolunteerApp {
             nextSunday.setDate(nextSunday.getDate() + 7);
           }
           
+          console.log('📅 Next Sunday:', nextSunday.toLocaleDateString());
+          
           // Create 12 Sunday events
           for (let i = 0; i < 12; i++) {
             const eventDate = new Date(nextSunday);
             eventDate.setDate(nextSunday.getDate() + (i * 7));
             
             const event = {
-              name: 'Sunday Class',
+              name: this.generateGurukulEventName(eventDate),
               date: eventDate.toISOString().split('T')[0],
               startTime: '10:00',
               endTime: '12:00',
@@ -701,7 +901,10 @@ class VolunteerApp {
             };
             
             events.push(event);
+            console.log(`📝 Created event ${i + 1}: ${event.name} (${event.date})`);
           }
+          
+          console.log(`💾 Adding ${events.length} events to storage...`);
           
           // Add events to database
           for (const event of events) {
@@ -710,6 +913,7 @@ class VolunteerApp {
           
           Utils.Loading.hide();
           Utils.Notify.success(`Created ${events.length} Sunday events`);
+          console.log('✅ Sunday events created successfully');
           
           // Trigger sync for new events
           this.triggerDataSync('events');
@@ -718,12 +922,18 @@ class VolunteerApp {
             this.updateEventsView();
           }
           
-          Scanner.loadCurrentEvent();
+          if (window.Scanner && typeof window.Scanner.loadCurrentEvent === 'function') {
+            window.Scanner.loadCurrentEvent();
+          }
           
         } catch (error) {
+          console.error('❌ Error creating Sunday events:', error);
           Utils.Loading.hide();
           Utils.Notify.error('Error creating events: ' + error.message);
         }
+      },
+      () => {
+        console.log('❌ Modal cancelled');
       }
     );
   }
@@ -752,13 +962,12 @@ class VolunteerApp {
       
       Utils.Loading.show('Syncing data...');
       
-      // Initialize sync service if not already done
-      if (window.Sync && !window.Sync.isEnabled) {
-        await window.Sync.init();
+      // Perform force sync with unified sync system
+      if (!window.SyncManager) {
+        throw new Error('Unified sync system not available');
       }
       
-      // Perform sync with force option
-      const result = await window.Sync.performSync({ force: true });
+      const result = await window.SyncManager.forceFullSync();
       
       Utils.Loading.hide();
       
@@ -942,10 +1151,15 @@ class VolunteerApp {
         <div class="setting-group">
           <h4>Data Management</h4>
           <div class="setting-buttons">
-            <button type="button" class="btn btn-secondary" onclick="app.exportAllData()">📤 Export All Data</button>
-            <button type="button" class="btn btn-secondary" onclick="app.importData()">📥 Import Data</button>
-            <button type="button" class="btn btn-warning" onclick="app.clearAllData()">🗑️ Clear All Data</button>
+            <button type="button" class="btn btn-secondary" onclick="DataManager.exportAllData()">📤 Export All Data</button>
+            <button type="button" class="btn btn-secondary" onclick="DataManager.importData()">📥 Import Data</button>
+            <button type="button" class="btn btn-warning" onclick="DataManager.clearAllData()">🗑️ Clear All Data</button>
           </div>
+          <div class="setting-buttons" style="margin-top: 10px;">
+            <button type="button" class="btn btn-primary" onclick="DataManager.resetAndSyncFromSheets()">🔄 Reset & Sync from Sheets</button>
+            <button type="button" class="btn btn-secondary" onclick="window.open('reset-from-sheets.html', '_blank')">🛠️ Advanced Reset Tool</button>
+          </div>
+          <small class="help-text">Reset clears local data and syncs fresh from Google Sheets</small>
         </div>
       </div>
     `;
@@ -1013,10 +1227,8 @@ class VolunteerApp {
         await window.SheetsManager.init();
       }
       
-      // Enable sync if not already enabled
-      if (window.Sync && !window.Sync.isEnabled) {
-        await window.Sync.enable();
-      }
+      // Unified sync system is automatically enabled when conditions are met
+      console.log('Google Sheets sync will be enabled automatically by unified sync system');
       
       Utils.Loading.hide();
       Utils.Notify.success('Successfully authenticated with Google!');
@@ -1053,8 +1265,8 @@ class VolunteerApp {
       }
       
       // Disable sync
-      if (window.Sync && window.Sync.isEnabled) {
-        await window.Sync.disable();
+      if (window.SyncManager && window.SyncManager.isEnabled) {
+        // Unified sync system handles disabling automatically
       }
       
       Utils.Loading.hide();
@@ -1255,7 +1467,7 @@ class VolunteerApp {
         
         // Update sync manager interval
         if (window.Sync && window.Sync.setSyncInterval) {
-          window.Sync.setSyncInterval(syncInterval);
+          window.SyncManager.setSyncInterval(syncInterval);
         }
       }
       
@@ -1287,8 +1499,8 @@ class VolunteerApp {
         }
         
         // Enable sync
-        if (window.Sync && !window.Sync.isEnabled) {
-          await window.Sync.enable();
+        if (window.SyncManager && !window.SyncManager.isEnabled) {
+          // Unified sync system handles enabling automatically
         }
       }
       
@@ -1308,8 +1520,8 @@ class VolunteerApp {
       console.log('Disabling Google Sheets sync...');
       
       // Disable sync
-      if (window.Sync && window.Sync.isEnabled) {
-        await window.Sync.disable();
+      if (window.SyncManager && window.SyncManager.isEnabled) {
+        // Unified sync system handles disabling automatically
       }
       
       console.log('Google Sheets sync disabled successfully');
@@ -1356,19 +1568,27 @@ class VolunteerApp {
   }
   
   /**
-   * Trigger data sync for specific data type
+   * Trigger data sync for specific data type (optimized for performance)
    */
   async triggerDataSync(dataType = null) {
     try {
+      // Update data indexes when data changes (immediate for fast lookups)
+      if (window.DataIndex && window.DataIndex.isInitialized && dataType) {
+        // Force index update for the changed data type
+        setTimeout(() => {
+          window.DataIndex.updateIndexes(dataType, 'update', null);
+        }, 50); // Very fast update for indexes
+      }
+      
       // Only sync if Google Sheets is enabled and we're authenticated
       if (!Config.googleSheets.enabled || 
           !window.AuthManager?.isAuthenticatedUser() || 
-          !window.Sync?.isEnabled) {
+          !window.SyncManager?.isEnabled) {
         return;
       }
       
       // Don't trigger if already syncing
-      if (window.Sync && window.Sync.isSyncing) {
+      if (window.Sync && window.SyncManager.isSyncing) {
         return;
       }
       
@@ -1383,7 +1603,7 @@ class VolunteerApp {
       this.syncTriggerTimeout = setTimeout(async () => {
         try {
           if (window.Sync) {
-            await window.Sync.performSync(syncOptions);
+            await window.SyncManager.performSync(syncOptions);
           }
         } catch (error) {
           console.error('Auto-sync failed:', error);
@@ -1432,13 +1652,150 @@ class VolunteerApp {
       }
     }
   }
+
+  /**
+   * Generate Gurukul event name with MM/DD/YY format
+   */
+  generateGurukulEventName(date) {
+    const eventDate = new Date(date);
+    const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+    const day = String(eventDate.getDate()).padStart(2, '0');
+    const year = String(eventDate.getFullYear()).slice(-2);
+    return `Gurukul - ${month}/${day}/${year}`;
+  }
+
+  /**
+   * Auto-restore configuration from environment variables and available credentials
+   */
+  async autoRestoreConfiguration() {
+    try {
+      console.log('🔄 Auto-restoring configuration from available sources...');
+      
+      let configChanged = false;
+      
+      // Check if Google Sheets should be auto-enabled based on available credentials
+      if (window.CredentialManager) {
+        const credentials = await window.CredentialManager.loadCredentials();
+        const hasCredentials = credentials.apiKey && credentials.clientId;
+        
+        // Enable if we have credentials, regardless of current auth state
+        // (auth can be restored later)
+        if (hasCredentials && !Config.googleSheets.enabled) {
+          console.log('🔄 Auto-enabling Google Sheets: credentials available');
+          configChanged = true;
+        }
+      }
+      
+      // Check if configuration exists in storage but might need updating
+      const savedConfig = await Storage.getItem('config');
+      
+      if (savedConfig && savedConfig.googleSheets && savedConfig.googleSheets.enabled && !configChanged) {
+        console.log('ℹ️ Google Sheets already enabled in storage, skipping auto-restoration');
+        return;
+      }
+      
+      console.log('📋 No saved configuration found, checking for auto-restoration opportunities...');
+      
+      // If we determined that Google Sheets should be enabled, do it now
+      if (configChanged) {
+        console.log('✅ Auto-enabling Google Sheets sync');
+        Config.googleSheets.enabled = true;
+        
+        // Load and set credentials in config for validation
+        try {
+          const credentials = await window.CredentialManager.loadCredentials();
+          if (credentials.apiKey && credentials.clientId) {
+            Config.googleSheets.apiKey = credentials.apiKey;
+            Config.googleSheets.clientId = credentials.clientId;
+            Config.googleSheets.spreadsheetId = credentials.spreadsheetId;
+            console.log('✅ Credentials loaded into configuration');
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not load credentials into config:', error);
+        }
+        
+        // Also enable sync if Google Sheets is enabled
+        if (!Config.sync.enabled) {
+          console.log('✅ Auto-enabling sync since Google Sheets is available');
+          Config.sync.enabled = true;
+        }
+      } else {
+        // Check if Google Sheets credentials are available (fallback logic)
+        if (window.CredentialManager) {
+          try {
+            const credentials = await window.CredentialManager.loadCredentials();
+            
+            if (credentials.apiKey && credentials.clientId && !Config.googleSheets.enabled) {
+              console.log('✅ Found Google Sheets credentials, auto-enabling Google Sheets sync');
+              Config.googleSheets.enabled = true;
+              Config.googleSheets.apiKey = credentials.apiKey;
+              Config.googleSheets.clientId = credentials.clientId;
+              Config.googleSheets.spreadsheetId = credentials.spreadsheetId;
+              configChanged = true;
+              
+              // Also enable sync if Google Sheets is enabled
+              if (!Config.sync.enabled) {
+                console.log('✅ Auto-enabling sync since Google Sheets is available');
+                Config.sync.enabled = true;
+              }
+            } else {
+              console.log('ℹ️ No Google Sheets credentials found or already enabled');
+            }
+          } catch (error) {
+            console.warn('⚠️ Error checking credentials:', error);
+          }
+        }
+      }
+      
+      // Save restored configuration if changes were made
+      if (configChanged) {
+        await Storage.setItem('config', {
+          scanner: Config.scanner,
+          googleSheets: Config.googleSheets,
+          sync: Config.sync,
+          ui: Config.ui
+        });
+        console.log('✅ Configuration auto-restored and saved to storage');
+        
+        // Trigger updates across all components
+        this.notifyConfigurationChange();
+      } else {
+        console.log('ℹ️ No auto-restoration needed');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Auto-restoration failed:', error);
+    }
+  }
+
+  /**
+   * Notify all components that configuration has changed
+   */
+  notifyConfigurationChange() {
+    console.log('📢 Notifying components of configuration change...');
+    
+    // Update sync status UI
+    if (window.SyncStatusUI) {
+      window.SyncStatusUI.updateDisplay();
+    }
+    
+    // Update scanner status
+    if (window.Scanner) {
+      window.Scanner.updateStatus();
+    }
+    
+    // Update main sync status
+    this.updateSyncStatus();
+    
+    console.log('✅ All components notified of configuration change');
+  }
   
   // Update sync status
   updateSyncStatus() {
     const syncStatus = Utils.DOM.get('#syncStatus');
     if (syncStatus) {
       // Check if sync service is available before accessing it
-      if (Config.sync.enabled && window.Sync && window.Sync.isOnline) {
+      if (Config.sync.enabled && window.Sync && window.SyncManager.isOnline) {
         Utils.DOM.addClass(syncStatus, 'online');
         syncStatus.querySelector('.status-text').textContent = 'Online';
       } else {
@@ -1565,7 +1922,7 @@ class VolunteerApp {
         
         // Restart sync with new settings
         if (window.Sync) {
-          await window.Sync.init();
+          // Unified sync system initializes automatically
         }
       } catch (error) {
         console.error('Failed to initialize Google Sheets sync:', error);
@@ -1574,7 +1931,7 @@ class VolunteerApp {
     } else if (!newConfig.googleSheets.enabled && wasGoogleSheetsEnabled) {
       // Google Sheets sync was just disabled
       if (window.Sync) {
-        window.Sync.disable();
+        // Unified sync system handles disabling automatically;
       }
     }
     
@@ -1586,9 +1943,9 @@ class VolunteerApp {
     // Update sync service
     if (window.Sync) {
       if (newConfig.sync.enabled && !window.Sync.isEnabled) {
-        window.Sync.enable();
+        // Unified sync system handles enabling automatically;
       } else if (!newConfig.sync.enabled && window.Sync.isEnabled) {
-        window.Sync.disable();
+        // Unified sync system handles disabling automatically;
       }
     }
     
@@ -2024,29 +2381,21 @@ class VolunteerApp {
     );
   }
   
-  // Clear all data
+  // Data management methods - delegated to centralized DataManager
   async clearAllData() {
-    UI.Modal.confirm(
-      'Clear All Data',
-      'This will permanently delete all volunteers, events, and attendance records. This action cannot be undone. Continue?',
-      async () => {
-        try {
-          Utils.Loading.show('Clearing data...');
-          
-          await Storage.clearAllData();
-          
-          Utils.Loading.hide();
-          Utils.Notify.success('All data cleared successfully');
-          
-          // Refresh current view
-          this.refreshCurrentView();
-          
-        } catch (error) {
-          Utils.Loading.hide();
-          Utils.Notify.error('Failed to clear data: ' + error.message);
-        }
-      }
-    );
+    return await window.DataManager.clearAllData();
+  }
+
+  async resetAndSyncFromSheets() {
+    return await window.DataManager.resetAndSyncFromSheets();
+  }
+
+  async exportAllData() {
+    return await window.DataManager.exportAllData();
+  }
+
+  async importData() {
+    return await window.DataManager.importData();
   }
   
   // Edit volunteer
@@ -2172,7 +2521,9 @@ class VolunteerApp {
           if (this.currentView === 'events') {
             this.updateEventsView();
           }
-          Scanner.loadCurrentEvent();
+          if (window.Scanner && typeof window.Scanner.loadCurrentEvent === 'function') {
+            window.Scanner.loadCurrentEvent();
+          }
         } catch (error) {
           Utils.Notify.error('Error updating event: ' + error.message);
         }
@@ -2224,7 +2575,9 @@ class VolunteerApp {
             if (this.currentView === 'events') {
               this.updateEventsView();
             }
-            Scanner.loadCurrentEvent();
+            if (window.Scanner && typeof window.Scanner.loadCurrentEvent === 'function') {
+              window.Scanner.loadCurrentEvent();
+            }
           } catch (error) {
             Utils.Notify.error('Error deleting event: ' + error.message);
           }
@@ -2299,7 +2652,7 @@ class VolunteerApp {
   // Export all data
   async exportAllData() {
     try {
-      await window.Sync.backupData();
+      await window.SyncManager.exportData();
     } catch (error) {
       Utils.Notify.error('Export failed: ' + error.message);
     }
@@ -2314,7 +2667,7 @@ class VolunteerApp {
       const file = e.target.files[0];
       if (file) {
         try {
-          await window.Sync.restoreData(file);
+          await window.SyncManager.importData(file);
           this.refreshCurrentView();
         } catch (error) {
           Utils.Notify.error('Import failed: ' + error.message);

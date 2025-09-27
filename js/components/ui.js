@@ -49,32 +49,62 @@ window.UI = {
       }
     },
     
+    confirm(title, message, onConfirm = null, onCancel = null) {
+      // Support both callback and Promise patterns
+      if (onConfirm && typeof onConfirm === 'function') {
+        // Callback pattern
+        const actions = [
+          { 
+            text: 'Cancel', 
+            class: 'btn-secondary', 
+            handler: () => {
+              this.hide();
+              if (onCancel) onCancel();
+            }
+          },
+          { 
+            text: 'Confirm', 
+            class: 'btn-primary', 
+            handler: () => {
+              this.hide();
+              onConfirm();
+            }
+          }
+        ];
+        
+        this.show(title, `<p>${message}</p>`, actions);
+      } else {
+        // Promise pattern
+        return new Promise((resolve) => {
+          const actions = [
+            { 
+              text: 'Cancel', 
+              class: 'btn-secondary', 
+              handler: () => {
+                this.hide();
+                resolve(false);
+              }
+            },
+            { 
+              text: 'Confirm', 
+              class: 'btn-primary', 
+              handler: () => {
+                this.hide();
+                resolve(true);
+              }
+            }
+          ];
+          
+          this.show(title, `<p>${message}</p>`, actions);
+        });
+      }
+    },
+    
     hide() {
       if (this.current) {
         Utils.DOM.removeClass(this.current, 'active');
         this.current = null;
       }
-    },
-    
-    confirm(title, message, onConfirm, onCancel = null) {
-      this.show(title, `<p>${message}</p>`, [
-        {
-          text: 'Cancel',
-          class: 'btn-secondary',
-          handler: () => {
-            this.hide();
-            if (onCancel) onCancel();
-          }
-        },
-        {
-          text: 'Confirm',
-          class: 'btn-primary',
-          handler: () => {
-            this.hide();
-            onConfirm();
-          }
-        }
-      ]);
     },
     
     alert(title, message, onClose = null) {
@@ -259,6 +289,17 @@ window.UI = {
         // Update page title
         document.title = `${Utils.String.capitalize(viewName)} - Gurukul Attendance`;
         
+        // Lazy initialize SettingsPage when settings view is shown
+        if (viewName === 'settings' && !window.settingsPage && window.SettingsPage) {
+          console.log('🔧 Lazy initializing SettingsPage...');
+          try {
+            window.settingsPage = new SettingsPage();
+            console.log('✅ SettingsPage initialized successfully');
+          } catch (error) {
+            console.error('❌ Failed to initialize SettingsPage:', error);
+          }
+        }
+        
         // Emit view change event
         Utils.Event.emit('viewChanged', { view: viewName });
       }
@@ -269,7 +310,7 @@ window.UI = {
       const view = hash || 'dashboard'; // Default to dashboard
       
       // Validate view exists
-      const validViews = ['dashboard', 'volunteers', 'events', 'reports'];
+      const validViews = ['dashboard', 'volunteers', 'events', 'reports', 'settings'];
       if (validViews.includes(view)) {
         this.switchView(view, false); // Don't update hash to avoid loop
       } else {

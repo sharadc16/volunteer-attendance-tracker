@@ -14,7 +14,8 @@ window.NavigationComponent = {
       { id: 'volunteers', icon: '👥', text: 'Volunteers', href: 'index.html#volunteers' },
       { id: 'events', icon: '📅', text: 'Events', href: 'index.html#events' },
       { id: 'reports', icon: '📊', text: 'Reports', href: 'index.html#reports' },
-      { id: 'settings', icon: '⚙️', text: 'Settings', href: 'settings.html' }
+      { id: 'settings', icon: '⚙️', text: 'Settings', href: 'index.html#settings' },
+      { id: 'help', icon: '❓', text: 'Help', href: 'help.html' }
     ]
   },
 
@@ -25,7 +26,7 @@ window.NavigationComponent = {
       const activeClass = isActive ? ' active' : '';
       
       // Determine if this is an internal view or external navigation
-      const isInternalView = ['dashboard', 'volunteers', 'events', 'reports'].includes(item.id);
+      const isInternalView = ['dashboard', 'volunteers', 'events', 'reports', 'settings'].includes(item.id);
       const isCurrentPage = window.location.pathname.includes('index.html') || window.location.pathname === '/';
       
       let clickHandler;

@@ -759,9 +759,9 @@ class DeltaSyncManager {
     if (item.hasOwnProperty('committee')) {
       // Volunteer
       return ['name', 'email', 'committee'];
-    } else if (item.hasOwnProperty('startTime')) {
+    } else if (item.hasOwnProperty('date') && !item.hasOwnProperty('volunteerId')) {
       // Event
-      return ['name', 'date', 'startTime', 'endTime', 'status'];
+      return ['name', 'date'];
     } else if (item.hasOwnProperty('volunteerId')) {
       // Attendance
       return ['volunteerId', 'eventId', 'dateTime'];

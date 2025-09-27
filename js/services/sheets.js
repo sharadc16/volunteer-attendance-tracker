@@ -10,18 +10,18 @@ class SheetsManager {
     this.sheetsConfig = {
       volunteers: {
         name: 'Volunteers',
-        headers: ['ID', 'Name', 'Email', 'Committee', 'Created', 'Updated', 'Synced'],
-        range: 'A:G'
+        headers: ['ID', 'Name', 'Email', 'Committee'],
+        range: 'A:D'
       },
       events: {
         name: 'Events',
-        headers: ['ID', 'Name', 'Date', 'Start Time', 'End Time', 'Status', 'Description', 'Created', 'Updated', 'Synced'],
-        range: 'A:J'
+        headers: ['ID', 'Name', 'Date'],
+        range: 'A:C'
       },
       attendance: {
         name: 'Attendance',
-        headers: ['ID', 'Volunteer ID', 'Event ID', 'Volunteer Name', 'Committee', 'Date', 'Time', 'Created', 'Updated', 'Synced'],
-        range: 'A:J'
+        headers: ['ID', 'Volunteer ID', 'Event ID', 'Volunteer Name', 'Committee', 'DateTime'],
+        range: 'A:F'
       }
     };
     

@@ -106,10 +106,6 @@ window.Storage = {
         data.id = Utils.String.generateId();
       }
 
-      // Add timestamps
-      data.createdAt = data.createdAt || new Date().toISOString();
-      data.updatedAt = new Date().toISOString();
-
       const request = store.add(data);
 
       request.onsuccess = () => resolve(data);
@@ -123,9 +119,6 @@ window.Storage = {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([storeName], 'readwrite');
       const store = transaction.objectStore(storeName);
-
-      // Update timestamp
-      data.updatedAt = new Date().toISOString();
 
       const request = store.put(data);
 

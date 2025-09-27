@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help - Volunteer Attendance Tracker</title>
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <h1>📚 Help & Documentation</h1>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav" id="nav">
+            <div class="nav-left">
+                <div>Loading navigation...</div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div id="helpContainer" class="help-page-container">
+                <!-- Help content will be loaded here -->
+                <div class="loading">Loading help documentation...</div>
+            </div>
+        </main>
+
+        <!-- Modal -->
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal" id="modal">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Modal</h3>
+                    <button class="modal-close" id="modalClose">×</button>
+                </div>
+                <div class="modal-body" id="modalBody"></div>
+                <div class="modal-footer" id="modalFooter">
+                    <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+                    <button class="btn btn-primary" id="modalConfirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/core/deployment-context.js"></script>
+    <script src="js/local-env.js"></script>
+    <script src="js/core/netlify-credentials.js"></script>
+    <script src="js/core/config.js"></script>
+    <script src="js/core/validation-utils.js"></script>
+    <script src="js/core/error-handler.js"></script>
+    <script src="js/core/credential-manager.js"></script>
+    <script src="js/core/status-manager.js"></script>
+    <script src="js/core/ui-utils.js"></script>
+    <script src="js/core/config-manager.js"></script>
+    <script src="js/core/environment-config.js"></script>
+    <script src="js/core/environment.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/storage.js"></script>
+    <script src="js/components/header.js"></script>
+    <script src="js/components/navigation.js"></script>
+    <script src="js/components/layout.js"></script>
+    <script src="js/components/ui.js"></script>
+    <script src="js/components/help.js"></script>
+    
+    <script>
+        // Initialize help page
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Initialize navigation with help as active
+                window.NavigationComponent.init('help');
+                
+                // Initialize help component
+                if (window.helpComponent) {
+                    window.helpComponent.render('helpContainer');
+                } else {
+                    console.error('Help component not available');
+                    document.getElementById('helpContainer').innerHTML = `
+                        <div class="error-state">
+                            <h2>❌ Help Not Available</h2>
+                            <p>The help documentation could not be loaded. Please try refreshing the page.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error initializing help page:', error);
+                document.getElementById('helpContainer').innerHTML = `
+                    <div class="error-state">
+                        <h2>❌ Error Loading Help</h2>
+                        <p>An error occurred while loading the help documentation: ${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

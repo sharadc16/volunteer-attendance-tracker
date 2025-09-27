@@ -61,6 +61,21 @@ A high-performance web application for tracking volunteer attendance at events w
      - `GOOGLE_SHEETS_API_KEY` - Your Google Sheets API Key  
      - `VOLUNTEER_SPREADSHEET_ID` - Your spreadsheet ID (optional)
    - See [Netlify Environment Setup Guide](NETLIFY_ENV_SETUP.md) for detailed instructions
+
+4. **Local Development (Recommended)**
+   ```bash
+   # Install Netlify CLI
+   npm install -g netlify-cli
+   
+   # Login and link to your site
+   netlify login
+   netlify link
+   
+   # Start development with real environment variables
+   netlify dev
+   ```
+   - See [Netlify CLI Setup Guide](NETLIFY_CLI_SETUP.md) for detailed instructions
+   - This gives you access to the same environment variables as production
    - Get your API key and Client ID
    - Configure the credentials in the app
 

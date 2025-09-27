@@ -13,16 +13,16 @@ class DataTransformer {
         // Define field mappings for each data type
         this.fieldMappings = {
             volunteer: {
-                local: ['id', 'name', 'email', 'committee', 'createdAt', 'updatedAt', 'syncedAt'],
-                sheets: ['ID', 'Name', 'Email', 'Committee', 'Created', 'Updated', 'Synced']
+                local: ['id', 'name', 'email', 'committee'],
+                sheets: ['ID', 'Name', 'Email', 'Committee']
             },
             event: {
-                local: ['id', 'name', 'date', 'startTime', 'endTime', 'status', 'description', 'createdAt', 'updatedAt', 'syncedAt'],
-                sheets: ['ID', 'Name', 'Date', 'Start Time', 'End Time', 'Status', 'Description', 'Created', 'Updated', 'Synced']
+                local: ['id', 'name', 'date'],
+                sheets: ['ID', 'Name', 'Date']
             },
             attendance: {
-                local: ['id', 'volunteerId', 'eventId', 'volunteerName', 'committee', 'date', 'dateTime', 'createdAt', 'updatedAt', 'syncedAt'],
-                sheets: ['ID', 'Volunteer ID', 'Event ID', 'Volunteer Name', 'Committee', 'Date', 'Time', 'Created', 'Updated', 'Synced']
+                local: ['id', 'volunteerId', 'eventId', 'volunteerName', 'committee', 'dateTime'],
+                sheets: ['ID', 'Volunteer ID', 'Event ID', 'Volunteer Name', 'Committee', 'DateTime']
             }
         };
 
@@ -30,7 +30,7 @@ class DataTransformer {
         this.requiredFields = {
             volunteer: ['id', 'name'],
             event: ['id', 'name', 'date'],
-            attendance: ['id', 'volunteerId', 'eventId', 'date']
+            attendance: ['id', 'volunteerId', 'eventId', 'dateTime']
         };
     }
 
@@ -524,10 +524,7 @@ class DataTransformer {
             id: this.sanitizeId(volunteer.id),
             name: this.sanitizeText(volunteer.name),
             email: this.sanitizeEmail(volunteer.email),
-            committee: this.sanitizeText(volunteer.committee || ''),
-            createdAt: this.formatTimestamp(volunteer.createdAt),
-            updatedAt: this.formatTimestamp(volunteer.updatedAt),
-            syncedAt: this.formatTimestamp(volunteer.syncedAt || new Date().toISOString())
+            committee: this.sanitizeText(volunteer.committee || '')
         };
 
         return this.toSheetsFormat(transformed, 'volunteer');
@@ -538,16 +535,13 @@ class DataTransformer {
      * @private
      */
     volunteerFromSheetsFormat(sheetsRow) {
-        const [id, name, email, committee, created, updated, synced] = sheetsRow;
+        const [id, name, email, committee] = sheetsRow;
         
         return {
             id: this.parseId(id),
             name: this.parseText(name),
             email: this.parseEmail(email),
-            committee: this.parseText(committee),
-            createdAt: this.parseTimestamp(created),
-            updatedAt: this.parseTimestamp(updated),
-            syncedAt: this.parseTimestamp(synced)
+            committee: this.parseText(committee)
         };
     }
 
@@ -559,14 +553,7 @@ class DataTransformer {
         const transformed = {
             id: this.sanitizeId(event.id),
             name: this.sanitizeText(event.name),
-            date: this.formatEventDate(event.date),
-            startTime: this.formatEventTime(event.startTime),
-            endTime: this.formatEventTime(event.endTime),
-            status: this.sanitizeText(event.status || 'Active'),
-            description: this.sanitizeText(event.description || ''),
-            createdAt: this.formatTimestamp(event.createdAt),
-            updatedAt: this.formatTimestamp(event.updatedAt),
-            syncedAt: this.formatTimestamp(event.syncedAt || new Date().toISOString())
+            date: this.formatEventDate(event.date)
         };
 
         return this.toSheetsFormat(transformed, 'event');
@@ -577,19 +564,12 @@ class DataTransformer {
      * @private
      */
     eventFromSheetsFormat(sheetsRow) {
-        const [id, name, date, startTime, endTime, status, description, created, updated, synced] = sheetsRow;
+        const [id, name, date] = sheetsRow;
         
         return {
             id: this.parseId(id),
             name: this.parseText(name),
-            date: this.parseEventDate(date),
-            startTime: this.parseEventTime(startTime),
-            endTime: this.parseEventTime(endTime),
-            status: this.parseText(status) || 'Active',
-            description: this.parseText(description),
-            createdAt: this.parseTimestamp(created),
-            updatedAt: this.parseTimestamp(updated),
-            syncedAt: this.parseTimestamp(synced)
+            date: this.parseEventDate(date)
         };
     }
 
@@ -616,11 +596,7 @@ class DataTransformer {
             eventId: this.sanitizeId(attendance.eventId),
             volunteerName: this.sanitizeText(volunteerName || 'Unknown'),
             committee: this.sanitizeText(committee || ''),
-            date: this.formatEventDate(attendance.date),
-            dateTime: this.formatAttendanceDateTime(attendance.dateTime),
-            createdAt: this.formatTimestamp(attendance.createdAt),
-            updatedAt: this.formatTimestamp(attendance.updatedAt),
-            syncedAt: this.formatTimestamp(attendance.syncedAt || new Date().toISOString())
+            dateTime: this.formatAttendanceDateTime(attendance.dateTime)
         };
 
         return this.toSheetsFormat(transformed, 'attendance');
@@ -631,7 +607,7 @@ class DataTransformer {
      * @private
      */
     attendanceFromSheetsFormat(sheetsRow) {
-        const [id, volunteerId, eventId, volunteerName, committee, date, dateTime, created, updated, synced] = sheetsRow;
+        const [id, volunteerId, eventId, volunteerName, committee, dateTime] = sheetsRow;
         
         return {
             id: this.parseId(id),
@@ -639,11 +615,7 @@ class DataTransformer {
             eventId: this.parseId(eventId),
             volunteerName: this.parseText(volunteerName),
             committee: this.parseText(committee),
-            date: this.parseEventDate(date),
-            dateTime: this.parseAttendanceDateTime(dateTime),
-            createdAt: this.parseTimestamp(created),
-            updatedAt: this.parseTimestamp(updated),
-            syncedAt: this.parseTimestamp(synced)
+            dateTime: this.parseAttendanceDateTime(dateTime)
         };
     }
 
@@ -1068,9 +1040,7 @@ class DataTransformer {
                 break;
 
             case 'event':
-                if (!data.startTime || !data.endTime) {
-                    result.warnings.push('Event times not specified');
-                }
+                // No additional warnings for simplified event model
                 break;
 
             case 'attendance':
